@@ -1,9 +1,6 @@
-setclipboard("https://www.youtube.com/@RANSBLOX")
-
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
-
 local lp = Players.LocalPlayer
 
 getgenv().KnifeConfig = {
@@ -19,9 +16,6 @@ getgenv().ESPConfig = {
   Tracers = true
 }
 
--- ═══════════════════════════════
--- FOV CIRCLE DRAWING SETUP
--- ═══════════════════════════════
 local fovCircle = Drawing.new("Circle")
 fovCircle.Visible = true
 fovCircle.Transparency = 1
@@ -40,9 +34,6 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- ═══════════════════════════════
--- ESP SYSTEM (BOX, TRACER, NAME, HEALTH)
--- ═══════════════════════════════
 local function createESP(player)
     local line = Drawing.new("Line")
     line.Visible = false
@@ -118,7 +109,6 @@ local function createESP(player)
                 local bottomLeft = Vector2.new(vector.X - width / 2, legVector.Y)
                 local bottomRight = Vector2.new(vector.X + width / 2, legVector.Y)
 
-                -- Tracers
                 if getgenv().ESPConfig.Tracers then
                     line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
                     line.To = Vector2.new(vector.X, vector.Y)
@@ -127,7 +117,6 @@ local function createESP(player)
                     line.Visible = false
                 end
 
-                -- Box ESP
                 if getgenv().ESPConfig.BoxESP then
                     boxTop.From = topLeft
                     boxTop.To = topRight
@@ -151,7 +140,6 @@ local function createESP(player)
                     boxRight.Visible = false
                 end
 
-                -- Name ESP
                 if getgenv().ESPConfig.PlayerNames then
                     nameText.Text = player.Name
                     nameText.Position = Vector2.new(vector.X, headVector.Y - 18)
@@ -160,7 +148,6 @@ local function createESP(player)
                     nameText.Visible = false
                 end
 
-                -- Health ESP
                 if getgenv().ESPConfig.HealthESP then
                     healthText.Text = math.floor(humanoid.Health) .. " HP"
                     healthText.Position = Vector2.new(vector.X, legVector.Y + 2)
@@ -203,9 +190,6 @@ Players.PlayerAdded:Connect(function(player)
     end
 end)
 
--- ═══════════════════════════════
--- SILENT AIM SETUP
--- ═══════════════════════════════
 local phem1 = game:GetService("Players")
 local phem2 = game:GetService("Workspace")
 local phem3 = phem1.LocalPlayer
