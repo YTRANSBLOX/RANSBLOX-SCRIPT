@@ -1760,3 +1760,442 @@ local function updateShop()
 	table.sort(affordableButtons, function(a, b) return a.price < b.price end)
 	table.sort(unaffordableButtons, function(a, b) return a.price < b.price end)
 
+	if #unaffordableButtons > 0 then
+		local nextTarget = unaffordableButtons[1]
+		local etaText, earned, lastInterval, currentTimer, rate1Min = calculateETA(nextTarget.price, cashNum)
+		EtaLabel.Text = string.format("Target: %s (%s)\nLast Earned: $%s\nUpdate Interval: %.1fs (Current: %.1fs)\n1-Min Rate: $%s/m\nETA: %s", nextTarget.name, nextTarget.priceStr, formatNumber(earned), lastInterval, currentTimer, formatNumber(rate1Min), etaText)
+	elseif #affordableButtons > 0 then
+		local topTarget = affordableButtons[1]
+		local etaText, earned, lastInterval, currentTimer, rate1Min = calculateETA(topTarget.price, cashNum)
+		EtaLabel.Text = string.format("Target: %s (%s)\nLast Earned: $%s\nUpdate Interval: %.1fs (Current: %.1fs)\n1-Min Rate: $%s/m\nETA: Ready!", topTarget.name, topTarget.priceStr, formatNumber(earned), lastInterval, currentTimer, formatNumber(rate1Min))
+	else
+		EtaLabel.Text = "Target: Maxed Out\nLast Earned: $0\nUpdate Interval: N/A\n1-Min Rate: $0/m\nETA: N/A"
+	end
+
+	if autoBuyEnabled and currentPlot ~= "None" and localPlayer and localPlayer.Character then
+		local plotObj = game:GetService("Workspace"):FindFirstChild("Plots"):FindFirstChild(currentPlot)
+		if plotObj and not isPlayerOnPlot(plotObj) then
+			local root = localPlayer.Character:FindFirstChild("HumanoidRootPart")
+			if root then
+				local spawnPad = plotObj:FindFirstChild("Spawn") or plotObj:FindFirstChild("SpawnLocation") or plotObj:FindFirstChild("ClaimPart")
+				root.CFrame = spawnPad and (spawnPad.CFrame + Vector3.new(0, 8, 0)) or (plotObj:GetPivot() + Vector3.new(0, 8, 0))
+			end
+		end
+		if #affordableButtons > 0 and tick() - lastAutoBuyTime >= 0.3 then
+			lastAutoBuyTime = tick()
+			moveToTarget(affordableButtons[1].instance)
+		end
+	end
+
+	local currentValidBtns = {}
+	local order = 1
+	local function processList(list)
+		for _, item in ipairs(list) do
+			currentValidBtns[item.instance] = true
+			local itemBtn = existingUIButtons[item.instance]
+			if not itemBtn then
+				itemBtn = Instance.new("TextButton")
+				local itemCorner = Instance.new("UICorner")
+				local itemStroke = Instance.new("UIStroke")
+				itemBtn.Name = item.name; itemBtn.Parent = ScrollFrame; itemBtn.Size = UDim2.new(1, 0, 0, 32); itemBtn.Font = Enum.Font.Arcade; itemBtn.TextWrapped = true
+				itemCorner.CornerRadius = UDim.new(0, 6); itemCorner.Parent = itemBtn
+				itemStroke.Parent = itemBtn; itemStroke.Color = Color3.fromRGB(35, 35, 45); itemStroke.Thickness = 1
+				existingUIButtons[item.instance] = itemBtn
+			end
+			itemBtn.LayoutOrder = order
+			itemBtn.Text = item.name .. " (" .. item.priceStr .. ")"
+			itemBtn.BackgroundColor3 = item.canAfford and Color3.fromRGB(60, 200, 120) or Color3.fromRGB(255, 65, 65)
+			itemBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+			if itemBtn._conn then itemBtn._conn:Disconnect() end
+			itemBtn._conn = itemBtn.MouseButton1Click:Connect(function() if item.canAfford then moveToTarget(item.instance) end end)
+			order = order + 1
+		end
+	end
+
+	processList(affordableButtons)
+	processList(unaffordableButtons)
+
+	for btn, uiBtn in pairs(existingUIButtons) do
+		if not currentValidBtns[btn] then
+			if uiBtn._conn then uiBtn._conn:Disconnect() end
+			uiBtn:Destroy()
+			existingUIButtons[btn] = nil
+		end
+	end
+	updateGuidelines(allValidItems)
+end
+
+local lastShopUpdate, lastMerchantUpdate, lastRgbUpdate, lastSpeedUpdate = 0, 0, 0, 0
+game:GetService("RunService").Heartbeat:Connect(function()
+	local now = tick()
+
+	if now - lastSpeedUpdate >= 0.15 then
+		lastSpeedUpdate = now
+		if localPlayer and localPlayer.Character then
+			local humanoid = localPlayer.Character:FindFirstChildOfClass("Humanoid")
+			local root = localPlayer.Character:FindFirstChild("HumanoidRootPart")
+			if humanoid then
+				if humanoid.WalkSpeed ~= targetWalkSpeed then
+					humanoid.WalkSpeed = targetWalkSpeed
+				end
+				if humanoid.JumpPower ~= targetJumpPower then
+					humanoid.UseJumpPower = true
+					humanoid.JumpPower = targetJumpPower
+				end
+				if root and humanoid.MoveDirection.Magnitude > 0 and targetWalkSpeed > 16 then
+					local moveDir = humanoid.MoveDirection
+					local currentVel = root.AssemblyLinearVelocity
+					root.AssemblyLinearVelocity = Vector3.new(moveDir.X * targetWalkSpeed, currentVel.Y, moveDir.Z * targetWalkSpeed)
+				end
+			end
+		end
+	end
+
+	if now - lastRgbUpdate >= 0.2 then
+		lastRgbUpdate = now
+		local rgbColor = Color3.fromHSV((now % 3) / 3, 1, 1)
+
+		EtaLabel.TextColor3 = rgbColor
+		EtaStroke.Color = rgbColor
+
+		local r, g, b = math.floor(rgbColor.R * 255), math.floor(rgbColor.G * 255), math.floor(rgbColor.B * 255)
+		Title.Text = string.format('TBOD^2  <font color="rgb(%d,%d,%d)">[ Held Roblox ]</font>', r, g, b)
+	end
+	if now - lastMerchantUpdate >= 3 then
+		lastMerchantUpdate = now
+		highlightMerchants()
+	end
+	if now - lastShopUpdate >= 0.7 then
+		lastShopUpdate = now
+		updateShop()
+	end
+end)
+task.wait(0.1)
+task.wait(0.3)
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local BUNDLE = {
+	idle1 = "rbxassetid://1083445855", idle2 = "rbxassetid://1083450166",
+	walk  = "rbxassetid://616013216", run   = "rbxassetid://616010382",
+	jump  = "rbxassetid://707853694", fall  = "rbxassetid://707829716",
+	climb = "rbxassetid://707826056"
+}
+
+local function applyAnimations(character)
+	local animateScript = character:WaitForChild("Animate", 5)
+	if not animateScript then return end
+
+	local function setAnim(parentName, animName, assetId)
+		local parent = animateScript:FindFirstChild(parentName)
+		if parent then
+			local anim = parent:FindFirstChild(animName)
+			if anim and anim:IsA("Animation") then
+				anim.AnimationId = assetId
+			end
+		end
+	end
+
+	setAnim("idle", "Animation1", BUNDLE.idle1)
+	setAnim("idle", "Animation2", BUNDLE.idle2)
+	setAnim("walk", "WalkAnim", BUNDLE.walk)
+	setAnim("run", "RunAnim", BUNDLE.run)
+	setAnim("jump", "JumpAnim", BUNDLE.jump)
+	setAnim("fall", "FallAnim", BUNDLE.fall)
+	setAnim("climb", "ClimbAnim", BUNDLE.climb)
+
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
+			track:Stop()
+		end
+	end
+end
+
+if LocalPlayer.Character then
+	applyAnimations(LocalPlayer.Character)
+end
+
+LocalPlayer.CharacterAdded:Connect(applyAnimations)
+task.wait(0.3)
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local function createAura(character)
+	local hrp = character:WaitForChild("HumanoidRootPart", 5)
+	if not hrp then return end
+
+	if hrp:FindFirstChild("SSJ_ChevronAura") then
+		hrp.SSJ_ChevronAura:Destroy()
+	end
+
+	local existingAtt = hrp:FindFirstChild("SSJ_AuraAttachment")
+	if existingAtt then existingAtt:Destroy() end
+
+	local existingOrbit = hrp:FindFirstChild("SSJ_OrbitFolder")
+	if existingOrbit then existingOrbit:Destroy() end
+
+	local bodyParts = {}
+	for _, partName in ipairs({"Head", "LeftHand", "RightHand", "LeftFoot", "RightFoot"}) do
+		local part = character:FindFirstChild(partName)
+		if part then table.insert(bodyParts, part) end
+	end
+
+	for _, part in ipairs(bodyParts) do
+		if part:FindFirstChild("SSJ_AuraParticles") then
+			part.SSJ_AuraParticles:Destroy()
+		end
+
+		local emitter = Instance.new("ParticleEmitter")
+		emitter.Name = "SSJ_AuraParticles"
+		emitter.Texture = "rbxassetid://241594419"
+		emitter.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(245, 210, 255)),
+			ColorSequenceKeypoint.new(0.3, Color3.fromRGB(180, 40, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(70, 0, 140))
+		})
+		emitter.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.7),
+			NumberSequenceKeypoint.new(0.45, 1.3),
+			NumberSequenceKeypoint.new(1, 0)
+		})
+		emitter.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.2),
+			NumberSequenceKeypoint.new(0.6, 0.45),
+			NumberSequenceKeypoint.new(1, 1)
+		})
+		emitter.Lifetime = NumberRange.new(0.4, 0.7)
+		emitter.Rate = 40
+		emitter.Speed = NumberRange.new(1.5, 3)
+		emitter.Acceleration = Vector3.new(0, 0.8, 0)
+		emitter.Drag = 1.5
+		emitter.EmissionDirection = Enum.NormalId.Front
+		emitter.SpreadAngle = Vector2.new(180, 40)
+		emitter.RotSpeed = NumberRange.new(-200, 200)
+		emitter.Rotation = NumberRange.new(0, 360)
+		emitter.LightEmission = 0.4
+		emitter.LightInfluence = 0
+		emitter.VelocityInheritance = 0
+		emitter.LockedToPart = true
+		emitter.Parent = part
+	end
+
+	local orbitFolder = Instance.new("Folder")
+	orbitFolder.Name = "SSJ_OrbitFolder"
+	orbitFolder.Parent = hrp
+
+	local soulCount = 25
+	local orbitRadius = 4.5
+	local orbitSpeed = 2.3
+	local soulAttachments = {}
+
+	for i = 1, soulCount do
+		local soulAtt = Instance.new("Attachment")
+		soulAtt.Name = "SSJ_Soul_" .. i
+		soulAtt.Parent = hrp
+		table.insert(soulAttachments, soulAtt)
+
+		local coreEmitter = Instance.new("ParticleEmitter")
+		coreEmitter.Name = "SSJ_SoulCore"
+		coreEmitter.Texture = "rbxassetid://241594419"
+		coreEmitter.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+			ColorSequenceKeypoint.new(0.3, Color3.fromRGB(220, 180, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(140, 40, 255))
+		})
+		coreEmitter.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.2),
+			NumberSequenceKeypoint.new(0.5, 0.3),
+			NumberSequenceKeypoint.new(1, 0)
+		})
+		coreEmitter.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0),
+			NumberSequenceKeypoint.new(0.7, 0.2),
+			NumberSequenceKeypoint.new(1, 1)
+		})
+		coreEmitter.Lifetime = NumberRange.new(0.15, 0.25)
+		coreEmitter.Rate = 100
+		coreEmitter.Speed = NumberRange.new(0, 0.1)
+		coreEmitter.LockedToPart = true
+		coreEmitter.LightEmission = 0.6
+		coreEmitter.LightInfluence = 0
+		coreEmitter.Parent = soulAtt
+
+		local ringEmitter = Instance.new("ParticleEmitter")
+		ringEmitter.Name = "SSJ_SoulRing"
+		ringEmitter.Texture = "rbxassetid://241594419"
+		ringEmitter.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 220, 255)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(180, 60, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 0, 160))
+		})
+		ringEmitter.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.1),
+			NumberSequenceKeypoint.new(0.5, 0.45),
+			NumberSequenceKeypoint.new(1, 0)
+		})
+		ringEmitter.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.1),
+			NumberSequenceKeypoint.new(0.6, 0.4),
+			NumberSequenceKeypoint.new(1, 1)
+		})
+		ringEmitter.Lifetime = NumberRange.new(0.2, 0.35)
+		ringEmitter.Rate = 50
+		ringEmitter.Speed = NumberRange.new(0.5, 1)
+		ringEmitter.Drag = 2
+		ringEmitter.RotSpeed = NumberRange.new(180, 360)
+		ringEmitter.Rotation = NumberRange.new(0, 360)
+		ringEmitter.LockedToPart = true
+		ringEmitter.LightEmission = 0.6
+		ringEmitter.LightInfluence = 0
+		ringEmitter.Parent = soulAtt
+
+		local trailEmitter = Instance.new("ParticleEmitter")
+		trailEmitter.Name = "SSJ_SoulTrail"
+		trailEmitter.Texture = "rbxassetid://241594419"
+		trailEmitter.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(220, 130, 255)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(150, 30, 220)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(50, 0, 100))
+		})
+		trailEmitter.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.25),
+			NumberSequenceKeypoint.new(0.5, 0.15),
+			NumberSequenceKeypoint.new(1, 0)
+		})
+		trailEmitter.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.2),
+			NumberSequenceKeypoint.new(0.7, 0.6),
+			NumberSequenceKeypoint.new(1, 1)
+		})
+		trailEmitter.Lifetime = NumberRange.new(0.3, 0.5)
+		trailEmitter.Rate = 60
+		trailEmitter.Speed = NumberRange.new(0.1, 0.4)
+		trailEmitter.Drag = 1
+		trailEmitter.LockedToPart = false
+		trailEmitter.LightEmission = 1
+		trailEmitter.LightInfluence = 0
+		trailEmitter.Parent = soulAtt
+
+		local sparkEmitter = Instance.new("ParticleEmitter")
+		sparkEmitter.Name = "SSJ_SoulSparks"
+		sparkEmitter.Texture = "rbxassetid://241594419"
+		sparkEmitter.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(200, 100, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(120, 0, 200))
+		})
+		sparkEmitter.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.08),
+			NumberSequenceKeypoint.new(0.5, 0.12),
+			NumberSequenceKeypoint.new(1, 0)
+		})
+		sparkEmitter.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0),
+			NumberSequenceKeypoint.new(0.8, 0.3),
+			NumberSequenceKeypoint.new(1, 1)
+		})
+		sparkEmitter.Lifetime = NumberRange.new(0.15, 0.3)
+		sparkEmitter.Rate = 30
+		sparkEmitter.Speed = NumberRange.new(1, 2.5)
+		sparkEmitter.SpreadAngle = Vector2.new(180, 180)
+		sparkEmitter.Drag = 3
+		sparkEmitter.LightEmission = 0.4
+		sparkEmitter.LightInfluence = 0
+		sparkEmitter.Parent = soulAtt
+
+		local light = Instance.new("PointLight")
+		light.Name = "SSJ_SoulLight"
+		light.Color = Color3.fromRGB(220, 120, 255)
+		light.Brightness = 0.7
+		light.Range = 4
+		light.Parent = soulAtt
+	end
+
+	local angle = 0
+	local connection
+	connection = game:GetService("RunService").Heartbeat:Connect(function(dt)
+		if not hrp or not hrp.Parent then
+			connection:Disconnect()
+			return
+		end
+		angle = angle + dt * orbitSpeed
+
+		local orbits = {
+			{axis = Vector3.new(1, 1, 0).Unit, speedMult = 1, angleOffset = 0},
+			{axis = Vector3.new(-1, 1, 0).Unit, speedMult = 1.1, angleOffset = math.pi / 2},
+			{axis = Vector3.new(0, 1, 1).Unit, speedMult = 0.9, angleOffset = math.pi},
+			{axis = Vector3.new(1, 0, 1).Unit, speedMult = 1.05, angleOffset = math.pi * 1.5}
+		}
+
+		local dashTable = {}
+
+		for i, att in ipairs(soulAttachments) do
+			local orbitIndex = ((i - 1) % #orbits) + 1
+			local orbit = orbits[orbitIndex]
+
+			if not dashTable[i] then
+				dashTable[i] = {
+					active = false,
+					startTime = 0,
+					duration = 0,
+					startAngle = 0,
+					endAngle = 0,
+					startRadius = orbitRadius,
+					targetRadius = orbitRadius
+				}
+			end
+
+			local dash = dashTable[i]
+
+			if not dash.active and math.random() < 0.005 then
+				dash.active = true
+				dash.startTime = tick()
+				dash.duration = math.random(12, 22) / 100
+				dash.startAngle = angle * orbit.speedMult + orbit.angleOffset + ((i > #orbits and math.pi / 4) or 0)
+				
+				local dashDist = (math.random() > 0.5 and 1 or -1) * (math.pi * 0.75)
+				dash.endAngle = dash.startAngle + dashDist
+				dash.startRadius = orbitRadius
+				dash.targetRadius = orbitRadius * math.random(85, 115) / 100
+			end
+
+			local tangent = orbit.axis:Cross(Vector3.new(0, 1, 0))
+			if tangent.Magnitude < 0.001 then
+				tangent = orbit.axis:Cross(Vector3.new(1, 0, 0))
+			end
+			tangent = tangent.Unit
+			local bitangent = orbit.axis:Cross(tangent).Unit
+
+			local currentAngle, currentRadius
+
+			if dash.active then
+				local elapsed = tick() - dash.startTime
+				local progress = math.clamp(elapsed / dash.duration, 0, 1)
+
+				currentAngle = dash.startAngle + (dash.endAngle - dash.startAngle) * progress
+				currentRadius = dash.startRadius + (dash.targetRadius - dash.startRadius) * progress
+
+				if progress >= 1 then
+					dash.active = false
+				end
+			else
+				currentAngle = angle * orbit.speedMult + orbit.angleOffset + ((i > #orbits and math.pi / 4) or 0)
+				currentRadius = orbitRadius
+			end
+
+			local cosA = math.cos(currentAngle) * currentRadius
+			local sinA = math.sin(currentAngle) * currentRadius
+			local pos = tangent * cosA + bitangent * sinA
+
+			att.Position = Vector3.new(pos.X, pos.Y + 0.5, pos.Z)
+		end
+	end)
+end
+
+if LocalPlayer.Character then
+	createAura(LocalPlayer.Character)
+end
+
+LocalPlayer.CharacterAdded:Connect(createAura)
