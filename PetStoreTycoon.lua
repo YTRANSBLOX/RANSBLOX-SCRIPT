@@ -831,7 +831,6 @@ local RCfg = {
     FillWait = 8,          -- full restock: seconds to wait for freshly bought boxes to show up
 }
 local BCfg = {
-    Mode = "Shelves empty", -- Buy when: "Shelves empty" / "Always"
     BuyDelay = 0.4,        -- seconds between purchases
     Cooldown = 6,          -- seconds to leave a good alone after buying it, so its boxes can show up
     Safety = 15,           -- seconds between quiet local re-checks (no remotes) in case an event was missed
@@ -1957,10 +1956,9 @@ if Auto.ready then
         local extra = RCfg.FullRun and homes or 0 -- full restock: also claim the free slots, not only the ones the good already owns
         if need == 0 and stock == 0 then
             want = homes -- not on any shelf yet: buy enough to claim every free slot, not just 1
-        elseif BCfg.Mode == "Shelves empty" then
-            want = (stock == 0) and (need + extra) or 0
         else
-            want = need + ((stock == 0) and extra or 0) -- Always
+            -- the % threshold slider (below) is the only refill trigger now
+            want = need + ((stock == 0) and extra or 0)
         end
         return math.max(want - waiting, 0), false, item, goodKey, want
     end
@@ -2644,7 +2642,7 @@ LinkGroup:Button({
 local CashierBox = openSection(Tabs.Cashier, "Auto Cashier", "banknote")
 CashierBox:Toggle({
     Title = "Auto Cashier",
-    Desc = "Waits until a customer is ready to pay, walks to the register to serve them, then walks back.",
+    Desc = "Serves customers at the register for you.",
     Value = false,
     Callback = function(v)
         cashRunning = v
@@ -2670,7 +2668,7 @@ end
 local RestockBox = openSection(Tabs.Stock, "Auto Restock", "package")
 RestockBox:Toggle({
     Title = "Auto Restock",
-    Desc = "Picks up loose boxes and puts them on shelves or in fish tanks (see Restock what). With Auto Cashier on it starts in a quiet moment and finishes the whole run before the cashier takes over again.",
+    Desc = "Picks up boxes and stocks them on shelves or in fish tanks.",
     Value = false,
     Callback = function(v)
         if v and not Auto.ready then
@@ -2684,7 +2682,7 @@ RestockBox:Toggle({
 })
 RestockBox:Dropdown({
     Title = "Restock what",
-    Desc = "Pick what Auto Restock handles. Fish tanks only = it ignores goods boxes, and the other way around.",
+    Desc = "Choose whether Auto Restock handles shelves, fish tanks, or both.",
     Flag = "RestockTypes",
     Values = { "Shelves (goods)", "Fish tanks" },
     Value = { "Shelves (goods)", "Fish tanks" },
@@ -2708,7 +2706,7 @@ RestockBox:Dropdown({
 })
 RestockBox:Toggle({
     Title = "Full restock (finish before cashier)",
-    Desc = "Once Auto Buy + Auto Restock start, they keep buying and shelving until every shelf is full (or cash runs out) before the cashier takes over, so you don't leave half-filled. Customers wait meanwhile.",
+    Desc = "Keeps restocking until everything's full before letting the cashier take over.",
     Value = true,
     Flag = "FullRestock",
     Callback = function(v)
@@ -2718,14 +2716,13 @@ RestockBox:Toggle({
 })
 RestockBox:Toggle({
     Title = "Reuse empty slots of other goods",
-    Desc = "Lets restock put a new good on empty slots that still belong to another good.",
+    Desc = "Allows restock to use empty slots that belong to another good.",
     Value = false,
     Callback = function(v) Auto.RCfg.Reassign = v end,
 })
 RestockBox:Dropdown({
     Title = "Priority",
-    Desc = "Finish restock first: it completes the whole run before the cashier takes over. "
-        .. "Serve customers first: when a customer is waiting it pauses between boxes and lets the cashier serve, then continues. It only matters while Auto Restock is shelving boxes.",
+    Desc = "Finish restock first: completes the whole restock before serving customers. Serve customers first: pauses restocking to serve waiting customers.",
     Flag = "RestockPriority",
     Values = { "Finish restock first", "Serve customers first" },
     Value = "Finish restock first",
@@ -2742,7 +2739,7 @@ end
 local BuyBox = openSection(Tabs.Stock, "Auto Buy", "shopping-cart")
 BuyBox:Toggle({
     Title = "Auto Buy",
-    Desc = "Orders the picked goods when your shelves need them. Turn on Auto Restock so the boxes get shelved.",
+    Desc = "Orders the goods you picked when your shelves need them. Turn on Auto Restock too so the boxes get shelved.",
     Value = false,
     Callback = function(v)
         if v and not Auto.ready then
@@ -2757,7 +2754,7 @@ BuyBox:Toggle({
 })
 local BuyDropdown = BuyBox:Dropdown({
     Title = "Goods to buy",
-    Desc = "Only goods unlocked at your level. The list grows as you level up.",
+    Desc = "Pick which goods Auto Buy orders. List grows as you level up.",
     Flag = "BuyItems",
     Values = Auto.getOptions(),
     Value = {},
@@ -2773,22 +2770,9 @@ local BuyDropdown = BuyBox:Dropdown({
         Auto.setSelected(list)
     end,
 })
-BuyBox:Dropdown({
-    Title = "Buy when",
-    Desc = "Works on all shelves. Shelves empty: none of that good is left on any shelf. "
-        .. "Always: refills as soon as any slot can take more.",
-    Flag = "BuyWhen",
-    Values = { "Shelves empty", "Always" },
-    Value = "Shelves empty",
-    Callback = function(v)
-        Auto.BCfg.Mode = pickValue(v)
-        Auto.buyWake()
-    end,
-})
 BuyBox:Slider({
     Title = "Refill when shelves below (%)",
-    Desc = "A good is only ordered again when its shelves are less than this full. Once it starts, the box target is noted and "
-        .. "filled to the top; customers buying meanwhile don't extend that run. 100 = refill as soon as anything is missing.",
+    Desc = "Orders more once shelf stock drops below this percent. 100 = refill the moment anything's missing.",
     Flag = "BuyThreshold",
     Step = 5,
     Value = { Min = 10, Max = 100, Default = 70 },
@@ -2831,7 +2815,7 @@ Tabs.Fish:Paragraph({
 local FishBox = openSection(Tabs.Fish, "Auto Buy Fish", "fish")
 FishBox:Toggle({
     Title = "Auto Buy Fish",
-    Desc = "Orders the picked fish based on how many tanks you have and their size, not on a timer. Turn on Auto Restock with \"Fish tanks\" picked so the boxes get placed.",
+    Desc = "Orders the fish you picked based on your tanks. Turn on Auto Restock with \"Fish tanks\" picked so the boxes get placed.",
     Value = false,
     Callback = function(v)
         if v and not Fish.ready then
@@ -2843,7 +2827,7 @@ FishBox:Toggle({
 })
 local FishDropdown = FishBox:Dropdown({
     Title = "Fish to buy",
-    Desc = "Only fish unlocked at your level. The list grows as you level up.",
+    Desc = "Pick which fish Auto Buy Fish orders. List grows as you level up.",
     Flag = "FishItems",
     Values = Fish.getOptions(),
     Value = {},
@@ -2861,8 +2845,7 @@ local FishDropdown = FishBox:Dropdown({
 })
 FishBox:Dropdown({
     Title = "Buy when",
-    Desc = "Counted per tank from your real tank sizes. Tank empty: a tank with no fish in it gets filled to its full capacity. "
-        .. "Always: fills every free spot as soon as there is one.",
+    Desc = "Tank empty: only refills tanks with no fish left. Always: fills any open spot right away.",
     Flag = "FishBuyWhen",
     Values = { "Tank empty", "Always" },
     Value = "Tank empty",
@@ -3143,7 +3126,7 @@ do
     local CareBox = openSection(Tabs.Fish, "Auto Care", "heart")
     CareBox:Toggle({
         Title = "Auto Care",
-        Desc = "Walks to any fish tank that needs care and handles it. Don't open the tank panel while it runs.",
+        Desc = "Feeds, cleans and maintains your fish tanks for you. Don't open the tank panel while it runs.",
         Value = false,
         Callback = function(v)
             if v and not careReady then
@@ -3173,7 +3156,7 @@ do
     end
     CareBox:Dropdown({
         Title = "Care types",
-        Desc = "What Auto Care does on each tank. Pick one or more.",
+        Desc = "Pick which care tasks Auto Care performs.",
         Flag = "CareTypes",
         Values = careValues,
         Value = careDefault,
@@ -3196,7 +3179,7 @@ do
     })
     CareBox:Slider({
         Title = "Care threshold",
-        Desc = "Care starts when a bar drops below this. The game shows 'Needs attention' under 50 and 'Critical' under 15.",
+        Desc = "Care kicks in once a tank's bar drops below this percent.",
         Flag = "CareThreshold",
         Step = 5,
         Value = { Min = 10, Max = 100, Default = CCfg.Threshold },
@@ -3534,7 +3517,7 @@ do
     local ThiefBox = openSection(Tabs.Security, "Auto Anti-Thief", "shield")
     ThiefBox:Toggle({
         Title = "Auto Anti-Thief",
-        Desc = "When a shoplifter shows up (red glow), everything else stops at once: grabs the bat, chases fast with noclip, swings, then puts the bat back. Cashier, restock and care resume afterwards.",
+        Desc = "Chases down shoplifters and deals with them automatically. Other features pause until it's done.",
         Value = false,
         Callback = function(v)
             if v and not batReady then
@@ -3554,7 +3537,7 @@ do
     })
     ThiefBox:Slider({
         Title = "Give up after (seconds)",
-        Desc = "Stop chasing one thief after this long, so it can't get stuck.",
+        Desc = "Stop chasing a thief after this long.",
         Flag = "ThiefGiveUp",
         Step = 5,
         Value = { Min = 10, Max = 60, Default = TCfg.GiveUp },
@@ -3562,7 +3545,7 @@ do
     })
     ThiefBox:Slider({
         Title = "Chase speed",
-        Desc = "Walk speed while chasing a thief. Your normal speed comes back afterwards. Noclip is on while it runs.",
+        Desc = "How fast you move while chasing a thief.",
         Flag = "ThiefSpeed",
         Step = 2,
         Value = { Min = 16, Max = 60, Default = TCfg.Speed },
@@ -3811,7 +3794,7 @@ do
     local CleanBox = openSection(Tabs.Cashier, "Auto Clean", icon("sparkles", "brush", "trash-2"))
     CleanBox:Toggle({
         Title = "Auto Clean",
-        Desc = "Walks to the mess customers leave and sweeps it up. Starts in a quiet moment (no customer waiting) and finishes all the mess before the cashier, restock and care carry on.",
+        Desc = "Sweeps up the mess customers leave behind.",
         Value = false,
         Flag = "AutoClean",
         Callback = function(v)
@@ -3837,7 +3820,7 @@ end
 local MoveBox = openSection(Tabs.Misc, "Movement", "footprints")
 MoveBox:Dropdown({
     Title = "Movement mode",
-    Desc = "Walk (legit): the character walks everywhere, safest. Teleport (fast): jumps straight to the register, boxes, shelves, tanks, mess and the sign, no walking in between. Applies to every feature.",
+    Desc = "Walk (legit): moves naturally, safest. Teleport (fast): jumps straight to each spot. Applies to every feature.",
     Flag = "MoveMode",
     Values = { "Walk (legit)", "Teleport (fast)" },
     Value = "Walk (legit)",
@@ -3872,7 +3855,7 @@ UIBox:Keybind({
 local ConfigBox = section(Tabs.Misc, "Config", "save")
 local ConfigStatusP = ConfigBox:Paragraph({
     Title = "Auto-save",
-    Desc = "Dropdowns with a Flag are saved automatically whenever you change them, and loaded back next time you join.",
+    Desc = "Your settings save automatically and load back next time you join.",
 })
 
 local ConfigGroup = ConfigBox:Group()
@@ -4218,7 +4201,7 @@ do
     local OCBox = openSection(Tabs.Cashier, "Auto Open / Close Store", "house")
     OCBox:Toggle({
         Title = "Auto Open / Close Store",
-        Desc = "Opens the store in the morning, closes it at closing time once it's empty, then starts the next day.",
+        Desc = "Opens and closes the store on schedule, then starts the next day.",
         Value = false,
         Callback = function(v)
             OC.on = v
@@ -4341,7 +4324,7 @@ do
     local PBox = openSection(Tabs.Stock, "Auto Confirm Price", "check")
     PBox:Toggle({
         Title = "Auto Confirm Price",
-        Desc = "When Auto Restock is on and the Set price window pops up, it presses Confirm so you don't get stuck.",
+        Desc = "Auto-presses Confirm on the Set Price popup so restock doesn't get stuck.",
         Value = true,
         Flag = "AutoConfirmPrice",
         Callback = function(v)
