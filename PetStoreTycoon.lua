@@ -1,5 +1,5 @@
 local HUB_NAME = "Pet Store Tycoon"
-local VERSION  = "v2.6"
+local VERSION  = "v1.0"
 local YT_LINK  = "https://www.youtube.com/@RansbloxScript"
 local WEB_LINK = "https://ransblox.net"
 
@@ -7,13 +7,11 @@ local WEB_LINK = "https://ransblox.net"
 if _G.PETSTORETYCOON_Unload then pcall(_G.PETSTORETYCOON_Unload) end
 
 pcall(function() setclipboard(YT_LINK) end)
-print("[Pet Store Tycoon] " .. VERSION .. " starting...")
 
 local ok, WindUI = pcall(function()
     return loadstring(game:HttpGet("https://raw.githubusercontent.com/YTRANSBLOX/RANSBLOX-SCRIPT/refs/heads/main/maingui.lua"))()
 end)
 if not ok or not WindUI then
-    warn("[Pet Store Tycoon] could not load the UI library (WindUI): " .. tostring(WindUI))
     return
 end
 
@@ -2625,6 +2623,20 @@ FreeBox:Paragraph({
         .. "Only trust the official links below.",
 })
 
+local DevBox = openSection(Tabs.Home, "Developer Note", "message-square")
+DevBox:Paragraph({
+    Title = "Initial release (v1.0)",
+    Desc = "This script was built in a single day, so you may run into bugs or rough edges. "
+        .. "Thanks for your understanding while it gets polished.",
+})
+DevBox:Paragraph({
+    Title = "Is it worth continuing?",
+    Desc = "Whether this script gets future updates depends on community feedback. "
+        .. "If it's been useful to you, please like the video and leave a comment. "
+        .. "Your engagement is the signal I use to decide if it's worth maintaining. "
+        .. "Bug reports and feature requests in the comments are welcome.",
+})
+
 local LinkBox = openSection(Tabs.Home, "Official Links", "link")
 local LinkGroup = LinkBox:Group()
 LinkGroup:Button({
@@ -3739,15 +3751,15 @@ do
                 if Clean.on then
                     pcall(hookPlots)
                     if #myMesses() == 0 then
-                        clstatus("No mess, waiting...")
+                        clstatus("Store is clean")
                     elseif Auto.thiefNow() then
-                        clstatus("Thief on the plot, waiting...")
+                        clstatus("Running...")
                         task.delay(2, wake)
                     elseif deskHolds.restock or deskHolds.care or deskHolds.openclose then
-                        clstatus("Waiting for restock/care to finish...")
+                        clstatus("Running...")
                         task.delay(2, wake)
                     elseif not Auto.canLeaveDesk() then
-                        clstatus(Auto.yield() and "Customer waiting, cleaning paused" or "Waiting for a quiet moment...")
+                        clstatus("Running...")
                         task.delay(2, wake)
                     else
                         Auto.hold("clean", true) -- also stops the cashier from (re)starting a shift
@@ -3765,7 +3777,7 @@ do
                         if not okR then
                             log("ERR", "clean", done)
                         elseif Clean.on then
-                            clstatus(("Last run: %d cleaned, %d failed"):format(done or 0, failed or 0))
+                            clstatus(#myMesses() == 0 and "Store is clean" or "Running...")
                             -- anything left (e.g. a thief interrupted the run) gets another go shortly
                             if #myMesses() > 0 then task.delay(2, wake) end
                         end
@@ -4105,7 +4117,7 @@ do
                             ostatus("Day summary: pressed Continue")
                             if tries == 1 or tries == 5 then log("OPENCLOSE", "continue pressed", btn:GetFullName(), sig, tries) end
                         else
-                            ostatus("Continue button not found, check the log")
+                            ostatus("Continue button not found")
                             if tries == 0 then log("OPENCLOSE", "continue label, no button", lbl:GetFullName()) end
                             tries += 1
                         end
@@ -4303,7 +4315,7 @@ do
                                 pstatus("Confirmed price window (" .. confirmed .. ")")
                             elseif tries == 4 then
                                 log("PRICE", "window still open after 4 presses")
-                                pstatus("Price window won't close, check the log")
+                                pstatus("Price window won't close")
                             end
                         else
                             pstatus("Price window open, Confirm button not found")
@@ -4370,4 +4382,3 @@ Tabs.Misc:Paragraph({ Title = HUB_NAME, Desc = "Made by Ransblox Scripts • " .
 if Window.Folder and Window.ConfigManager then
     Window.ConfigManager:CreateConfig("default", true)
 end
-print("[Pet Store Tycoon] " .. VERSION .. " loaded OK")
