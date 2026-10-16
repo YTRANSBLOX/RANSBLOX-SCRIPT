@@ -1869,7 +1869,6 @@ local FCfg = {
     Types = { "Fish" },  -- nil = semua tipe pet yang kebuka di level lo
     Mode = "Tanks empty", -- Buy when: "Tanks empty" / "Below minimum" / "Always"
     MinRoom = 3,         -- Below minimum: beli kalau tank masih muat segini banyak ikan itu
-    Amount = 5,          -- cuma dipakai mode Always: maksimal beli per order per ikan
     CashReserve = 500,   -- jangan belanja kalau cash jadi di bawah ini
     BuyDelay = 0.4,      -- detik antar pembelian
     Cooldown = 6,        -- detik ikan dibiarin setelah dibeli, biar box-nya sempet muncul
@@ -2004,7 +2003,7 @@ do
         -- how many of this fish to order, by tank capacity (same idea as Auto Buy goods):
         --   Tanks empty:   none of that fish lives in any tank -> fill the room it has
         --   Below minimum: the tanks can take at least MinRoom more of it -> fill the room
-        --   Always:        refills as soon as any tank has room (capped by Max per order)
+        --   Always:        refills as soon as any tank has room
         -- boxes already waiting are subtracted. Second value = no tank accepts it at all.
         local function planBuy(r)
             local okR, room, waiting, tanks = pcall(Auto.fishRoom, r.type, r.name)
@@ -2017,7 +2016,7 @@ do
             elseif FCfg.Mode == "Below minimum" then
                 want = (room >= FCfg.MinRoom) and room or 0
             else
-                want = math.min(room, FCfg.Amount)
+                want = room
             end
             return math.max(want - waiting, 0), false
         end
@@ -2508,14 +2507,6 @@ FishBox:Slider({
         Fish.FCfg.MinRoom = v
         Fish.wake()
     end,
-})
-FishBox:Slider({
-    Title = "Max per order",
-    Desc = "Only used by Always: buys up to this many of each picked fish per order.",
-    Flag = "FishAmount",
-    Step = 1,
-    Value = { Min = 1, Max = 20, Default = Fish.FCfg.Amount },
-    Callback = function(v) Fish.FCfg.Amount = v end,
 })
 FishBox:Slider({
     Title = "Cash reserve",
