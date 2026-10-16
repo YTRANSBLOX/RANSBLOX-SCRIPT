@@ -1,5 +1,5 @@
 local HUB_NAME = "Pet Store Tycoon"
-local VERSION  = "v2.0"
+local VERSION  = "v2.1"
 local YT_LINK  = "https://www.youtube.com/@RansbloxScript"
 local WEB_LINK = "https://ransblox.net"
 
@@ -801,12 +801,15 @@ local RCfg = {
     UseEmptySlots = true,  -- allow filling never-used slots
     Reassign = false,      -- allow overwriting empty slots of other goods
     MaxFail = 2,           -- skip a box after this many failures
-    MaxLoops = 100,        -- safety cap per run
+    MaxLoops = 300,        -- safety cap per run
     DoGoods = true,        -- shelve goods boxes (Restock what > Shelves)
     FishRestock = true,    -- also place fish/pet boxes into your tanks (Restock what > Fish tanks)
     EnclosureTry = 6,      -- try at most this many tanks per box
     IdleBefore = 0,        -- cashier on: quiet seconds before restocking (0 = go right after the last customer)
     RunGap = 0,            -- cashier on: minimum seconds between two restock runs (0 = none)
+    FullRun = true,        -- FULL RESTOCK: keep buying + shelving until every shelf is full before the cashier takes over
+    FillMax = 180,         -- full restock: give up after this many seconds
+    FillWait = 8,          -- full restock: seconds to wait for freshly bought boxes to show up
 }
 local BCfg = {
     Mode = "Shelves empty", -- Buy when: "Shelves empty" / "Always"
@@ -828,6 +831,23 @@ Auto.buyWake = function() end
 Auto.buyReset = function() end
 Auto.fishRoom = nil   -- (petType, petName) -> room, waiting boxes, tanks; set below
 Auto.getPlot = function() return nil end
+
+-- FULL RESTOCK session
+-- Auto Buy puts a good in fillSet when its shelves need stock. While fillSet is not empty,
+-- Auto Restock does NOT go back to the cashier: it keeps ordering (fillStep) and shelving
+-- until every shelf that takes the good is full (or cash / shelves run out / timeout).
+Auto.fillSet, Auto.fillStart = {}, nil
+Auto.fillEnd = function(why)
+    if next(Auto.fillSet) ~= nil then log("FILL", "end", tostring(why)) end
+    Auto.fillSet, Auto.fillStart = {}, nil
+    Auto.buyWake()
+end
+Auto.fillActive = function()
+    if not (RCfg.FullRun and Auto.restockOn and RCfg.DoGoods and next(Auto.fillSet) ~= nil) then return false end
+    if os.clock() - (Auto.fillStart or 0) > RCfg.FillMax + 30 then Auto.fillEnd("stale") return false end
+    return true
+end
+Auto.fillStep = function() return 0, true, false end -- bought, allFull, blocked (real one is set in AUTO BUY)
 local setRestockStatus = function() end
 local setBuyStatus = function() end
 local setScanText = function() end
@@ -1504,6 +1524,28 @@ if Auto.ready then
         end
     end
 
+    -- FULL RESTOCK: no loose box left but the fill session isn't done -> order the next round,
+    -- wait for the boxes to appear and hand one back. Returns nil (and ends the session) when
+    -- everything is full, cash ran out, nothing could be ordered, or it timed out.
+    local function fillNext()
+        if not Auto.fillActive() then return end
+        if os.clock() - (Auto.fillStart or os.clock()) > RCfg.FillMax then
+            Auto.fillEnd("timeout")
+            return
+        end
+        rstatus("Full restock: ordering more boxes...")
+        local bought, allFull, blocked = Auto.fillStep()
+        if blocked then Auto.fillEnd("blocked (cash / refused)") return end
+        if bought <= 0 then Auto.fillEnd(allFull and "all shelves full" or "nothing left to order") return end
+        local t = os.clock()
+        while rActive() and os.clock() - t < RCfg.FillWait do
+            local b = nearestFreeBox() or nearestPetBox()
+            if b then return b end
+            task.wait(0.2)
+        end
+        Auto.fillEnd("boxes did not show up")
+    end
+
     local function runRestock()
         local done, full, failed = 0, 0, 0
         local curShelf = nil   -- the shelf being filled right now: it gets finished before customers are served
@@ -1533,6 +1575,7 @@ if Auto.ready then
                     nxt = nearestFreeBox() or nearestPetBox()
                 end
                 box = nxt
+                if not box and Auto.fillActive() then box = fillNext() end
                 if not box then break end
                 worked = true
                 rstatus("Picking up " .. boxLabel(box))
@@ -1609,6 +1652,8 @@ if Auto.ready then
                 end)
                 -- no customer waiting = go right away (no idle delay, no gap between runs)
                 local canGo = Auto.canLeaveDesk()
+                -- full restock already started: customers wait, we finish the job first
+                if not canGo and Auto.fillActive() and not Auto.thiefNow() and not deskHolds.care then canGo = true end
                 if okH and has and not canGo then
                     rstatus(Auto.yield() and "Customer waiting, restock paused" or "Waiting for a quiet moment...")
                 elseif okH and has then
@@ -1746,6 +1791,7 @@ if Auto.ready then
     -- Cooldown: a good we just bought is left alone for a moment so its boxes can appear.
     -- Refused: purchase was refused (usually not enough cash), retried when cash goes up.
     local Cooldown, Refused = {}, {}
+    local buyBusy = false -- buyCycle / fillStep never order at the same time
 
     Auto.buyReset = function()
         Cooldown, Refused = {}, {}
@@ -1789,14 +1835,15 @@ if Auto.ready then
             return 0, waiting == 0, item, goodKey
         end
         local want
+        local extra = RCfg.FullRun and homes or 0 -- full restock: also claim the free slots, not only the ones the good already owns
         if need == 0 and stock == 0 then
             want = homes -- not on any shelf yet: buy enough to claim every free slot, not just 1
         elseif BCfg.Mode == "Shelves empty" then
-            want = (stock == 0) and need or 0
+            want = (stock == 0) and (need + extra) or 0
         else
-            want = need -- Always
+            want = need + ((stock == 0) and extra or 0) -- Always
         end
-        return math.max(want - waiting, 0)
+        return math.max(want - waiting, 0), false, item, goodKey, want
     end
 
     local function warnNoRoom(d, item, goodKey)
@@ -1821,6 +1868,55 @@ if Auto.ready then
         warned[goodKey] = os.clock() + (accepts == 0 and 90 or 300)
     end
 
+    -- FULL RESTOCK step (called by the restock run): orders another round for every good in the
+    -- fill session. A good leaves the session once nothing can take another box of it.
+    -- returns: bought, allFull, blocked
+    Auto.fillStep = function()
+        local tw = os.clock()
+        while buyBusy and os.clock() - tw < 15 do task.wait(0.2) end
+        buyBusy = true
+        local bought, allFull, blocked = 0, true, false
+        local okF, e = pcall(function()
+            for key, label in pairs(Auto.fillSet) do
+                if not bActive() then blocked = true return end
+                local d = Map[label]
+                if not d then
+                    Auto.fillSet[key] = nil
+                else
+                    local need, stock, homes = shelfNeed(d)
+                    if not need then
+                        allFull = false
+                    else
+                        local room = need + homes
+                        if room <= 0 then
+                            Auto.fillSet[key] = nil -- this good is full
+                        else
+                            allFull = false
+                            local n = room - countBoxes(d.cat, d.name)
+                            for i = 1, n do
+                                if not bActive() then blocked = true return end
+                                if buyOnce(d.cat, d.name) then
+                                    bought += 1
+                                    bstatus(("Full restock: buying %s (%d/%d)"):format(label, i, n))
+                                    task.wait(BCfg.BuyDelay)
+                                else
+                                    blocked = true
+                                    Refused[key] = true
+                                    bstatus("Purchase refused (not enough cash?): " .. label)
+                                    log("BUY", "refused (full restock)", label)
+                                    break
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+        buyBusy = false
+        if not okF then log("ERR", "fillStep", e) blocked = true end
+        return bought, allFull, blocked
+    end
+
     -- Auto Buy only orders goods: remind once in a while that Auto Restock is what shelves them
     local restockNudge = 0
     local function nudgeRestock()
@@ -1843,7 +1939,12 @@ if Auto.ready then
                 any = true
                 local key = d.cat .. "/" .. d.name
                 if (Cooldown[key] or 0) < os.clock() and not Refused[key] then
-                    local n, noRoom, item, goodKey = planBuy(d)
+                    local n, noRoom, item, goodKey, want = planBuy(d)
+                    if (want or 0) > 0 and not noRoom and RCfg.FullRun and Auto.restockOn and RCfg.DoGoods then
+                        -- start / join the full restock session: restock keeps going until this good is full
+                        if next(Auto.fillSet) == nil then Auto.fillStart = os.clock() end
+                        Auto.fillSet[key] = label
+                    end
                     if noRoom then
                         full = true
                         warnNoRoom(d, item, goodKey)
@@ -1926,12 +2027,16 @@ if Auto.ready then
                 pending = false
                 if Auto.buyOn then
                     pcall(hookPlot)
-                    if not Auto.canLeaveDesk() then
+                    if Auto.fillActive() or buyBusy then
+                        -- the restock run is filling the shelves and does the ordering itself
+                    elseif not Auto.canLeaveDesk() then
                         -- customers first: try again shortly
                         bstatus("Customer waiting, buying paused")
                         task.delay(2, Auto.buyWake)
                     else
+                        buyBusy = true
                         local okR, e = pcall(buyCycle)
+                        buyBusy = false
                         if not okR then log("ERR", "buy", e) end
                     end
                 end
@@ -2431,7 +2536,7 @@ RestockBox:Toggle({
             return
         end
         Auto.restockOn = v
-        if v then Auto.clearSkip() else Auto.setNoclip(false) end
+        if v then Auto.clearSkip() else Auto.setNoclip(false) Auto.fillEnd("restock off") end
         setRestockStatus(v and "Running..." or "Stopped")
     end,
 })
@@ -2460,6 +2565,16 @@ RestockBox:Dropdown({
     end,
 })
 RestockBox:Toggle({
+    Title = "Full restock (finish before cashier)",
+    Desc = "Once Auto Buy + Auto Restock start, they keep buying and shelving until every shelf is full (or cash runs out) before the cashier takes over, so you don't leave half-filled. Customers wait meanwhile.",
+    Value = true,
+    Flag = "FullRestock",
+    Callback = function(v)
+        Auto.RCfg.FullRun = v
+        if not v then Auto.fillEnd("full restock off") end
+    end,
+})
+RestockBox:Toggle({
     Title = "Reuse empty slots of other goods",
     Desc = "Lets restock put a new good on empty slots that still belong to another good.",
     Value = false,
@@ -2482,7 +2597,7 @@ BuyBox:Toggle({
             return
         end
         Auto.buyOn = v
-        if v then Auto.buyReset() end
+        if v then Auto.buyReset() else Auto.fillEnd("buy off") end
         setBuyStatus(v and "Running..." or "Stopped")
         if v then Auto.buyWake() end
     end,
