@@ -52,15 +52,28 @@ end
 local function norm(p) return (p:gsub("%d+", "#")) end
 
 -- value -> short readable text (depth and size limited)
-local function ser(v, depth)
+local function ser(v, depth, short)
     local t = typeof(v)
     if t == "string" then
         local s = v
-        if #s > 200 then s = s:sub(1, 200) .. "..." end
+        local lim = short and 100 or 200
+        if #s > lim then s = s:sub(1, lim) .. "..." end
         s = s:gsub("\n", "\\n")
         return '"' .. s .. '"'
-    elseif t == "number" or t == "boolean" or t == "nil" then
+    elseif t == "number" then
+        if short and v ~= math.floor(v) then return (string.format("%.3f", v):gsub("0+$", ""):gsub("%.$", "")) end
         return tostring(v)
+    elseif t == "boolean" or t == "nil" then
+        return tostring(v)
+    elseif short and t == "Vector3" then
+        return string.format("V3(%.2f, %.2f, %.2f)", v.X, v.Y, v.Z)
+    elseif short and t == "Vector2" then
+        return string.format("V2(%.2f, %.2f)", v.X, v.Y)
+    elseif short and t == "CFrame" then
+        local p = v.Position
+        return string.format("CF(%.1f, %.1f, %.1f)", p.X, p.Y, p.Z)
+    elseif short and t == "Color3" then
+        return string.format("C3(%.2f, %.2f, %.2f)", v.R, v.G, v.B)
     elseif t == "Instance" then
         return "<" .. v.ClassName .. ":" .. safePath(v) .. ">"
     elseif t == "table" then
@@ -80,10 +93,10 @@ local function ser(v, depth)
                 break
             end
             if isArr then
-                parts[#parts + 1] = ser(val, depth + 1)
+                parts[#parts + 1] = ser(val, depth + 1, short)
             else
-                local ks = type(k) == "string" and k or ("[" .. ser(k, depth + 1) .. "]")
-                parts[#parts + 1] = ks .. "=" .. ser(val, depth + 1)
+                local ks = type(k) == "string" and k or ("[" .. ser(k, depth + 1, short) .. "]")
+                parts[#parts + 1] = ks .. "=" .. ser(val, depth + 1, short)
             end
         end
         return "{" .. table.concat(parts, ", ") .. "}"
@@ -98,6 +111,44 @@ local Spy = { on = false, incoming = false }
 local Watch = { on = false }
 local Ignored = {}
 local AttrFilter = ""
+local ExcludePaths = {}   -- lowercase substrings: instances whose path contains one are skipped
+local ExcludeAttrs = { "rbx" }   -- lowercase prefixes: attributes starting with one are ignored
+
+local function parseList(text)
+    local list = {}
+    for item in tostring(text):gmatch("[^,]+") do
+        item = item:gsub("^%s+", ""):gsub("%s+$", ""):lower()
+        if item ~= "" then list[#list + 1] = item end
+    end
+    return list
+end
+
+local function pathExcluded(pathLower)
+    for _, token in ipairs(ExcludePaths) do
+        if pathLower:find(token, 1, true) then return true end
+    end
+    return false
+end
+
+local function attrExcluded(name)
+    local n = name:lower()
+    for _, prefix in ipairs(ExcludeAttrs) do
+        if n:sub(1, #prefix) == prefix then return true end
+    end
+    return false
+end
+
+-- attribute table without the excluded keys (nil when nothing is left)
+local function cleanAttrs(attrs)
+    local out, any = {}, false
+    for k, v in pairs(attrs) do
+        if not attrExcluded(k) then
+            out[k] = v
+            any = true
+        end
+    end
+    return any and out or nil
+end
 
 local Remotes, remoteOrder, totalCalls = {}, {}, 0
 local AttrRecs, attrOrder, attrChanges = {}, {}, 0
@@ -201,6 +252,7 @@ end
 -- ATTRIBUTE WATCHER
 -- =====================================================================
 local function recordAttr(d, name)
+    if attrExcluded(name) then return end
     local okV, v = pcall(d.GetAttribute, d, name)
     if not okV then return end
     local path = safePath(d)
@@ -215,7 +267,7 @@ local function recordAttr(d, name)
     rec.count = rec.count + 1
     attrChanges = attrChanges + 1
 
-    local vs = ser(v, 1)
+    local vs = ser(v, 1, true)
     if #vs > 200 then vs = vs:sub(1, 200) .. "..." end
     if #rec.samples < 6 and not rec.seen[vs] then
         rec.seen[vs] = true
@@ -235,8 +287,11 @@ local function watchInst(d)
     if watchConns[d] then return end
     local okA, attrs = pcall(d.GetAttributes, d)
     if not (okA and next(attrs)) then return end
+    if not cleanAttrs(attrs) then return end
+    local pl = safePath(d):lower()
     local filter = AttrFilter:lower()
-    if filter ~= "" and not safePath(d):lower():find(filter, 1, true) then return end
+    if filter ~= "" and not pl:find(filter, 1, true) then return end
+    if pathExcluded(pl) then return end
     local okC, c = pcall(function()
         return d.AttributeChanged:Connect(function(name)
             if alive and Watch.on then pcall(recordAttr, d, name) end
@@ -328,6 +383,8 @@ local function buildSpySummary()
     return table.concat(out, "\n")
 end
 
+local MAX_ATTR_CHARS = 150000
+
 local function buildAttrDump()
     local filter = AttrFilter:lower()
     local groups, order = {}, {}
@@ -336,18 +393,20 @@ local function buildAttrDump()
         for _, d in ipairs(root:GetDescendants()) do
             n = n + 1
             if n % 600 == 0 then task.wait() end
-            local okA, attrs = pcall(d.GetAttributes, d)
-            if okA and next(attrs) then
+            local okA, raw = pcall(d.GetAttributes, d)
+            local attrs = okA and next(raw) and cleanAttrs(raw) or nil
+            if attrs then
                 local path = safePath(d)
-                if filter == "" or path:lower():find(filter, 1, true) then
+                local pl = path:lower()
+                if (filter == "" or pl:find(filter, 1, true)) and not pathExcluded(pl) then
                     total = total + 1
                     local keys = {}
                     for k in pairs(attrs) do keys[#keys + 1] = k end
                     table.sort(keys)
                     local parts = {}
-                    for _, k in ipairs(keys) do parts[#parts + 1] = k .. "=" .. ser(attrs[k], 1) end
+                    for _, k in ipairs(keys) do parts[#parts + 1] = k .. "=" .. ser(attrs[k], 1, true) end
                     local vals = table.concat(parts, ", ")
-                    if #vals > 600 then vals = vals:sub(1, 600) .. "..." end
+                    if #vals > 500 then vals = vals:sub(1, 500) .. "..." end
 
                     local parentPath = d.Parent and safePath(d.Parent) or ""
                     local gk = d.ClassName .. "|" .. norm(parentPath) .. "|" .. table.concat(keys, ",")
@@ -365,16 +424,28 @@ local function buildAttrDump()
             end
         end
     end
+
+    local notes = {}
+    if filter ~= "" then notes[#notes + 1] = "filter: " .. filter end
+    if #ExcludePaths > 0 then notes[#notes + 1] = "skip paths: " .. table.concat(ExcludePaths, " ") end
+    if #ExcludeAttrs > 0 then notes[#notes + 1] = "skip attrs: " .. table.concat(ExcludeAttrs, " ") end
     local out = { string.format("== ATTRIBUTES (%d instances, %d groups%s) ==", total, #order,
-        filter ~= "" and (", filter: " .. filter) or "") }
-    for i, gk in ipairs(order) do
-        if i > 400 then
-            out[#out + 1] = "... more groups cut off, use a filter to narrow it down"
+        #notes > 0 and (", " .. table.concat(notes, "; ")) or "") }
+
+    local size, shown = #out[1], 0
+    for _, gk in ipairs(order) do
+        local g = groups[gk]
+        local block = {}
+        for _, e in ipairs(g.ex) do block[#block + 1] = e end
+        if g.count > #g.ex then block[#block + 1] = "  ... +" .. (g.count - #g.ex) .. " similar" end
+        local text = table.concat(block, "\n")
+        if size + #text > MAX_ATTR_CHARS then
+            out[#out + 1] = string.format("... size limit reached, %d of %d groups shown. Use the path filter or exclude lists to narrow it down.", shown, #order)
             break
         end
-        local g = groups[gk]
-        for _, e in ipairs(g.ex) do out[#out + 1] = e end
-        if g.count > #g.ex then out[#out + 1] = "  ... +" .. (g.count - #g.ex) .. " similar" end
+        out[#out + 1] = text
+        size = size + #text + 1
+        shown = shown + 1
     end
     return table.concat(out, "\n")
 end
@@ -540,6 +611,20 @@ AttrBox:Input({
     Value = "",
     Placeholder = "Workspace.Plots",
     Callback = function(text) AttrFilter = tostring(text) end,
+})
+AttrBox:Input({
+    Title = "Exclude paths",
+    Desc = "Skip objects whose path contains any of these (comma separated).",
+    Value = "",
+    Placeholder = "Workspace.Map, Workspace.Camera, .Building.",
+    Callback = function(text) ExcludePaths = parseList(text) end,
+})
+AttrBox:Input({
+    Title = "Exclude attributes",
+    Desc = "Ignore attributes that start with these. Objects left with none are skipped.",
+    Value = "RBX",
+    Placeholder = "RBX, MapFix, StoreColor",
+    Callback = function(text) ExcludeAttrs = parseList(text) end,
 })
 AttrBox:Button({
     Title = "Dump Attributes",
