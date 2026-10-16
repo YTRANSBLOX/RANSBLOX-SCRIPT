@@ -1786,7 +1786,7 @@ if Auto.ready then
         end
         local want
         if need == 0 and stock == 0 then
-            want = 1 -- not on any shelf yet: one box to start, it claims a slot
+            want = homes -- not on any shelf yet: buy enough to claim every free slot, not just 1
         elseif BCfg.Mode == "Shelves empty" then
             want = (stock == 0) and need or 0
         elseif BCfg.Mode == "Below minimum" then
