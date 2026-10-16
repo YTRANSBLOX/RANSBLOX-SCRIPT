@@ -173,11 +173,11 @@ end
 
 -- true while Auto Cashier is on and someone is waiting / being served
 Auto.yield = function() return cashRunning and customerBusy() end
--- Commit mode: once restock / care has STARTED a run, it finishes that whole run before the cashier
--- takes over again. The cashier in turn serves until nobody is waiting, then the next task starts.
--- Auto.yieldTask is what a RUNNING task asks ("must I stop now?"); Auto.yield stays for the cashier.
-Auto.commitTasks = true
-Auto.yieldTask = function() return Auto.yield() end
+-- Once restock / care has STARTED a run, it finishes that whole run before the cashier takes over.
+-- The cashier in turn serves until nobody is waiting, then the next task starts.
+-- Auto.yieldTask is what a RUNNING task asks ("must I stop now?"): customers never interrupt it
+-- (only a thief does, set in the thief section). Auto.yield stays for the cashier.
+Auto.yieldTask = function() return false end
 -- ok for restock / buy to leave the register: no customer now AND none for IdleBefore seconds
 Auto.canLeaveDesk = function()
     if not cashRunning then return true end
@@ -1527,7 +1527,7 @@ if Auto.ready then
                     curShelf = nil
                     if worked and Auto.yieldTask() then
                         yielded = true
-                        rstatus(Auto.commitTasks and "Interrupted, stepping aside" or "Shelf done, serving customers")
+                        rstatus("Interrupted, stepping aside")
                         break
                     end
                     nxt = nearestFreeBox() or nearestPetBox()
@@ -2413,20 +2413,6 @@ CashierBox:Toggle({
         end
     end,
 })
-CashierBox:Toggle({
-    Title = "Finish task before cashier",
-    Desc = "On: once Restock or Auto Care has started a run, it finishes the whole run first, then the cashier serves everyone until nobody is waiting, then the next task starts. "
-        .. "Off: a customer interrupts the task and the cashier takes over right away.",
-    Flag = "CommitTasks",
-    Value = true,
-    Callback = function(v)
-        Auto.commitTasks = v and true or false
-    end,
-})
-CashierBox:Button({
-    Title = "End Shift", Desc = "Leave the register now. With Auto Cashier on it only walks back when another customer is waiting.", Icon = "x",
-    Callback = function() if shiftOn then endShift() end end,
-})
 local CashierStatusP = CashierBox:Paragraph({ Title = "Status", Desc = cStatus })
 setCashierStatus = function(text)
     cStatus = text
@@ -2437,7 +2423,7 @@ end
 local RestockBox = openSection(Tabs.Stock, "Auto Restock", "package")
 RestockBox:Toggle({
     Title = "Auto Restock",
-    Desc = "Picks up loose boxes and puts them on shelves or in fish tanks (see Restock what). With Auto Cashier on it waits for quiet moments and stops when a customer is waiting to pay.",
+    Desc = "Picks up loose boxes and puts them on shelves or in fish tanks (see Restock what). With Auto Cashier on it starts in a quiet moment and finishes the whole run before the cashier takes over again.",
     Value = false,
     Callback = function(v)
         if v and not Auto.ready then
@@ -2785,7 +2771,7 @@ do
         for i, e in ipairs(list) do
             if not active() then break end
             if Auto.yieldTask() then
-                cstatus(Auto.commitTasks and "Interrupted, stepping aside" or "Customer waiting, care paused")
+                cstatus("Interrupted, stepping aside")
                 break
             end
 
@@ -2988,12 +2974,7 @@ do
     -- thief on the plot = restock / care / cashier / buying all step aside
     local baseYield = Auto.yield
     Auto.yield = function() return baseYield() or (Thief.on and liveThieves() > 0) end
-    Auto.yieldTask = function()
-        if Auto.commitTasks then
-            return (Thief.on and liveThieves() > 0) and true or false -- only a thief can interrupt a committed task
-        end
-        return Auto.yield()
-    end
+    Auto.yieldTask = function() return (Thief.on and liveThieves() > 0) and true or false end
     local baseLeave = Auto.canLeaveDesk
     Auto.canLeaveDesk = function()
         if Thief.on and (deskHolds.thief or liveThieves() > 0) then return false end
@@ -3500,6 +3481,245 @@ do
         Callback = function(v) OC.closeHour = v end,
     })
     OStatusP = OCBox:Paragraph({ Title = "Status", Desc = "Ready" })
+end
+
+-- =====================================================================
+-- CLOSE-STORE DUMP (passive logger -> petstore_close_dump.txt)
+-- Records how closing the store BY HAND works: which prompt, hold time, where it is, what the
+-- game sends to the server. It never touches the game, it only reads and logs.
+-- =====================================================================
+do
+    local PPS = game:GetService("ProximityPromptService")
+    local dbuf, dN, dt0 = {}, 0, os.clock()
+    local function dlog(tag, ...)
+        local a, p = table.pack(...), {}
+        for i = 1, a.n do p[i] = tostring(a[i]) end
+        dbuf[#dbuf + 1] = string.format("[%.2f] %s | %s", os.clock() - dt0, tag, table.concat(p, " | "))
+        if #dbuf > 600 then table.remove(dbuf, 1) end
+        dN += 1
+    end
+    task.spawn(function()
+        local last = 0
+        while alive do
+            task.wait(2)
+            if dN ~= last then
+                last = dN
+                if writefile then pcall(writefile, "petstore_close_dump.txt", table.concat(dbuf, "\n")) end
+            end
+        end
+    end)
+
+    local function myPlot()
+        local plots = workspace:FindFirstChild("Plots")
+        for _, p in ipairs(plots and plots:GetChildren() or {}) do
+            if p:GetAttribute("OwnerUserId") == lp.UserId then return p end
+        end
+    end
+    local function hrpPos()
+        local ch = lp.Character
+        local r = ch and ch:FindFirstChild("HumanoidRootPart")
+        return r and r.Position
+    end
+    local function posOf(inst)
+        local part = inst
+        if typeof(inst) == "Instance" and inst:IsA("ProximityPrompt") then part = inst.Parent end
+        if typeof(part) ~= "Instance" then return nil end
+        if part:IsA("Attachment") then return part.WorldPosition end
+        if part:IsA("BasePart") then return part.Position end
+        if part:IsA("Model") then
+            local okP, cf = pcall(function() return part:GetPivot() end)
+            if okP then return cf.Position end
+        end
+    end
+    local function fmtV(v) return v and string.format("(%.1f, %.1f, %.1f)", v.X, v.Y, v.Z) or "?" end
+    local function attrs(inst)
+        local t = {}
+        for k, v in pairs(inst:GetAttributes()) do t[#t + 1] = k .. "=" .. tostring(v) end
+        table.sort(t)
+        return table.concat(t, ", ")
+    end
+    local function clockText()
+        local top = lp.PlayerGui:FindFirstChild("TopbarStandard")
+        for _, g in ipairs(top and top:GetDescendants() or {}) do
+            if g:IsA("TextLabel") and g.Name == "Time" then return g.Text end
+        end
+        return "?"
+    end
+    local function storeInfo()
+        local p = myPlot()
+        if not p then return "no plot" end
+        return string.format("StoreOpen=%s Inside=%s Pending=%s Day=%s Clock=%s",
+            tostring(p:GetAttribute("StoreOpen")), tostring(p:GetAttribute("CustomersInside")),
+            tostring(p:GetAttribute("CustomersPending")), tostring(p:GetAttribute("StoreDay")), clockText())
+    end
+    local function dist(pr)
+        local a, b = hrpPos(), posOf(pr)
+        return (a and b) and string.format("%.1f", (a - b).Magnitude) or "?"
+    end
+    local function promptInfo(pr)
+        return pr:GetFullName(), "Action=" .. pr.ActionText, "Object=" .. pr.ObjectText,
+            "Hold=" .. pr.HoldDuration, "Enabled=" .. tostring(pr.Enabled),
+            "MaxDist=" .. pr.MaxActivationDistance, "Key=" .. tostring(pr.KeyboardKeyCode),
+            "LineOfSight=" .. tostring(pr.RequiresLineOfSight), "Pos=" .. fmtV(posOf(pr)),
+            "ParentClass=" .. (pr.Parent and pr.Parent.ClassName or "?"),
+            "ParentAttrs=" .. (pr.Parent and attrs(pr.Parent) or "")
+    end
+
+    -- every prompt in your plot: dump it once, then log whenever it turns on / off or changes text
+    local watched = setmetatable({}, { __mode = "k" })
+    local function watchPrompt(pr)
+        if watched[pr] then return end
+        watched[pr] = true
+        dlog("PROMPT", promptInfo(pr))
+        for _, prop in ipairs({ "Enabled", "ActionText", "ObjectText", "HoldDuration" }) do
+            pcall(function()
+                bind(pr:GetPropertyChangedSignal(prop), function()
+                    dlog("PROMPT-CHANGE", pr:GetFullName(), prop .. "=" .. tostring(pr[prop]), storeInfo())
+                end)
+            end)
+        end
+    end
+
+    -- anything in the plot that looks like a door / glass / sign (the thing you walk to)
+    local NAME_HINTS = { "close", "open", "door", "glass", "window", "sign", "wall", "entrance" }
+    local function looksRelevant(name)
+        name = name:lower()
+        for _, h in ipairs(NAME_HINTS) do
+            if name:find(h, 1, true) then return true end
+        end
+        return false
+    end
+    local function scanPlot(plot)
+        dlog("PLOT", plot:GetFullName(), attrs(plot))
+        local named = 0
+        for _, d in ipairs(plot:GetDescendants()) do
+            if d:IsA("ProximityPrompt") then
+                watchPrompt(d)
+            elseif d:IsA("ClickDetector") then
+                dlog("CLICKDETECTOR", d:GetFullName(), "Pos=" .. fmtV(posOf(d.Parent)))
+            elseif named < 80 and looksRelevant(d.Name) then
+                named += 1
+                dlog("NAMED", d.ClassName, d:GetFullName(), "Pos=" .. fmtV(posOf(d)), attrs(d))
+            end
+        end
+    end
+
+    local function dumpRemotes()
+        local names = {}
+        for _, c in ipairs(remotesFolder:GetChildren()) do names[#names + 1] = c.Name end
+        dlog("REMOTE-FOLDERS", table.concat(names, ", "))
+        local PlotRem = remotesFolder:FindFirstChild("Plot")
+        for _, r in ipairs(PlotRem and PlotRem:GetDescendants() or {}) do
+            if r:IsA("RemoteEvent") or r:IsA("RemoteFunction") then
+                dlog("REMOTE", r.ClassName, r:GetFullName())
+            end
+        end
+    end
+
+    -- the topbar badge the current Auto Open / Close presses
+    local function dumpBadge()
+        local top = lp.PlayerGui:FindFirstChild("TopbarStandard")
+        for _, g in ipairs(top and top:GetDescendants() or {}) do
+            if g.Name == "StatusBadge" then
+                dlog("BADGE", g:GetFullName(), g.ClassName)
+                local n = 0
+                for _, c in ipairs(g:GetDescendants()) do
+                    if n >= 30 then break end
+                    n += 1
+                    local txt = (c:IsA("TextLabel") or c:IsA("TextButton")) and c.Text or ""
+                    dlog("BADGE-PART", c.ClassName, c.Name, txt)
+                end
+                return
+            end
+        end
+        dlog("BADGE", "not found")
+    end
+
+    -- what YOU do by hand: walking up, holding, releasing, triggering
+    bind(PPS.PromptButtonHoldBegan, function(pr, who)
+        if who == lp then
+            dlog("HOLD-BEGIN", pr:GetFullName(), "Action=" .. pr.ActionText, "Hold=" .. pr.HoldDuration,
+                "Me=" .. fmtV(hrpPos()), "Prompt=" .. fmtV(posOf(pr)), "Dist=" .. dist(pr), storeInfo())
+        end
+    end)
+    bind(PPS.PromptButtonHoldEnded, function(pr, who)
+        if who == lp then
+            dlog("HOLD-END", pr:GetFullName(), "Action=" .. pr.ActionText, "Dist=" .. dist(pr), storeInfo())
+        end
+    end)
+    bind(PPS.PromptTriggered, function(pr, who)
+        if who == lp then
+            dlog("TRIGGERED", pr:GetFullName(), "Action=" .. pr.ActionText, "Hold=" .. pr.HoldDuration,
+                "Me=" .. fmtV(hrpPos()), "Prompt=" .. fmtV(posOf(pr)), "Dist=" .. dist(pr), storeInfo())
+        end
+    end)
+
+    -- what the GAME sends to the server (not this script): shows the remote behind a manual close
+    local lastCall = {}
+    local function fmtArg(v)
+        if typeof(v) == "table" then
+            local okJ, j = pcall(function() return HttpService:JSONEncode(v) end)
+            return okJ and j or tostring(v)
+        elseif typeof(v) == "Instance" then
+            return v:GetFullName()
+        end
+        return tostring(v)
+    end
+    pcall(function()
+        local old
+        old = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+            if alive and not checkcaller() then
+                local m = getnamecallmethod()
+                if m == "FireServer" or m == "InvokeServer" then
+                    local args = table.pack(...)
+                    local rem = self
+                    task.defer(function()
+                        local okN, full = pcall(function() return rem:GetFullName() end)
+                        full = okN and full or tostring(rem)
+                        local now = os.clock()
+                        if now - (lastCall[full] or 0) < 0.5 then return end
+                        lastCall[full] = now
+                        local parts = {}
+                        for i = 1, args.n do parts[i] = fmtArg(args[i]) end
+                        dlog("GAME-REMOTE", m, full, "args=[" .. table.concat(parts, "; ") .. "]",
+                            "Me=" .. fmtV(hrpPos()), storeInfo())
+                    end)
+                end
+            end
+            return old(self, ...)
+        end))
+    end)
+
+    task.spawn(function()
+        local plot
+        for _ = 1, 60 do
+            plot = myPlot()
+            if plot or not alive then break end
+            task.wait(1)
+        end
+        if not plot then dlog("INFO", "plot not found") return end
+        dlog("INFO", "close dump ready", storeInfo())
+        pcall(scanPlot, plot)
+        pcall(dumpRemotes)
+        pcall(dumpBadge)
+        bind(plot.DescendantAdded, function(d)
+            if d:IsA("ProximityPrompt") then
+                dlog("PROMPT-ADDED", d:GetFullName())
+                watchPrompt(d)
+            end
+        end)
+        bind(plot.DescendantRemoving, function(d)
+            if d:IsA("ProximityPrompt") then dlog("PROMPT-REMOVED", d:GetFullName(), storeInfo()) end
+        end)
+        local lastAttr = {}
+        bind(plot.AttributeChanged, function(name)
+            if name:sub(1, 9) == "Customers" then return end
+            local now = os.clock()
+            if now - (lastAttr[name] or 0) < 2 then return end
+            lastAttr[name] = now
+            dlog("PLOT-ATTR", name, tostring(plot:GetAttribute(name)), "Me=" .. fmtV(hrpPos()), clockText())
+        end)
+    end)
 end
 
 -- =====================================================================
