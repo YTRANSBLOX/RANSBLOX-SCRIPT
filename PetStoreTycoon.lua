@@ -173,6 +173,11 @@ end
 
 -- true while Auto Cashier is on and someone is waiting / being served
 Auto.yield = function() return cashRunning and customerBusy() end
+-- Commit mode: once restock / care has STARTED a run, it finishes that whole run before the cashier
+-- takes over again. The cashier in turn serves until nobody is waiting, then the next task starts.
+-- Auto.yieldTask is what a RUNNING task asks ("must I stop now?"); Auto.yield stays for the cashier.
+Auto.commitTasks = true
+Auto.yieldTask = function() return Auto.yield() end
 -- ok for restock / buy to leave the register: no customer now AND none for IdleBefore seconds
 Auto.canLeaveDesk = function()
     if not cashRunning then return true end
@@ -1520,9 +1525,9 @@ if Auto.ready then
                 if not nxt then
                     -- current shelf is done (full / no matching boxes left): customers get their turn now
                     curShelf = nil
-                    if worked and Auto.yield() then
+                    if worked and Auto.yieldTask() then
                         yielded = true
-                        rstatus("Shelf done, serving customers")
+                        rstatus(Auto.commitTasks and "Interrupted, stepping aside" or "Shelf done, serving customers")
                         break
                     end
                     nxt = nearestFreeBox() or nearestPetBox()
@@ -2408,6 +2413,16 @@ CashierBox:Toggle({
         end
     end,
 })
+CashierBox:Toggle({
+    Title = "Finish task before cashier",
+    Desc = "On: once Restock or Auto Care has started a run, it finishes the whole run first, then the cashier serves everyone until nobody is waiting, then the next task starts. "
+        .. "Off: a customer interrupts the task and the cashier takes over right away.",
+    Flag = "CommitTasks",
+    Value = true,
+    Callback = function(v)
+        Auto.commitTasks = v and true or false
+    end,
+})
 CashierBox:Button({
     Title = "End Shift", Desc = "Leave the register now. With Auto Cashier on it only walks back when another customer is waiting.", Icon = "x",
     Callback = function() if shiftOn then endShift() end end,
@@ -2769,8 +2784,8 @@ do
         local done, tanks, failed = 0, 0, 0
         for i, e in ipairs(list) do
             if not active() then break end
-            if Auto.yield() then
-                cstatus("Customer waiting, care paused")
+            if Auto.yieldTask() then
+                cstatus(Auto.commitTasks and "Interrupted, stepping aside" or "Customer waiting, care paused")
                 break
             end
 
@@ -2782,7 +2797,7 @@ do
             if walkNear(e.model, 2) then
                 local did = 0
                 for _, n in ipairs(e.need) do
-                    if not active() or Auto.yield() then break end
+                    if not active() or Auto.yieldTask() then break end
                     cstatus(("Care %s on %s (%d)"):format(n.feat, e.id, n.cond))
                     local okK, why = careOnce(e.id, n.feat)
                     if not okK and why == "begin" and walkNear(e.model, 0) then
@@ -2973,6 +2988,12 @@ do
     -- thief on the plot = restock / care / cashier / buying all step aside
     local baseYield = Auto.yield
     Auto.yield = function() return baseYield() or (Thief.on and liveThieves() > 0) end
+    Auto.yieldTask = function()
+        if Auto.commitTasks then
+            return (Thief.on and liveThieves() > 0) and true or false -- only a thief can interrupt a committed task
+        end
+        return Auto.yield()
+    end
     local baseLeave = Auto.canLeaveDesk
     Auto.canLeaveDesk = function()
         if Thief.on and (deskHolds.thief or liveThieves() > 0) then return false end
