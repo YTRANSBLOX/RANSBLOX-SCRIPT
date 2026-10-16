@@ -3407,10 +3407,11 @@ do
         return false
     end
 
-    local PlotRem = remotesFolder:FindFirstChild("Plot")
-    local NextDayR = PlotRem and PlotRem:FindFirstChild("StartNextDay")
-    local ToggleDoorsR = PlotRem and PlotRem:FindFirstChild("ToggleDoors")
-    local OpenStoreR = PlotRem and PlotRem:FindFirstChild("OpenStore")
+    -- looked up every time: right after joining the Plot remotes may not have replicated yet
+    local function plotRemote(name)
+        local pr = remotesFolder:FindFirstChild("Plot")
+        return pr and pr:FindFirstChild(name)
+    end
 
     local HOLD_TIME = 1.6 -- how long the game wants the close prompt held
     local REACH = 8
@@ -3423,7 +3424,16 @@ do
         local ch = lp.Character
         local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
         local hum = ch and ch:FindFirstChildOfClass("Humanoid")
-        if not (sign and hrp and hum and ToggleDoorsR and OpenStoreR) or hum.Health <= 0 then return false end
+        local OpenStoreR, ToggleDoorsR = plotRemote("OpenStore"), plotRemote("ToggleDoors")
+        if not sign then ostatus("OpenSign not found, retrying...") return false end
+        -- only the remote this action really needs (before: BOTH were required, so a missing ToggleDoors blocked opening too)
+        local needR = (mode == "open") and OpenStoreR or ToggleDoorsR
+        if not needR then
+            ostatus((mode == "open" and "OpenStore" or "ToggleDoors") .. " remote not found, retrying...")
+            log("OPENCLOSE", "remote missing", mode)
+            return false
+        end
+        if not (hrp and hum) or hum.Health <= 0 then ostatus("Character not ready, retrying...") return false end
 
         Auto.hold("openclose", true) -- cashier / restock won't pull us back to the register
         if shiftOn then pcall(Auto.pauseCashier) end
@@ -3441,6 +3451,10 @@ do
         end
 
         local fired = false
+        if not reached then
+            ostatus("Couldn't reach the sign in 15s, retrying...")
+            log("OPENCLOSE", "sign not reached", mode)
+        end
         if reached then
             hum:MoveTo(hrp.Position)
             if mode == "open" then
@@ -3468,18 +3482,21 @@ do
 
     task.spawn(function()
         local lastAct, closeSince = 0, nil
+        local lastDay, dayTries = nil, 0
         while alive do
             if OC.on then
                 local plot = plotNow2()
                 local hour = gameHour()
-                if not plot or not hour then
-                    ostatus("Waiting for the plot / clock...")
+                local clockMissing = (hour == nil)
+                if clockMissing then hour = 0 end -- no clock yet: still allow opening a closed store
+                if not plot then
+                    ostatus("Waiting for the plot...")
                 elseif Auto.thiefNow() then
                     ostatus("Thief on the plot, waiting...")
                 else
                     local isOpen = plot:GetAttribute("StoreOpen") == true
                     local inside = (plot:GetAttribute("CustomersInside") or 0) + (plot:GetAttribute("CustomersPending") or 0)
-                    local late = hour >= OC.closeHour
+                    local late = (not clockMissing) and hour >= OC.closeHour
                     local doorsLocked = plot:GetAttribute("DoorsLocked") == true
                     local now = os.clock()
 
@@ -3508,9 +3525,20 @@ do
                             -- day is over: next day first, otherwise it would reopen and close in a loop
                             if now - lastAct >= 8 then
                                 lastAct = now
-                                ostatus("Day over, starting next day...")
-                                local ok, err = pcall(function() if NextDayR then NextDayR:FireServer() end end)
-                                log("OPENCLOSE", "next day", tostring(ok), tostring(err), "day", tostring(plot:GetAttribute("StoreDay")))
+                                local day = plot:GetAttribute("StoreDay")
+                                if day ~= lastDay then lastDay, dayTries = day, 0 end
+                                if dayTries >= 2 and not doorsLocked then
+                                    -- next day did nothing twice (joined mid-evening?): just open like normal
+                                    ostatus("Walking to the sign to open...")
+                                    local fired = actAtSign(plot, "open")
+                                    log("OPENCLOSE", "open (fallback)", string.format("hour %.2f", hour), tostring(fired))
+                                else
+                                    dayTries += 1
+                                    ostatus("Day over, starting next day...")
+                                    local NextDayR = plotRemote("StartNextDay")
+                                    local ok, err = pcall(function() if NextDayR then NextDayR:FireServer() end end)
+                                    log("OPENCLOSE", "next day", tostring(ok), tostring(err), "day", tostring(day))
+                                end
                             end
                         elseif doorsLocked then
                             ostatus("Doors locked, waiting...")
@@ -3518,7 +3546,7 @@ do
                             lastAct = now
                             ostatus("Walking to the sign to open...")
                             local fired = actAtSign(plot, "open")
-                            log("OPENCLOSE", "open", string.format("hour %.2f", hour), tostring(fired))
+                            log("OPENCLOSE", "open", string.format("hour %.2f", hour), tostring(fired), clockMissing and "(clock not found)" or "")
                         end
                     end
                 end
@@ -3536,14 +3564,6 @@ do
             OC.on = v
             ostatus(v and "Watching the store..." or "Stopped")
         end,
-    })
-    OCBox:Slider({
-        Title = "Closing hour (PM)",
-        Desc = "Game clock hour to close the store (17 = 5:00 PM).",
-        Flag = "CloseHour",
-        Step = 1,
-        Value = { Min = 12, Max = 23, Default = OC.closeHour },
-        Callback = function(v) OC.closeHour = v end,
     })
     OStatusP = OCBox:Paragraph({ Title = "Status", Desc = "Ready" })
 end
