@@ -1,5 +1,5 @@
 local HUB_NAME = "Pet Store Tycoon"
-local VERSION  = "v2.5"
+local VERSION  = "v2.6"
 local YT_LINK  = "https://www.youtube.com/@RansbloxScript"
 local WEB_LINK = "https://ransblox.net"
 
@@ -1638,7 +1638,7 @@ if Auto.ready then
             end
 
             -- customers first: when someone is waiting, pause between boxes (never with a box in hand)
-            if not box and worked and RCfg.Priority == "Customers first" and Auto.yieldTask() then
+            if not box and worked and RCfg.Priority == "Customers first" and Auto.yield() then
                 yielded = true
                 rstatus("Customer waiting, restock paused")
                 break
@@ -2725,7 +2725,7 @@ RestockBox:Toggle({
 RestockBox:Dropdown({
     Title = "Priority",
     Desc = "Finish restock first: it completes the whole run before the cashier takes over. "
-        .. "Serve customers first: when a customer is waiting it pauses between boxes and lets the cashier serve, then continues. Also applies to Auto Care.",
+        .. "Serve customers first: when a customer is waiting it pauses between boxes and lets the cashier serve, then continues. It only matters while Auto Restock is shelving boxes.",
     Flag = "RestockPriority",
     Values = { "Finish restock first", "Serve customers first" },
     Value = "Finish restock first",
@@ -3109,8 +3109,8 @@ do
                         cstatus("All tanks above threshold")
                     elseif deskHolds.restock or deskHolds.buy or deskHolds.thief or deskHolds.clean then
                         cstatus("Waiting for restock/buy to finish...")
-                    elseif not baseCanLeave() or (cashRunning and os.clock() - lastRun < CCfg.RunGap) then
-                        cstatus(Auto.yield() and "Customer waiting, care paused" or "Waiting for a quiet moment...")
+                    elseif Auto.thiefNow() or (cashRunning and os.clock() - lastRun < CCfg.RunGap) then
+                        cstatus(Auto.thiefNow() and "Thief on the plot, waiting..." or "Waiting between runs...")
                     else
                         busy = true
                         Auto.hold("care", true)
@@ -3258,11 +3258,7 @@ do
     -- thief on the plot = restock / care / cashier / buying all step aside
     local baseYield = Auto.yield
     Auto.yield = function() return baseYield() or (Thief.on and liveThieves() > 0) end
-    Auto.yieldTask = function()
-        if Thief.on and liveThieves() > 0 then return true end
-        if Auto.RCfg and Auto.RCfg.Priority == "Customers first" and baseYield() then return true end
-        return false
-    end
+    Auto.yieldTask = function() return (Thief.on and liveThieves() > 0) and true or false end
     local baseLeave = Auto.canLeaveDesk
     Auto.canLeaveDesk = function()
         if Thief.on and (deskHolds.thief or liveThieves() > 0) then return false end
