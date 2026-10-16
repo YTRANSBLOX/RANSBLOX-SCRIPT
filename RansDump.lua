@@ -15,6 +15,7 @@ if not ok or not WindUI then return end
 
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
+local lp = Players.LocalPlayer
 
 local alive = true
 local Connections = {}
@@ -522,6 +523,305 @@ local function runDump(kind)
     end)
 end
 
+
+-- generic background job: builds a text, then exports it
+local Job = { cancel = false }
+local function runJob(label, builder)
+    if busy then
+        notify(TOOL, "A dump is already running.", "x")
+        return
+    end
+    busy = true
+    Job.cancel = false
+    task.spawn(function()
+        local okD, err = pcall(function()
+            local body = builder()
+            if body and body ~= "" then export(header(label) .. "\n\n" .. body, label) end
+        end)
+        busy = false
+        if not okD then notify("Dump failed", tostring(err), "x") end
+    end)
+end
+
+-- =====================================================================
+-- SCRIPT DUMP (list / decompile / search / module values)
+-- =====================================================================
+local ScriptInclude = {}
+local ScriptExclude = parseList("playermodule, chatscript, bubblechat, rbxcharactersounds")
+local ScriptNeedle = "FireServer"
+local sstatus = function() end
+
+local MAX_SRC_CHARS = 600000
+local MAX_HIT_CHARS = 150000
+local MAX_MOD_CHARS = 200000
+
+local function capText()
+    local function yn(f) return f and "yes" or "no" end
+    return string.format("decompile: %s • getscripts: %s • getloadedmodules: %s",
+        yn(decompile), yn(getscripts), yn(getloadedmodules))
+end
+
+local function scriptMatch(pathLower)
+    for _, t in ipairs(ScriptExclude) do
+        if pathLower:find(t, 1, true) then return false end
+    end
+    if #ScriptInclude == 0 then return true end
+    for _, t in ipairs(ScriptInclude) do
+        if pathLower:find(t, 1, true) then return true end
+    end
+    return false
+end
+
+-- every LocalScript / ModuleScript the client can see (also nil-parented ones when the executor allows)
+local function collectScripts()
+    local list, seen = {}, {}
+    local function add(inst)
+        if seen[inst] then return end
+        local okC, cn = pcall(function() return inst.ClassName end)
+        if okC and (cn == "LocalScript" or cn == "ModuleScript") then
+            seen[inst] = true
+            list[#list + 1] = inst
+        end
+    end
+    if getscripts then
+        pcall(function() for _, x in ipairs(getscripts()) do add(x) end end)
+    end
+    if getloadedmodules then
+        pcall(function() for _, x in ipairs(getloadedmodules()) do add(x) end end)
+    end
+    local n = 0
+    local roots = {
+        RS, game:GetService("ReplicatedFirst"), game:GetService("StarterPlayer"),
+        game:GetService("StarterGui"), game:GetService("StarterPack"), workspace, lp,
+    }
+    for _, root in ipairs(roots) do
+        for _, d in ipairs(root:GetDescendants()) do
+            n = n + 1
+            if n % 800 == 0 then task.wait() end
+            add(d)
+        end
+    end
+    local out = {}
+    for _, inst in ipairs(list) do
+        local path = safePath(inst)
+        if scriptMatch(path:lower()) then out[#out + 1] = { inst = inst, path = path } end
+    end
+    table.sort(out, function(a, b) return a.path < b.path end)
+    return out
+end
+
+local srcCache, cacheChars = setmetatable({}, { __mode = "k" }), 0
+local function getSource(inst)
+    local cached = srcCache[inst]
+    if cached then return cached end
+    local okD, res = pcall(decompile, inst)
+    local text
+    if okD and type(res) == "string" then
+        text = res
+    else
+        text = "-- decompile failed: " .. tostring(res)
+    end
+    if #text > 80000 then text = text:sub(1, 80000) .. "\n-- [truncated]" end
+    if cacheChars < 6000000 then
+        srcCache[inst] = text
+        cacheChars = cacheChars + #text
+    end
+    return text
+end
+
+local function buildScriptList()
+    local items = collectScripts()
+    local loaded = {}
+    if getloadedmodules then
+        pcall(function() for _, m in ipairs(getloadedmodules()) do loaded[m] = true end end)
+    end
+    local out = { string.format("== SCRIPTS (%d) ==  %s", #items, capText()) }
+    for _, it in ipairs(items) do
+        out[#out + 1] = string.format("%-12s %-8s %s", it.inst.ClassName, loaded[it.inst] and "[loaded]" or "", it.path)
+    end
+    sstatus(string.format("Listed %d scripts", #items))
+    return table.concat(out, "\n")
+end
+
+local function buildDecompile()
+    if not decompile then return "-- This executor has no decompile function." end
+    local items = collectScripts()
+    local out = { string.format("== DECOMPILED SCRIPTS (%d matches) ==", #items) }
+    local size, done = 0, 0
+    local skipped = {}
+    for i, it in ipairs(items) do
+        if Job.cancel or not alive then
+            out[#out + 1] = "\n-- stopped by user"
+            break
+        end
+        local src = getSource(it.inst)
+        local block = string.format("\n-- ===== %s [%s] =====\n%s", it.path, it.inst.ClassName, src)
+        if size + #block > MAX_SRC_CHARS then
+            for j = i, #items do skipped[#skipped + 1] = items[j].path end
+            break
+        end
+        out[#out + 1] = block
+        size = size + #block
+        done = done + 1
+        if done % 4 == 0 then
+            sstatus(string.format("Decompiling %d / %d", i, #items))
+            task.wait()
+        end
+    end
+    if #skipped > 0 then
+        out[#out + 1] = string.format("\n-- size limit reached, %d scripts not included (narrow the include filter):", #skipped)
+        for i, p in ipairs(skipped) do
+            if i > 150 then
+                out[#out + 1] = "--   ..."
+                break
+            end
+            out[#out + 1] = "--   " .. p
+        end
+    end
+    sstatus(string.format("Done: %d scripts decompiled", done))
+    return table.concat(out, "\n")
+end
+
+local function buildSearch()
+    if not decompile then return "-- This executor has no decompile function." end
+    local needle = ScriptNeedle:lower()
+    if needle == "" then return "-- Enter a search text first." end
+    local items = collectScripts()
+    local out = { "" }
+    local size, hits, capped = 0, 0, false
+    for i, it in ipairs(items) do
+        if Job.cancel or not alive then
+            out[#out + 1] = "-- stopped by user"
+            break
+        end
+        local src = getSource(it.inst)
+        if src and src:lower():find(needle, 1, true) then
+            local lines = {}
+            for line in (src .. "\n"):gmatch("([^\n]*)\n") do lines[#lines + 1] = line end
+            local perScript = 0
+            for ln, line in ipairs(lines) do
+                if line:lower():find(needle, 1, true) then
+                    perScript = perScript + 1
+                    if perScript > 30 then
+                        out[#out + 1] = "   ... more hits in " .. it.path
+                        break
+                    end
+                    local chunk = { string.format("%s:%d", it.path, ln) }
+                    for k = math.max(1, ln - 1), math.min(#lines, ln + 2) do
+                        local t = lines[k]:gsub("^%s+", "")
+                        if #t > 200 then t = t:sub(1, 200) .. "..." end
+                        chunk[#chunk + 1] = (k == ln and "  > " or "    ") .. t
+                    end
+                    local text = table.concat(chunk, "\n")
+                    out[#out + 1] = text
+                    size = size + #text + 1
+                    hits = hits + 1
+                    if size > MAX_HIT_CHARS then
+                        capped = true
+                        break
+                    end
+                end
+            end
+        end
+        if capped then break end
+        if i % 8 == 0 then
+            sstatus(string.format("Searching %d / %d (%d hits)", i, #items, hits))
+            task.wait()
+        end
+    end
+    if capped then out[#out + 1] = "-- size limit reached, narrow the search text or the include filter" end
+    out[1] = string.format('== SEARCH "%s" in %d scripts: %d hits ==', ScriptNeedle, #items, hits)
+    sstatus(string.format("Done: %d hits", hits))
+    return table.concat(out, "\n")
+end
+
+-- values returned by already-loaded ModuleScripts (configs, prices, remote names...)
+local function fname(f)
+    local okI, name = pcall(debug.info, f, "n")
+    if okI and type(name) == "string" and name ~= "" then return name end
+    return "anonymous"
+end
+
+local function modTable(t, depth, seen)
+    if seen[t] then return "<cycle>" end
+    if depth > 4 then return "{...}" end
+    seen[t] = true
+    local keys = {}
+    for k in pairs(t) do keys[#keys + 1] = k end
+    pcall(table.sort, keys, function(a, b) return tostring(a) < tostring(b) end)
+    local pad = string.rep("  ", depth + 1)
+    local lines = {}
+    for n, k in ipairs(keys) do
+        if n > 60 then
+            lines[#lines + 1] = pad .. "..."
+            break
+        end
+        local val = t[k]
+        local ks = type(k) == "string" and k or ("[" .. tostring(k) .. "]")
+        local vs
+        if type(val) == "table" then
+            vs = modTable(val, depth + 1, seen)
+        elseif type(val) == "function" then
+            vs = "<function " .. fname(val) .. ">"
+        else
+            vs = ser(val, 1, true)
+        end
+        lines[#lines + 1] = pad .. ks .. " = " .. vs
+    end
+    seen[t] = nil
+    if #lines == 0 then return "{}" end
+    return "{\n" .. table.concat(lines, "\n") .. "\n" .. string.rep("  ", depth) .. "}"
+end
+
+local function buildModules()
+    if not getloadedmodules then return "-- This executor has no getloadedmodules function." end
+    local items = {}
+    pcall(function()
+        for _, m in ipairs(getloadedmodules()) do
+            local path = safePath(m)
+            if m.ClassName == "ModuleScript" and scriptMatch(path:lower()) then
+                items[#items + 1] = { inst = m, path = path }
+            end
+        end
+    end)
+    table.sort(items, function(a, b) return a.path < b.path end)
+    local out = { string.format("== MODULE VALUES (%d loaded modules) ==", #items) }
+    local size, done = 0, 0
+    for i, it in ipairs(items) do
+        if Job.cancel or not alive then
+            out[#out + 1] = "\n-- stopped by user"
+            break
+        end
+        local okR, val = pcall(require, it.inst)
+        local body
+        if not okR then
+            body = "<require failed: " .. tostring(val) .. ">"
+        elseif type(val) == "table" then
+            local okS, res = pcall(modTable, val, 0, {})
+            body = okS and res or ("<could not read: " .. tostring(res) .. ">")
+        elseif type(val) == "function" then
+            body = "<function " .. fname(val) .. ">"
+        else
+            body = ser(val, 0, true)
+        end
+        if #body > 8000 then body = body:sub(1, 8000) .. "\n... [truncated]" end
+        local block = "\n-- ===== " .. it.path .. " =====\n" .. body
+        if size + #block > MAX_MOD_CHARS then
+            out[#out + 1] = "\n-- size limit reached, use the include filter to narrow it down"
+            break
+        end
+        out[#out + 1] = block
+        size = size + #block
+        done = done + 1
+        if done % 5 == 0 then
+            sstatus(string.format("Reading modules %d / %d", i, #items))
+            task.wait()
+        end
+    end
+    sstatus(string.format("Done: %d modules", done))
+    return table.concat(out, "\n")
+end
+
 local function clearLogs()
     Remotes, remoteOrder, totalCalls = {}, {}, 0
     AttrRecs, attrOrder, attrChanges = {}, {}, 0
@@ -559,6 +859,7 @@ Window:Tag({ Title = VERSION, Icon = "youtube", Color = Color3.fromHex("#FF8200"
 local Tabs = {}
 Tabs.Spy = Window:Tab({ Title = "Remote Spy", Icon = icon("radio", "activity", "eye") })
 Tabs.Attr = Window:Tab({ Title = "Attributes", Icon = icon("tag", "list", "database") })
+Tabs.Scripts = Window:Tab({ Title = "Scripts", Icon = icon("file-code", "code", "scroll-text") })
 Tabs.Export = Window:Tab({ Title = "Export", Icon = icon("download", "save", "file") })
 
 local function openSection(tab, title, iconName)
@@ -640,6 +941,63 @@ AttrBox:Toggle({
 })
 local AttrStatusP = AttrBox:Paragraph({ Title = "Status", Desc = "0 changes • 0 keys" })
 
+-- ===== SCRIPTS TAB =====
+local ScrBox = openSection(Tabs.Scripts, "Script Dump", "file-code")
+ScrBox:Paragraph({ Title = "Executor support", Desc = capText() })
+ScrBox:Input({
+    Title = "Include scripts",
+    Desc = "Only scripts whose path contains one of these (comma separated). Empty = all.",
+    Value = "",
+    Placeholder = "Plots, Customer, Cashier",
+    Callback = function(text) ScriptInclude = parseList(text) end,
+})
+ScrBox:Input({
+    Title = "Exclude scripts",
+    Desc = "Skip scripts whose path contains one of these.",
+    Value = "playermodule, chatscript, bubblechat, rbxcharactersounds",
+    Placeholder = "playermodule, chatscript",
+    Callback = function(text) ScriptExclude = parseList(text) end,
+})
+ScrBox:Button({
+    Title = "List Scripts",
+    Desc = "Every LocalScript and ModuleScript the client can see.",
+    Icon = "list",
+    Callback = function() runJob("scriptlist", buildScriptList) end,
+})
+ScrBox:Button({
+    Title = "Decompile Matching",
+    Desc = "Decompiles the scripts that match the filters into one file.",
+    Icon = "download",
+    Callback = function() runJob("scriptsrc", buildDecompile) end,
+})
+ScrBox:Input({
+    Title = "Search text",
+    Desc = "Finds this text inside the scripts (not case sensitive).",
+    Value = "FireServer",
+    Placeholder = "FireServer, Mess, Clean",
+    Callback = function(text) ScriptNeedle = tostring(text) end,
+})
+ScrBox:Button({
+    Title = "Search In Scripts",
+    Desc = "Shows every hit with the lines around it. Great for finding how a remote is called.",
+    Icon = "search",
+    Callback = function() runJob("scriptsearch", buildSearch) end,
+})
+ScrBox:Button({
+    Title = "Dump Module Values",
+    Desc = "Reads what loaded ModuleScripts return (configs, prices, remote names).",
+    Icon = "database",
+    Callback = function() runJob("modules", buildModules) end,
+})
+ScrBox:Button({
+    Title = "Stop",
+    Desc = "Stops the running script job.",
+    Icon = "x",
+    Callback = function() Job.cancel = true end,
+})
+local ScriptStatusP = ScrBox:Paragraph({ Title = "Status", Desc = "Ready" })
+sstatus = function(text) setDesc(ScriptStatusP, text) end
+
 -- ===== EXPORT TAB =====
 local ExBox = openSection(Tabs.Export, "Export", "download")
 ExBox:Button({
@@ -697,6 +1055,7 @@ end)
 local function unload()
     if not alive then return end
     alive = false
+    Job.cancel = true
     Spy.on = false
     pcall(setIncoming, false)
     pcall(setWatch, false)
