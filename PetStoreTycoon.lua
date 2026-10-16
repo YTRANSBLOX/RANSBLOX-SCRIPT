@@ -3350,7 +3350,8 @@ ConfigGroup:Button({
 -- AUTO OPEN / CLOSE STORE (open in the morning, close at closing hour, then next day)
 -- Plot attributes: StoreOpen, CustomersInside, CustomersPending, StoreDay
 -- Game hour is read from the topbar "Time" label (e.g. "2:18 PM")
--- Opening/closing = pressing the StatusBadge button in the topbar
+-- Opening = walk (noclip) to the OpenSign, then OpenStore:FireServer() (no args)
+-- Closing = walk (noclip) to the OpenSign, hold, then ToggleDoors:FireServer() (no args)
 -- =====================================================================
 do
     local OC = { on = false, closeHour = 17 }
@@ -3408,6 +3409,62 @@ do
 
     local PlotRem = remotesFolder:FindFirstChild("Plot")
     local NextDayR = PlotRem and PlotRem:FindFirstChild("StartNextDay")
+    local ToggleDoorsR = PlotRem and PlotRem:FindFirstChild("ToggleDoors")
+    local OpenStoreR = PlotRem and PlotRem:FindFirstChild("OpenStore")
+
+    local HOLD_TIME = 1.6 -- how long the game wants the close prompt held
+    local REACH = 8
+    pcall(function() REACH = require(RS.Modules.StoreDayConfig).SIGN_REACH_STUDS or REACH end)
+    local STOP_DIST = math.max(2, REACH - 2)
+
+    -- walk to the OpenSign (noclip only while walking), hold, fire ToggleDoors. No walking back.
+    local function actAtSign(plot, mode) -- mode: "open" / "close"
+        local sign = plot:FindFirstChild("OpenSign", true)
+        local ch = lp.Character
+        local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+        local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+        if not (sign and hrp and hum and ToggleDoorsR and OpenStoreR) or hum.Health <= 0 then return false end
+
+        Auto.hold("openclose", true) -- cashier / restock won't pull us back to the register
+        if shiftOn then pcall(Auto.pauseCashier) end
+        local tw = os.clock()
+        while Auto.cashierStarting and os.clock() - tw < 15 do task.wait(0.1) end
+
+        NC("openclose", true)
+        local reached, t = false, os.clock()
+        while alive and OC.on and os.clock() - t < 15 do
+            if Auto.thiefNow() then break end
+            local target = sign:GetPivot().Position
+            if (hrp.Position - target).Magnitude <= STOP_DIST then reached = true break end
+            hum:MoveTo(target)
+            task.wait(0.1)
+        end
+
+        local fired = false
+        if reached then
+            hum:MoveTo(hrp.Position)
+            if mode == "open" then
+                task.wait(0.2)
+                if alive and OC.on and not Auto.thiefNow()
+                    and plot:GetAttribute("StoreOpen") ~= true and plot:GetAttribute("DoorsLocked") ~= true then
+                    OpenStoreR:FireServer()
+                    fired = true
+                end
+            else
+                task.wait(HOLD_TIME)
+                -- ToggleDoors is a toggle: only fire if it still needs closing
+                if alive and OC.on and not Auto.thiefNow()
+                    and plot:GetAttribute("StoreOpen") == true and plot:GetAttribute("DoorsLocked") ~= true then
+                    ToggleDoorsR:FireServer()
+                    fired = true
+                end
+            end
+            task.wait(0.3)
+        end
+        NC("openclose", false)
+        Auto.hold("openclose", false)
+        return fired
+    end
 
     task.spawn(function()
         local lastAct, closeSince = 0, nil
@@ -3423,16 +3480,21 @@ do
                     local isOpen = plot:GetAttribute("StoreOpen") == true
                     local inside = (plot:GetAttribute("CustomersInside") or 0) + (plot:GetAttribute("CustomersPending") or 0)
                     local late = hour >= OC.closeHour
+                    local doorsLocked = plot:GetAttribute("DoorsLocked") == true
                     local now = os.clock()
 
                     if isOpen then
                         if late then
                             closeSince = closeSince or now
                             -- wait for the store to empty, but never longer than 45s
-                            if (inside == 0 or now - closeSince > 45) and now - lastAct >= 5 then
+                            if doorsLocked then
+                                -- already closing (doors locked), never toggle again
+                                ostatus("Closing, waiting for the store to finish...")
+                            elseif (inside == 0 or now - closeSince > 45) and now - lastAct >= 15 then
                                 lastAct = now
-                                ostatus("Closing the store...")
-                                log("OPENCLOSE", "close", string.format("hour %.2f inside %d", hour, inside), tostring(pressBadge()))
+                                ostatus("Walking to the sign to close...")
+                                local fired = actAtSign(plot, "close")
+                                log("OPENCLOSE", "close", string.format("hour %.2f inside %d", hour, inside), tostring(fired))
                             elseif inside > 0 then
                                 ostatus("Closing time, waiting for customers to leave (" .. inside .. ")")
                             end
@@ -3450,10 +3512,13 @@ do
                                 local ok, err = pcall(function() if NextDayR then NextDayR:FireServer() end end)
                                 log("OPENCLOSE", "next day", tostring(ok), tostring(err), "day", tostring(plot:GetAttribute("StoreDay")))
                             end
-                        elseif now - lastAct >= 4 then
+                        elseif doorsLocked then
+                            ostatus("Doors locked, waiting...")
+                        elseif now - lastAct >= 8 then
                             lastAct = now
-                            ostatus("Store closed, opening...")
-                            log("OPENCLOSE", "open", string.format("hour %.2f", hour), tostring(pressBadge()))
+                            ostatus("Walking to the sign to open...")
+                            local fired = actAtSign(plot, "open")
+                            log("OPENCLOSE", "open", string.format("hour %.2f", hour), tostring(fired))
                         end
                     end
                 end
@@ -3481,245 +3546,6 @@ do
         Callback = function(v) OC.closeHour = v end,
     })
     OStatusP = OCBox:Paragraph({ Title = "Status", Desc = "Ready" })
-end
-
--- =====================================================================
--- CLOSE-STORE DUMP (passive logger -> petstore_close_dump.txt)
--- Records how closing the store BY HAND works: which prompt, hold time, where it is, what the
--- game sends to the server. It never touches the game, it only reads and logs.
--- =====================================================================
-do
-    local PPS = game:GetService("ProximityPromptService")
-    local dbuf, dN, dt0 = {}, 0, os.clock()
-    local function dlog(tag, ...)
-        local a, p = table.pack(...), {}
-        for i = 1, a.n do p[i] = tostring(a[i]) end
-        dbuf[#dbuf + 1] = string.format("[%.2f] %s | %s", os.clock() - dt0, tag, table.concat(p, " | "))
-        if #dbuf > 600 then table.remove(dbuf, 1) end
-        dN += 1
-    end
-    task.spawn(function()
-        local last = 0
-        while alive do
-            task.wait(2)
-            if dN ~= last then
-                last = dN
-                if writefile then pcall(writefile, "petstore_close_dump.txt", table.concat(dbuf, "\n")) end
-            end
-        end
-    end)
-
-    local function myPlot()
-        local plots = workspace:FindFirstChild("Plots")
-        for _, p in ipairs(plots and plots:GetChildren() or {}) do
-            if p:GetAttribute("OwnerUserId") == lp.UserId then return p end
-        end
-    end
-    local function hrpPos()
-        local ch = lp.Character
-        local r = ch and ch:FindFirstChild("HumanoidRootPart")
-        return r and r.Position
-    end
-    local function posOf(inst)
-        local part = inst
-        if typeof(inst) == "Instance" and inst:IsA("ProximityPrompt") then part = inst.Parent end
-        if typeof(part) ~= "Instance" then return nil end
-        if part:IsA("Attachment") then return part.WorldPosition end
-        if part:IsA("BasePart") then return part.Position end
-        if part:IsA("Model") then
-            local okP, cf = pcall(function() return part:GetPivot() end)
-            if okP then return cf.Position end
-        end
-    end
-    local function fmtV(v) return v and string.format("(%.1f, %.1f, %.1f)", v.X, v.Y, v.Z) or "?" end
-    local function attrs(inst)
-        local t = {}
-        for k, v in pairs(inst:GetAttributes()) do t[#t + 1] = k .. "=" .. tostring(v) end
-        table.sort(t)
-        return table.concat(t, ", ")
-    end
-    local function clockText()
-        local top = lp.PlayerGui:FindFirstChild("TopbarStandard")
-        for _, g in ipairs(top and top:GetDescendants() or {}) do
-            if g:IsA("TextLabel") and g.Name == "Time" then return g.Text end
-        end
-        return "?"
-    end
-    local function storeInfo()
-        local p = myPlot()
-        if not p then return "no plot" end
-        return string.format("StoreOpen=%s Inside=%s Pending=%s Day=%s Clock=%s",
-            tostring(p:GetAttribute("StoreOpen")), tostring(p:GetAttribute("CustomersInside")),
-            tostring(p:GetAttribute("CustomersPending")), tostring(p:GetAttribute("StoreDay")), clockText())
-    end
-    local function dist(pr)
-        local a, b = hrpPos(), posOf(pr)
-        return (a and b) and string.format("%.1f", (a - b).Magnitude) or "?"
-    end
-    local function promptInfo(pr)
-        return pr:GetFullName(), "Action=" .. pr.ActionText, "Object=" .. pr.ObjectText,
-            "Hold=" .. pr.HoldDuration, "Enabled=" .. tostring(pr.Enabled),
-            "MaxDist=" .. pr.MaxActivationDistance, "Key=" .. tostring(pr.KeyboardKeyCode),
-            "LineOfSight=" .. tostring(pr.RequiresLineOfSight), "Pos=" .. fmtV(posOf(pr)),
-            "ParentClass=" .. (pr.Parent and pr.Parent.ClassName or "?"),
-            "ParentAttrs=" .. (pr.Parent and attrs(pr.Parent) or "")
-    end
-
-    -- every prompt in your plot: dump it once, then log whenever it turns on / off or changes text
-    local watched = setmetatable({}, { __mode = "k" })
-    local function watchPrompt(pr)
-        if watched[pr] then return end
-        watched[pr] = true
-        dlog("PROMPT", promptInfo(pr))
-        for _, prop in ipairs({ "Enabled", "ActionText", "ObjectText", "HoldDuration" }) do
-            pcall(function()
-                bind(pr:GetPropertyChangedSignal(prop), function()
-                    dlog("PROMPT-CHANGE", pr:GetFullName(), prop .. "=" .. tostring(pr[prop]), storeInfo())
-                end)
-            end)
-        end
-    end
-
-    -- anything in the plot that looks like a door / glass / sign (the thing you walk to)
-    local NAME_HINTS = { "close", "open", "door", "glass", "window", "sign", "wall", "entrance" }
-    local function looksRelevant(name)
-        name = name:lower()
-        for _, h in ipairs(NAME_HINTS) do
-            if name:find(h, 1, true) then return true end
-        end
-        return false
-    end
-    local function scanPlot(plot)
-        dlog("PLOT", plot:GetFullName(), attrs(plot))
-        local named = 0
-        for _, d in ipairs(plot:GetDescendants()) do
-            if d:IsA("ProximityPrompt") then
-                watchPrompt(d)
-            elseif d:IsA("ClickDetector") then
-                dlog("CLICKDETECTOR", d:GetFullName(), "Pos=" .. fmtV(posOf(d.Parent)))
-            elseif named < 80 and looksRelevant(d.Name) then
-                named += 1
-                dlog("NAMED", d.ClassName, d:GetFullName(), "Pos=" .. fmtV(posOf(d)), attrs(d))
-            end
-        end
-    end
-
-    local function dumpRemotes()
-        local names = {}
-        for _, c in ipairs(remotesFolder:GetChildren()) do names[#names + 1] = c.Name end
-        dlog("REMOTE-FOLDERS", table.concat(names, ", "))
-        local PlotRem = remotesFolder:FindFirstChild("Plot")
-        for _, r in ipairs(PlotRem and PlotRem:GetDescendants() or {}) do
-            if r:IsA("RemoteEvent") or r:IsA("RemoteFunction") then
-                dlog("REMOTE", r.ClassName, r:GetFullName())
-            end
-        end
-    end
-
-    -- the topbar badge the current Auto Open / Close presses
-    local function dumpBadge()
-        local top = lp.PlayerGui:FindFirstChild("TopbarStandard")
-        for _, g in ipairs(top and top:GetDescendants() or {}) do
-            if g.Name == "StatusBadge" then
-                dlog("BADGE", g:GetFullName(), g.ClassName)
-                local n = 0
-                for _, c in ipairs(g:GetDescendants()) do
-                    if n >= 30 then break end
-                    n += 1
-                    local txt = (c:IsA("TextLabel") or c:IsA("TextButton")) and c.Text or ""
-                    dlog("BADGE-PART", c.ClassName, c.Name, txt)
-                end
-                return
-            end
-        end
-        dlog("BADGE", "not found")
-    end
-
-    -- what YOU do by hand: walking up, holding, releasing, triggering
-    bind(PPS.PromptButtonHoldBegan, function(pr, who)
-        if who == lp then
-            dlog("HOLD-BEGIN", pr:GetFullName(), "Action=" .. pr.ActionText, "Hold=" .. pr.HoldDuration,
-                "Me=" .. fmtV(hrpPos()), "Prompt=" .. fmtV(posOf(pr)), "Dist=" .. dist(pr), storeInfo())
-        end
-    end)
-    bind(PPS.PromptButtonHoldEnded, function(pr, who)
-        if who == lp then
-            dlog("HOLD-END", pr:GetFullName(), "Action=" .. pr.ActionText, "Dist=" .. dist(pr), storeInfo())
-        end
-    end)
-    bind(PPS.PromptTriggered, function(pr, who)
-        if who == lp then
-            dlog("TRIGGERED", pr:GetFullName(), "Action=" .. pr.ActionText, "Hold=" .. pr.HoldDuration,
-                "Me=" .. fmtV(hrpPos()), "Prompt=" .. fmtV(posOf(pr)), "Dist=" .. dist(pr), storeInfo())
-        end
-    end)
-
-    -- what the GAME sends to the server (not this script): shows the remote behind a manual close
-    local lastCall = {}
-    local function fmtArg(v)
-        if typeof(v) == "table" then
-            local okJ, j = pcall(function() return HttpService:JSONEncode(v) end)
-            return okJ and j or tostring(v)
-        elseif typeof(v) == "Instance" then
-            return v:GetFullName()
-        end
-        return tostring(v)
-    end
-    pcall(function()
-        local old
-        old = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
-            if alive and not checkcaller() then
-                local m = getnamecallmethod()
-                if m == "FireServer" or m == "InvokeServer" then
-                    local args = table.pack(...)
-                    local rem = self
-                    task.defer(function()
-                        local okN, full = pcall(function() return rem:GetFullName() end)
-                        full = okN and full or tostring(rem)
-                        local now = os.clock()
-                        if now - (lastCall[full] or 0) < 0.5 then return end
-                        lastCall[full] = now
-                        local parts = {}
-                        for i = 1, args.n do parts[i] = fmtArg(args[i]) end
-                        dlog("GAME-REMOTE", m, full, "args=[" .. table.concat(parts, "; ") .. "]",
-                            "Me=" .. fmtV(hrpPos()), storeInfo())
-                    end)
-                end
-            end
-            return old(self, ...)
-        end))
-    end)
-
-    task.spawn(function()
-        local plot
-        for _ = 1, 60 do
-            plot = myPlot()
-            if plot or not alive then break end
-            task.wait(1)
-        end
-        if not plot then dlog("INFO", "plot not found") return end
-        dlog("INFO", "close dump ready", storeInfo())
-        pcall(scanPlot, plot)
-        pcall(dumpRemotes)
-        pcall(dumpBadge)
-        bind(plot.DescendantAdded, function(d)
-            if d:IsA("ProximityPrompt") then
-                dlog("PROMPT-ADDED", d:GetFullName())
-                watchPrompt(d)
-            end
-        end)
-        bind(plot.DescendantRemoving, function(d)
-            if d:IsA("ProximityPrompt") then dlog("PROMPT-REMOVED", d:GetFullName(), storeInfo()) end
-        end)
-        local lastAttr = {}
-        bind(plot.AttributeChanged, function(name)
-            if name:sub(1, 9) == "Customers" then return end
-            local now = os.clock()
-            if now - (lastAttr[name] or 0) < 2 then return end
-            lastAttr[name] = now
-            dlog("PLOT-ATTR", name, tostring(plot:GetAttribute(name)), "Me=" .. fmtV(hrpPos()), clockText())
-        end)
-    end)
 end
 
 -- =====================================================================
