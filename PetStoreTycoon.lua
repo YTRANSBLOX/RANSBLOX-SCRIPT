@@ -1,5 +1,5 @@
 local HUB_NAME = "Pet Store Tycoon"
-local VERSION  = "v2.1"
+local VERSION  = "v2.3"
 local YT_LINK  = "https://www.youtube.com/@RansbloxScript"
 local WEB_LINK = "https://ransblox.net"
 
@@ -872,7 +872,39 @@ if Auto.ready then
     end
 
     -- ===== noclip & walking =====
-    local function setNoclip(on) NC("restock", on) end
+    -- shelves ghost while restocking: a shelf pushed against a wall can trap the character,
+    -- so their parts stop colliding (client side only) and get their old value back afterwards
+    local shelfParts = {} -- part -> original CanCollide
+    local lastGhost = 0
+    local function shelvesGhost(on)
+        if on then
+            if os.clock() - lastGhost < 2 then return end
+            lastGhost = os.clock()
+            local plot = AP.getPlot()
+            local items = plot and plot:FindFirstChild("Items")
+            for _, sh in ipairs(items and items:GetChildren() or {}) do
+                if sh:IsA("Model") and SR.isShelf(sh) then
+                    for _, p in ipairs(sh:GetDescendants()) do
+                        if p:IsA("BasePart") and shelfParts[p] == nil then
+                            shelfParts[p] = p.CanCollide
+                            p.CanCollide = false
+                        end
+                    end
+                end
+            end
+        else
+            for p, c in pairs(shelfParts) do
+                if p.Parent then p.CanCollide = c end
+                shelfParts[p] = nil
+            end
+            lastGhost = 0
+        end
+    end
+
+    local function setNoclip(on)
+        NC("restock", on)
+        pcall(shelvesGhost, on)
+    end
     Auto.setNoclip = setNoclip
 
     local function posOf(inst)
@@ -1653,7 +1685,7 @@ if Auto.ready then
                 -- no customer waiting = go right away (no idle delay, no gap between runs)
                 local canGo = Auto.canLeaveDesk()
                 -- full restock already started: customers wait, we finish the job first
-                if not canGo and Auto.fillActive() and not Auto.thiefNow() and not deskHolds.care then canGo = true end
+                if not canGo and Auto.fillActive() and not Auto.thiefNow() and not deskHolds.care and not deskHolds.clean then canGo = true end
                 if okH and has and not canGo then
                     rstatus(Auto.yield() and "Customer waiting, restock paused" or "Waiting for a quiet moment...")
                 elseif okH and has then
@@ -2938,7 +2970,7 @@ do
                     local list = tanksNeeding()
                     if #list == 0 then
                         cstatus("All tanks above threshold")
-                    elseif deskHolds.restock or deskHolds.buy or deskHolds.thief then
+                    elseif deskHolds.restock or deskHolds.buy or deskHolds.thief or deskHolds.clean then
                         cstatus("Waiting for restock/buy to finish...")
                     elseif not baseCanLeave() or (cashRunning and os.clock() - lastRun < CCfg.RunGap) then
                         cstatus(Auto.yield() and "Customer waiting, care paused" or "Waiting for a quiet moment...")
@@ -3400,6 +3432,264 @@ do
         Callback = function(v) TCfg.Speed = v end,
     })
     ThiefStatusP = ThiefBox:Paragraph({ Title = "Status", Desc = "Ready" })
+end
+
+-- =====================================================================
+-- AUTO CLEAN (sweep the mess customers leave behind)
+-- Mess = Workspace.Plots.PlotN.Messes.<model>, attributes MessId / OwnerUserId / MessKind.
+-- The server checks our position, so we WALK to each mess (noclip), then
+-- Remotes.Mess.Clean:FireServer({ messId = id }).
+-- Same rules as the other features: starts in a quiet moment (no customer waiting), takes a
+-- "clean" hold so cashier / restock / care stay off the register, and finishes ALL the mess
+-- before handing control back. Only a thief interrupts it.
+-- =====================================================================
+do
+    local Clean = { on = false }
+    local CLCfg = {
+        Reach = 4,         -- stand this close (flat studs) before cleaning
+        Delay = 0.4,       -- pause after arriving, before firing the remote
+        WalkTimeout = 15,  -- seconds to reach one mess
+        Retries = 3,       -- fire attempts per mess
+        Backoff = 30,      -- seconds to leave a failed mess alone
+        MaxLoops = 200,    -- safety cap per run
+        Safety = 10,       -- seconds between quiet local re-checks (no remotes)
+    }
+
+    local CleanStatusP, lastS
+    local function clstatus(t)
+        if t ~= lastS then
+            lastS = t
+            pcall(function() CleanStatusP:SetDesc(t) end)
+        end
+    end
+
+    -- looked up every time: right after joining the Mess remotes may not have replicated yet
+    local function cleanRemote()
+        local mf = remotesFolder:FindFirstChild("Mess")
+        return mf and mf:FindFirstChild("Clean")
+    end
+
+    local function active() return alive and Clean.on and not Auto.thiefNow() end
+
+    local Failed = {} -- messId -> time when it may be tried again
+
+    -- only YOUR mess, on any plot (OwnerUserId is checked, never someone else's)
+    local function myMesses()
+        local list = {}
+        local plots = workspace:FindFirstChild("Plots")
+        for _, plot in ipairs(plots and plots:GetChildren() or {}) do
+            local f = plot:FindFirstChild("Messes")
+            for _, m in ipairs(f and f:GetChildren() or {}) do
+                local id = m:GetAttribute("MessId")
+                if id and m:GetAttribute("OwnerUserId") == lp.UserId and (Failed[id] or 0) < os.clock() then
+                    list[#list + 1] = m
+                end
+            end
+        end
+        return list
+    end
+
+    local function nearestMess()
+        local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+        local best, bd
+        for _, m in ipairs(myMesses()) do
+            local okP, pos = pcall(function() return m:GetPivot().Position end)
+            if okP then
+                local d = hrp and (pos - hrp.Position).Magnitude or 0
+                if not bd or d < bd then best, bd = m, d end
+            end
+        end
+        return best
+    end
+
+    -- walk (noclip is held by the run) next to the mess; jumps if stuck
+    local function walkTo(m)
+        local ch = lp.Character
+        local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+        local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+        if not (hum and hrp) then return false end
+        local t0, lastPos, lastMove = os.clock(), hrp.Position, os.clock()
+        while active() and m.Parent and os.clock() - t0 < CLCfg.WalkTimeout do
+            local okP, target = pcall(function() return m:GetPivot().Position end)
+            if not okP then return false end
+            local p = hrp.Position
+            if Vector3.new(p.X - target.X, 0, p.Z - target.Z).Magnitude <= CLCfg.Reach then
+                hum:MoveTo(p)
+                return true
+            end
+            hum:MoveTo(target)
+            if (p - lastPos).Magnitude > 1 then
+                lastPos, lastMove = p, os.clock()
+            elseif os.clock() - lastMove > 2 then
+                hum.Jump = true
+                lastMove = os.clock()
+            end
+            task.wait(0.1)
+        end
+        return false
+    end
+
+    local function cleanOne(m)
+        local id = m:GetAttribute("MessId")
+        if not id then return false end
+        local kind = tostring(m:GetAttribute("MessKind") or "mess")
+
+        if not walkTo(m) then
+            if m.Parent and active() then
+                Failed[id] = os.clock() + CLCfg.Backoff
+                log("CLEAN", "walk failed", id, kind)
+            end
+            return false
+        end
+        task.wait(CLCfg.Delay)
+
+        for _ = 1, CLCfg.Retries do
+            if not (active() and m.Parent) then break end
+            local r = cleanRemote()
+            if not r then return false end
+            pcall(function() r:FireServer({ messId = id }) end)
+            local tw = os.clock()
+            while os.clock() - tw < 1.2 and m.Parent do task.wait(0.1) end
+            if not m.Parent then
+                log("CLEAN", "ok", id, kind)
+                return true
+            end
+        end
+
+        if m.Parent and active() then
+            Failed[id] = os.clock() + CLCfg.Backoff
+            log("CLEAN", "not cleaned", id, kind)
+        end
+        return not m.Parent
+    end
+
+    -- returns: cleaned, failed. Re-scans after every mess, so new mess is picked up in the same run.
+    local function runClean()
+        local done, failed = 0, 0
+        for _ = 1, CLCfg.MaxLoops do
+            if not active() then break end
+            local m = nearestMess()
+            if not m then break end
+            clstatus(("Cleaning %s (%d done)"):format(tostring(m:GetAttribute("MessKind") or "mess"), done))
+            if cleanOne(m) then done += 1 else failed += 1 end
+            task.wait(0.2)
+        end
+        return done, failed
+    end
+
+    -- Auto Restock / Buy / Care wait while a clean run is going
+    local baseLeave = Auto.canLeaveDesk
+    Auto.canLeaveDesk = function()
+        if deskHolds.clean then return false end
+        return baseLeave()
+    end
+
+    -- ===== events (no polling) =====
+    local wakeEv = Instance.new("BindableEvent")
+    local pending = false
+    local function wake()
+        if Clean.on then
+            pending = true
+            wakeEv:Fire()
+        end
+    end
+
+    local hooked = setmetatable({}, { __mode = "k" })
+    local function hookPlots()
+        local plots = workspace:FindFirstChild("Plots")
+        for _, plot in ipairs(plots and plots:GetChildren() or {}) do
+            local f = plot:FindFirstChild("Messes")
+            if f and not hooked[f] then
+                hooked[f] = true
+                bind(f.ChildAdded, function() wake() end)
+            end
+        end
+    end
+
+    task.spawn(function()
+        while alive do
+            wakeEv.Event:Wait()
+            while alive and pending do
+                task.wait(0.6) -- let the mess attributes land / a burst settle into one check
+                pending = false
+                if Clean.on then
+                    pcall(hookPlots)
+                    if #myMesses() == 0 then
+                        clstatus("No mess, waiting...")
+                    elseif Auto.thiefNow() then
+                        clstatus("Thief on the plot, waiting...")
+                        task.delay(2, wake)
+                    elseif deskHolds.restock or deskHolds.care or deskHolds.openclose then
+                        clstatus("Waiting for restock/care to finish...")
+                        task.delay(2, wake)
+                    elseif not Auto.canLeaveDesk() then
+                        clstatus(Auto.yield() and "Customer waiting, cleaning paused" or "Waiting for a quiet moment...")
+                        task.delay(2, wake)
+                    else
+                        Auto.hold("clean", true) -- also stops the cashier from (re)starting a shift
+                        -- a shift that is mid-start (lock + tap) must finish first
+                        local tw = os.clock()
+                        while Auto.cashierStarting and os.clock() - tw < 15 do task.wait(0.1) end
+                        -- leave the register first: end the shift, release its facing / anchor lock
+                        if Auto.pauseCashier then pcall(Auto.pauseCashier) end
+                        pcall(setFacing, false)
+                        pcall(unlockChar)
+                        NC("clean", true)
+                        local okR, done, failed = pcall(runClean)
+                        NC("clean", false)
+                        Auto.hold("clean", false)
+                        if not okR then
+                            log("ERR", "clean", done)
+                        elseif Clean.on then
+                            clstatus(("Last run: %d cleaned, %d failed"):format(done or 0, failed or 0))
+                            -- anything left (e.g. a thief interrupted the run) gets another go shortly
+                            if #myMesses() > 0 then task.delay(2, wake) end
+                        end
+                    end
+                end
+            end
+        end
+    end)
+
+    -- slow safety net: reads local data only, in case a change had no event
+    task.spawn(function()
+        while alive do
+            task.wait(CLCfg.Safety)
+            pcall(hookPlots)
+            wake()
+        end
+    end)
+
+    Auto.cleanStop = function()
+        Clean.on = false
+        Auto.hold("clean", false)
+        NC("clean", false)
+    end
+
+    -- GUI (tab Cashier): toggle first, then the live status
+    local CleanBox = openSection(Tabs.Cashier, "Auto Clean", icon("sparkles", "brush", "trash-2"))
+    CleanBox:Toggle({
+        Title = "Auto Clean",
+        Desc = "Walks to the mess customers leave and sweeps it up. Starts in a quiet moment (no customer waiting) and finishes all the mess before the cashier, restock and care carry on.",
+        Value = false,
+        Flag = "AutoClean",
+        Callback = function(v)
+            if v and not cleanRemote() then
+                gameMissing("Mess.Clean remote not found, Auto Clean can't run.")
+                return
+            end
+            if v then
+                Failed = {}
+                Clean.on = true
+                clstatus("Running...")
+                wake()
+            else
+                Auto.cleanStop()
+                clstatus("Stopped")
+            end
+        end,
+    })
+    CleanStatusP = CleanBox:Paragraph({ Title = "Status", Desc = "Ready" })
 end
 
 -- ===== MISC TAB =====
@@ -3916,6 +4206,7 @@ local function unload()
     pcall(NC, "cashier", false)
     pcall(NC, "care", false)
     if Auto.thiefStop then pcall(Auto.thiefStop) end
+    if Auto.cleanStop then pcall(Auto.cleanStop) end
     alive = false
     cashRunning = false
     Auto.restockOn = false
