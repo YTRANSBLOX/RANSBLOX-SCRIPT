@@ -177,7 +177,7 @@ Auto.yield = function() return cashRunning and customerBusy() end
 Auto.canLeaveDesk = function()
     if not cashRunning then return true end
     if customerBusy() then return false end
-    return os.clock() - lastBusy >= ((Auto.RCfg and Auto.RCfg.IdleBefore) or 4)
+    return os.clock() - lastBusy >= ((Auto.RCfg and Auto.RCfg.IdleBefore) or 0)
 end
 
 -- ===== diagnostics (written to petstore_tycoon_log.txt) =====
@@ -662,7 +662,7 @@ end
 -- ===== main loop =====
 local cBusy, cLastRun = false, {}
 local function cRun(name, fn)
-    if cBusy or os.clock() - (cLastRun[name] or 0) < 3 then return end
+    if cBusy or os.clock() - (cLastRun[name] or 0) < 0.6 then return end
     cBusy, cLastRun[name] = true, os.clock()
     task.spawn(function()
         local okR, e = pcall(fn)
@@ -678,7 +678,7 @@ local PHASE_TEXT = {
     CardEntry = "Entering card amount...",
 }
 
-local IDLE_LEAVE = 6 -- quiet seconds on shift before the character leaves the desk
+local IDLE_LEAVE = 1 -- quiet seconds on shift before the character leaves the desk
 
 -- status text that only changes when the key changes (no spam every 0.2s)
 local function stat(key, text)
@@ -800,8 +800,8 @@ local RCfg = {
     DoGoods = true,        -- shelve goods boxes (Restock what > Shelves)
     FishRestock = true,    -- also place fish/pet boxes into your tanks (Restock what > Fish tanks)
     EnclosureTry = 6,      -- try at most this many tanks per box
-    IdleBefore = 4,        -- cashier on: wait this many quiet seconds before restocking
-    RunGap = 20,           -- cashier on: minimum seconds between two restock runs
+    IdleBefore = 0,        -- cashier on: quiet seconds before restocking (0 = go right after the last customer)
+    RunGap = 0,            -- cashier on: minimum seconds between two restock runs (0 = none)
 }
 local BCfg = {
     Mode = "Shelves empty", -- Buy when: "Shelves empty" / "Below minimum" / "Always"
@@ -841,7 +841,8 @@ if Auto.ready then
     local yielded = false
     local function rActive()
         if not (alive and Auto.restockOn) then return false end
-        if Auto.yield() then yielded = true return false end -- a customer is waiting: stop
+        -- customers do NOT stop us mid-shelf (runRestock yields after the shelf is done); only a thief does
+        if Auto.thiefNow() then yielded = true return false end
         return true
     end
 
@@ -875,7 +876,7 @@ if Auto.ready then
     end
 
     -- ===== slot scan (game's own rules) =====
-    local function scanSlots(item, goodKey, boxQty, tried)
+    local function scanSlots(item, goodKey, boxQty, tried, onlyShelf)
         local list = {}
         local plot = AP.getPlot()
         local items = plot and plot:FindFirstChild("Items")
@@ -885,7 +886,7 @@ if Auto.ready then
         local shelvesData = typeof(goods) == "table" and goods.Shelves or {}
         for _, sh in ipairs(items:GetChildren()) do
             local itemId = sh:IsA("Model") and sh:GetAttribute("ItemId")
-            if itemId and SR.isShelf(sh) and SR.acceptsGood(sh, item) then
+            if itemId and (not onlyShelf or itemId == onlyShelf) and SR.isShelf(sh) and SR.acceptsGood(sh, item) then
                 local data = shelvesData[itemId]
                 for _, sl in ipairs(SR.slotModels(sh)) do
                     local idx = sl:GetAttribute("SlotIndex")
@@ -916,9 +917,9 @@ if Auto.ready then
         return list
     end
 
-    local function pickTarget(item, goodKey, boxQty, tried)
+    local function pickTarget(item, goodKey, boxQty, tried, onlyShelf)
         local best
-        for _, c in ipairs(scanSlots(item, goodKey, boxQty, tried)) do
+        for _, c in ipairs(scanSlots(item, goodKey, boxQty, tried, onlyShelf)) do
             if not best or c.pri < best.pri or (c.pri == best.pri and c.dist < best.dist) then
                 best = c
             end
@@ -934,10 +935,10 @@ if Auto.ready then
     end
 
     -- how many slots can still take this box (0 = shelves full for this good)
-    local function countRoom(box)
+    local function countRoom(box, onlyShelf)
         local okI, item, goodKey, boxQty = pcall(boxInfo, box)
         if not okI or not item then return 0 end
-        return #scanSlots(item, goodKey, boxQty)
+        return #scanSlots(item, goodKey, boxQty, nil, onlyShelf)
     end
 
     -- ===== boxes =====
@@ -958,13 +959,14 @@ if Auto.ready then
     end
 
     -- nearest free box whose shelves still have room
-    local function nearestFreeBox()
+    -- onlyShelf (optional ItemId): only boxes that still fit on that one shelf
+    local function nearestFreeBox(onlyShelf)
         if not RCfg.DoGoods then return end
         local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
         local best, bd
         for _, b in ipairs(getBoxes()) do
-            if b:GetAttribute("Carrier") == nil and not Skip[boxKeyOf(b)] and countRoom(b) > 0 then
+            if b:GetAttribute("Carrier") == nil and not Skip[boxKeyOf(b)] and countRoom(b, onlyShelf) > 0 then
                 local d = (posOf(b) - hrp.Position).Magnitude
                 if not bd or d < bd then best, bd = b, d end
             end
@@ -1360,8 +1362,9 @@ if Auto.ready then
         return false
     end
 
-    -- returns: ok, reason, shelvesFull
-    local function placeBox(box)
+    -- returns: ok, reason, shelvesFull, shelfItemIdUsed
+    -- onlyShelf (optional): try that shelf first, fall back to any shelf if the box doesn't fit there
+    local function placeBox(box, onlyShelf)
         local boxKey = boxKeyOf(box)
         local item, goodKey, boxQty = boxInfo(box)
         if not item then return false, "item not in catalogue", false end
@@ -1369,7 +1372,8 @@ if Auto.ready then
         for _ = 1, 15 do
             if not rActive() then return false, "stopped", false end
             if box:GetAttribute("Carrier") ~= lp.UserId then return false, "box no longer carried", false end
-            local t = pickTarget(item, goodKey, boxQty, tried)
+            local t = pickTarget(item, goodKey, boxQty, tried, onlyShelf)
+                or (onlyShelf and pickTarget(item, goodKey, boxQty, tried))
             if not t then
                 -- shelves full: always drop the box we're holding
                 local dropped = dropBox(box)
@@ -1383,7 +1387,7 @@ if Auto.ready then
                 end)
                 local o = GCO.classify(okC, res)
                 log("RESTOCK", "PlaceGoods", t.itemId, t.index, o.kind, tostring(o.reason or o.remainder or ""))
-                if o.kind == "consumed" then return true, "box emptied", false end
+                if o.kind == "consumed" then return true, "box emptied", false, t.itemId end
                 if GCO.nextAction(o) == "stop" then return false, o.reason or o.kind, false end
                 task.wait(0.3)
             end
@@ -1463,6 +1467,8 @@ if Auto.ready then
 
     local function runRestock()
         local done, full, failed = 0, 0, 0
+        local curShelf = nil   -- the shelf being filled right now: it gets finished before customers are served
+        local worked = false   -- did we handle at least one box since this run started
         yielded = false
         for _ = 1, RCfg.MaxLoops do
             if not rActive() then break end
@@ -1474,10 +1480,22 @@ if Auto.ready then
                 box = nil
             end
 
-            -- 2. otherwise grab the nearest free box whose shelves have room
+            -- 2. otherwise grab the next box: first one that still fits the current shelf
             if not box then
-                box = nearestFreeBox() or nearestPetBox()
+                local nxt = curShelf and nearestFreeBox(curShelf) or nil
+                if not nxt then
+                    -- current shelf is done (full / no matching boxes left): customers get their turn now
+                    curShelf = nil
+                    if worked and Auto.yield() then
+                        yielded = true
+                        rstatus("Shelf done, serving customers")
+                        break
+                    end
+                    nxt = nearestFreeBox() or nearestPetBox()
+                end
+                box = nxt
                 if not box then break end
+                worked = true
                 rstatus("Picking up " .. boxLabel(box))
                 local okP, why = pickUp(box)
                 if not okP then
@@ -1486,15 +1504,18 @@ if Auto.ready then
                     continue
                 end
             end
+            worked = true
 
             -- 3. shelve it
             local pet = isPetBox(box)
             rstatus((pet and "Placing fish " or "Shelving ") .. boxLabel(box))
-            local okB, why, isFull
+            local okB, why, isFull, usedShelf
             if pet then
                 okB, why, isFull = placePet(box)
+                curShelf = nil
             else
-                okB, why, isFull = placeBox(box)
+                okB, why, isFull, usedShelf = placeBox(box, curShelf)
+                if okB and usedShelf then curShelf = usedShelf else curShelf = nil end
             end
             if okB then
                 done += 1
@@ -1510,7 +1531,7 @@ if Auto.ready then
             task.wait(0.3)
         end
         log("RESTOCK", "summary", done, full, failed)
-        if yielded then rstatus("Customer waiting, restock paused") end
+        if yielded and not Auto.thiefNow() then rstatus("Customer waiting, restock paused") end
         return done, full, failed
     end
 
@@ -1524,9 +1545,8 @@ if Auto.ready then
         local busy = false
         local lastClear = os.clock()
         local lastWarn = 0
-        local lastRun = -1e9
         while alive do
-            task.wait(1)
+            task.wait(0.3)
             if Auto.restockOn and not busy then
                 if RCfg.DoGoods and os.clock() - lastWarn > 5 then
                     lastWarn = os.clock()
@@ -1539,8 +1559,8 @@ if Auto.ready then
                 local okH, has = pcall(function()
                     return workBox() ~= nil or nearestFreeBox() ~= nil or nearestPetBox() ~= nil
                 end)
-                -- customers first: with Auto Cashier on, only restock in a quiet moment, and not back to back
-                local canGo = Auto.canLeaveDesk() and (not cashRunning or os.clock() - lastRun >= RCfg.RunGap)
+                -- no customer waiting = go right away (no idle delay, no gap between runs)
+                local canGo = Auto.canLeaveDesk()
                 if okH and has and not canGo then
                     rstatus(Auto.yield() and "Customer waiting, restock paused" or "Waiting for a quiet moment...")
                 elseif okH and has then
@@ -1554,7 +1574,6 @@ if Auto.ready then
                     local okR, e = pcall(runRestock)
                     if not okR then log("ERR", "restock", e) end
                     busy = false
-                    lastRun = os.clock()
                     Auto.hold("restock", false)
                     setNoclip(false)
                     if Auto.restockOn then rstatus("Waiting for boxes...") end
@@ -2564,8 +2583,8 @@ do
         Threshold = 60,   -- care kalau bar di bawah ini
         Feats = { Food = true, Glass = true, Filter = true },
         Wait = 4,         -- jangan di bawah 3
-        Interval = 5,
-        RunGap = 20,      -- Auto Cashier on: jeda minimum antar run
+        Interval = 1,
+        RunGap = 0,       -- Auto Cashier on: jeda minimum antar run (0 = langsung)
         Backoff = 60,     -- detik skip setelah gagal
     }
     local CBackoff = {}
