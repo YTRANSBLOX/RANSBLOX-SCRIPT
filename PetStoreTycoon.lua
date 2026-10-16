@@ -3226,6 +3226,143 @@ ConfigGroup:Button({
     end,
 })
 
+-- =====================================================================
+-- AUTO OPEN / CLOSE STORE (open in the morning, close at closing hour, then next day)
+-- Plot attributes: StoreOpen, CustomersInside, CustomersPending, StoreDay
+-- Game hour is read from the topbar "Time" label (e.g. "2:18 PM")
+-- Opening/closing = pressing the StatusBadge button in the topbar
+-- =====================================================================
+do
+    local OC = { on = false, closeHour = 17 }
+    local OStatusP, lastO
+
+    local function ostatus(t)
+        if t == lastO then return end
+        lastO = t
+        pcall(function() OStatusP:SetDesc(t) end)
+    end
+
+    local function plotNow2()
+        local plots = workspace:FindFirstChild("Plots")
+        for _, p in ipairs(plots and plots:GetChildren() or {}) do
+            if p:GetAttribute("OwnerUserId") == lp.UserId then return p end
+        end
+    end
+
+    local function badge()
+        local top = lp.PlayerGui:FindFirstChild("TopbarStandard")
+        if not top then return end
+        for _, g in ipairs(top:GetDescendants()) do
+            if g.Name == "StatusBadge" then return g end
+        end
+    end
+
+    local function gameHour()
+        local top = lp.PlayerGui:FindFirstChild("TopbarStandard")
+        if not top then return end
+        for _, g in ipairs(top:GetDescendants()) do
+            if g:IsA("TextLabel") and g.Name == "Time" then
+                local h, m, ap = g.Text:match("(%d+):(%d+)%s*(%a+)")
+                if h then
+                    h = tonumber(h) % 12
+                    if ap:upper() == "PM" then h += 12 end
+                    return h + tonumber(m) / 60
+                end
+            end
+        end
+    end
+
+    local function pressBadge()
+        local b = badge()
+        if not b then return false end
+        for _, g in ipairs(b:GetDescendants()) do
+            if g:IsA("GuiButton") then
+                for _, sig in ipairs({ "Activated", "MouseButton1Click", "MouseButton1Down", "MouseButton1Up" }) do
+                    pcall(function() firesignal(g[sig]) end)
+                end
+                return true
+            end
+        end
+        return false
+    end
+
+    local PlotRem = remotesFolder:FindFirstChild("Plot")
+    local NextDayR = PlotRem and PlotRem:FindFirstChild("StartNextDay")
+
+    task.spawn(function()
+        local lastAct, closeSince = 0, nil
+        while alive do
+            if OC.on then
+                local plot = plotNow2()
+                local hour = gameHour()
+                if not plot or not hour then
+                    ostatus("Waiting for the plot / clock...")
+                elseif Auto.thiefNow() then
+                    ostatus("Thief on the plot, waiting...")
+                else
+                    local isOpen = plot:GetAttribute("StoreOpen") == true
+                    local inside = (plot:GetAttribute("CustomersInside") or 0) + (plot:GetAttribute("CustomersPending") or 0)
+                    local late = hour >= OC.closeHour
+                    local now = os.clock()
+
+                    if isOpen then
+                        if late then
+                            closeSince = closeSince or now
+                            -- wait for the store to empty, but never longer than 45s
+                            if (inside == 0 or now - closeSince > 45) and now - lastAct >= 5 then
+                                lastAct = now
+                                ostatus("Closing the store...")
+                                log("OPENCLOSE", "close", string.format("hour %.2f inside %d", hour, inside), tostring(pressBadge()))
+                            elseif inside > 0 then
+                                ostatus("Closing time, waiting for customers to leave (" .. inside .. ")")
+                            end
+                        else
+                            closeSince = nil
+                            ostatus(string.format("Store open, closing at %02d:00", OC.closeHour))
+                        end
+                    else
+                        closeSince = nil
+                        if late then
+                            -- day is over: next day first, otherwise it would reopen and close in a loop
+                            if now - lastAct >= 8 then
+                                lastAct = now
+                                ostatus("Day over, starting next day...")
+                                local ok, err = pcall(function() if NextDayR then NextDayR:FireServer() end end)
+                                log("OPENCLOSE", "next day", tostring(ok), tostring(err), "day", tostring(plot:GetAttribute("StoreDay")))
+                            end
+                        elseif now - lastAct >= 4 then
+                            lastAct = now
+                            ostatus("Store closed, opening...")
+                            log("OPENCLOSE", "open", string.format("hour %.2f", hour), tostring(pressBadge()))
+                        end
+                    end
+                end
+            end
+            task.wait(1)
+        end
+    end)
+
+    local OCBox = openSection(Tabs.Cashier, "Auto Open / Close Store", "house")
+    OCBox:Toggle({
+        Title = "Auto Open / Close Store",
+        Desc = "Opens the store in the morning, closes it at closing time once it's empty, then starts the next day.",
+        Value = false,
+        Callback = function(v)
+            OC.on = v
+            ostatus(v and "Watching the store..." or "Stopped")
+        end,
+    })
+    OCBox:Slider({
+        Title = "Closing hour (PM)",
+        Desc = "Game clock hour to close the store (17 = 5:00 PM).",
+        Flag = "CloseHour",
+        Step = 1,
+        Value = { Min = 12, Max = 23, Default = OC.closeHour },
+        Callback = function(v) OC.closeHour = v end,
+    })
+    OStatusP = OCBox:Paragraph({ Title = "Status", Desc = "Ready" })
+end
+
 -- ===== UNLOAD =====
 local function unload()
     if _G.PETSTORETYCOON_Unloaded == Window then return end
