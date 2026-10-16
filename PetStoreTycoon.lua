@@ -1,5 +1,5 @@
 local HUB_NAME = "Pet Store Tycoon"
-local VERSION  = "v2.3"
+local VERSION  = "v2.5"
 local YT_LINK  = "https://www.youtube.com/@RansbloxScript"
 local WEB_LINK = "https://ransblox.net"
 
@@ -77,6 +77,23 @@ local function NC(owner, on)
         noclipConn:Disconnect()
         noclipConn = nil
     end
+end
+
+-- shared movement mode: every feature asks Move.isTp() before it walks.
+-- Walk = legit (humanoid walks, noclip). Teleport = jumps straight to the spot (same height, no walking).
+local Move = { teleport = false }
+function Move.isTp() return Move.teleport end
+function Move.tp(pos, fast)
+    local ch = lp.Character
+    local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+    local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+    if not (hrp and pos) then return false end
+    if hum and hum.Health <= 0 then return false end
+    local cur = hrp.CFrame
+    hrp.CFrame = CFrame.new(pos.X, cur.Position.Y, pos.Z) * (cur - cur.Position)
+    hrp.AssemblyLinearVelocity = Vector3.zero
+    if not fast then task.wait(0.15) end -- let the server see the new position
+    return true
 end
 
 -- log (saved to petstore_tycoon_log.txt for debugging)
@@ -442,6 +459,7 @@ local function goToRegister()
     local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
     local target = regPoint()
     if not (hum and hrp and target) then return false end
+    if Move.isTp() then return Move.tp(target) end
     local tStart = os.clock()
     while cashActive() and not Auto.held() and os.clock() - tStart < 20 do
         local p = hrp.Position
@@ -608,6 +626,7 @@ local function walkBack(pos)
     local hum = ch and ch:FindFirstChildOfClass("Humanoid")
     local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
     if not (hum and hrp and pos) then return "none" end
+    if Move.isTp() then Move.tp(pos) return "home" end
     NC("cashier", true)
     local reason, t = "timeout", os.clock()
     while os.clock() - t < 15 do
@@ -839,9 +858,11 @@ Auto.getPlot = function() return nil end
 Auto.fillSet, Auto.fillStart = {}, nil
 Auto.fillEnd = function(why)
     if next(Auto.fillSet) ~= nil then log("FILL", "end", tostring(why)) end
+    Auto.fillQuota, Auto.fillOrdered = {}, {}
     Auto.fillSet, Auto.fillStart = {}, nil
     Auto.buyWake()
 end
+Auto.fillQuota, Auto.fillOrdered = {}, {} -- boxes still to order per good, noted ONCE when the session starts
 Auto.fillActive = function()
     if not (RCfg.FullRun and Auto.restockOn and RCfg.DoGoods and next(Auto.fillSet) ~= nil) then return false end
     if os.clock() - (Auto.fillStart or 0) > RCfg.FillMax + 30 then Auto.fillEnd("stale") return false end
@@ -919,6 +940,11 @@ if Auto.ready then
         if not (hum and hrp) then return false end
         setNoclip(true)
         local tStart = os.clock()
+        if Move.isTp() then
+            local target = getPos()
+            if not target then return false end
+            return Move.tp(target)
+        end
         while rActive() and os.clock() - tStart < (timeout or 20) do
             local target = getPos()
             if not target then return false end
@@ -1385,6 +1411,24 @@ if Auto.ready then
         if not (hum and hrp) then return false, "no character" end
 
         setNoclip(true)
+        if Move.isTp() then
+            for k = 0, RCfg.PickRetries do
+                if not rActive() then return false, "stopped" end
+                if box:GetAttribute("Carrier") == lp.UserId then return true end
+                if not box.Parent then return false, "box vanished" end
+                local tp = posOf(box)
+                local off = CFrame.Angles(0, math.rad(90 * k), 0):VectorToWorldSpace(Vector3.new(RCfg.PickDist, 0, 0))
+                Move.tp(Vector3.new(tp.X + off.X, 0, tp.Z + off.Z))
+                local t1 = os.clock()
+                while rActive() and os.clock() - t1 < 1.2 do
+                    remoteFor(box, "PickUpBox"):FireServer(key)
+                    task.wait(0.25)
+                    if box:GetAttribute("Carrier") == lp.UserId then return true end
+                    if not box.Parent then return false, "box vanished" end
+                end
+            end
+            return false, "pickup not confirmed"
+        end
         local tStart, lastFire, lastMove = os.clock(), 0, 0
         local attempt, arrivedAt, baseDir = 0, nil, nil
 
@@ -1593,6 +1637,12 @@ if Auto.ready then
                 box = nil
             end
 
+            -- customers first: when someone is waiting, pause between boxes (never with a box in hand)
+            if not box and worked and RCfg.Priority == "Customers first" and Auto.yieldTask() then
+                yielded = true
+                rstatus("Customer waiting, restock paused")
+                break
+            end
             -- 2. otherwise grab the next box: first one that still fits the current shelf
             if not box then
                 local nxt = curShelf and nearestFreeBox(curShelf) or nil
@@ -1685,7 +1735,7 @@ if Auto.ready then
                 -- no customer waiting = go right away (no idle delay, no gap between runs)
                 local canGo = Auto.canLeaveDesk()
                 -- full restock already started: customers wait, we finish the job first
-                if not canGo and Auto.fillActive() and not Auto.thiefNow() and not deskHolds.care and not deskHolds.clean then canGo = true end
+                if not canGo and Auto.fillActive() and not Auto.thiefNow() and not deskHolds.care and not deskHolds.clean and RCfg.Priority ~= "Customers first" then canGo = true end
                 if okH and has and not canGo then
                     rstatus(Auto.yield() and "Customer waiting, restock paused" or "Waiting for a quiet moment...")
                 elseif okH and has then
@@ -1858,6 +1908,43 @@ if Auto.ready then
         return need, stock, homes, item, goodKey
     end
 
+    -- how full this good's shelves are (0..100): slots holding it that cannot take another box,
+    -- out of every slot that holds it or is still empty
+    local function fillPct(d)
+        local plot = AP.getPlot()
+        local items = plot and plot:FindFirstChild("Items")
+        if not items then return 0 end
+        local item = GC.find(d.cat, d.name)
+        if not item then return 0 end
+        local goodKey = GC.keyOf(d.cat, d.name)
+        local boxQty = SR.boxQuantityOf(item)
+        local goods = PDC.getGoods()
+        local data = typeof(goods) == "table" and goods.Shelves or {}
+        local total, full = 0, 0
+        for _, sh in ipairs(items:GetChildren()) do
+            local itemId = sh:IsA("Model") and sh:GetAttribute("ItemId")
+            if itemId and SR.isShelf(sh) and SR.acceptsGood(sh, item) then
+                local sd = typeof(data) == "table" and data[itemId] or nil
+                for _, sl in ipairs(SR.slotModels(sh)) do
+                    local idx = sl:GetAttribute("SlotIndex")
+                    if idx and SR.goodsPartOf(sl) then
+                        local rec = typeof(sd) == "table" and sd[tostring(idx)] or nil
+                        local good = typeof(rec) == "table" and typeof(rec.Good) == "string" and rec.Good or nil
+                        local qty = typeof(rec) == "table" and typeof(rec.Qty) == "number" and rec.Qty or 0
+                        if good == goodKey or good == nil then
+                            total += 1
+                            if good == goodKey and qty > 0
+                                and not GR.targetable({ good = good, qty = qty }, goodKey, boxQty) then
+                                full += 1
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        return total > 0 and (full / total * 100) or 0
+    end
+
     -- how many boxes to order. Second value = true when there is nowhere at all to put this good.
     local function planBuy(d)
         local need, stock, homes, item, goodKey = shelfNeed(d)
@@ -1924,12 +2011,18 @@ if Auto.ready then
                             Auto.fillSet[key] = nil -- this good is full
                         else
                             allFull = false
-                            local n = room - countBoxes(d.cat, d.name)
+                            local left = (Auto.fillQuota[key] or math.huge) - (Auto.fillOrdered[key] or 0)
+                            if left <= 0 then
+                                -- noted target reached: no more ordering for this good, even if customers emptied more shelves meanwhile
+                                Auto.fillSet[key] = nil
+                            end
+                            local n = math.min(room - countBoxes(d.cat, d.name), left)
                             for i = 1, n do
                                 if not bActive() then blocked = true return end
                                 if buyOnce(d.cat, d.name) then
                                     bought += 1
                                     bstatus(("Full restock: buying %s (%d/%d)"):format(label, i, n))
+                                    Auto.fillOrdered[key] = (Auto.fillOrdered[key] or 0) + 1
                                     task.wait(BCfg.BuyDelay)
                                 else
                                     blocked = true
@@ -1972,10 +2065,26 @@ if Auto.ready then
                 local key = d.cat .. "/" .. d.name
                 if (Cooldown[key] or 0) < os.clock() and not Refused[key] then
                     local n, noRoom, item, goodKey, want = planBuy(d)
+                    -- refill only when this good's shelves dropped below the slider
+                    if not noRoom and (want or 0) > 0 and not Auto.fillSet[key]
+                        and fillPct(d) >= (BCfg.Threshold or 70) then
+                        n, want = 0, 0
+                    end
                     if (want or 0) > 0 and not noRoom and RCfg.FullRun and Auto.restockOn and RCfg.DoGoods then
                         -- start / join the full restock session: restock keeps going until this good is full
                         if next(Auto.fillSet) == nil then Auto.fillStart = os.clock() end
+                        if not Auto.fillSet[key] then
+                            -- note the target ONCE: boxes needed to fill this good right now.
+                            -- Customers buying stock while we work do not move it.
+                            local needS, _, homesS = shelfNeed(d)
+                            Auto.fillQuota[key] = math.max((needS or 0) + (homesS or 0) - countBoxes(d.cat, d.name), 0)
+                            Auto.fillOrdered[key] = 0
+                            log("FILL", "target", label, Auto.fillQuota[key])
+                        end
                         Auto.fillSet[key] = label
+                    end
+                    if Auto.fillSet[key] then
+                        n = math.min(n, (Auto.fillQuota[key] or n) - (Auto.fillOrdered[key] or 0))
                     end
                     if noRoom then
                         full = true
@@ -1986,6 +2095,7 @@ if Auto.ready then
                             if buyOnce(d.cat, d.name) then
                                 bought += 1
                                 bstatus(("Buying %s (%d/%d)"):format(label, i, n))
+                                if Auto.fillSet[key] then Auto.fillOrdered[key] = (Auto.fillOrdered[key] or 0) + 1 end
                                 task.wait(BCfg.BuyDelay)
                             else
                                 refused = true
@@ -2612,6 +2722,17 @@ RestockBox:Toggle({
     Value = false,
     Callback = function(v) Auto.RCfg.Reassign = v end,
 })
+RestockBox:Dropdown({
+    Title = "Priority",
+    Desc = "Finish restock first: it completes the whole run before the cashier takes over. "
+        .. "Serve customers first: when a customer is waiting it pauses between boxes and lets the cashier serve, then continues. Also applies to Auto Care.",
+    Flag = "RestockPriority",
+    Values = { "Finish restock first", "Serve customers first" },
+    Value = "Finish restock first",
+    Callback = function(v)
+        Auto.RCfg.Priority = pickValue(v):find("customers") and "Customers first" or "Restock first"
+    end,
+})
 local RestockStatusP = RestockBox:Paragraph({ Title = "Status", Desc = "Ready" })
 setRestockStatus = function(text)
     pcall(function() RestockStatusP:SetDesc(text) end)
@@ -2661,6 +2782,18 @@ BuyBox:Dropdown({
     Value = "Shelves empty",
     Callback = function(v)
         Auto.BCfg.Mode = pickValue(v)
+        Auto.buyWake()
+    end,
+})
+BuyBox:Slider({
+    Title = "Refill when shelves below (%)",
+    Desc = "A good is only ordered again when its shelves are less than this full. Once it starts, the box target is noted and "
+        .. "filled to the top; customers buying meanwhile don't extend that run. 100 = refill as soon as anything is missing.",
+    Flag = "BuyThreshold",
+    Step = 5,
+    Value = { Min = 10, Max = 100, Default = 70 },
+    Callback = function(v)
+        Auto.BCfg.Threshold = v
         Auto.buyWake()
     end,
 })
@@ -2872,6 +3005,10 @@ do
         local stand = Vector3.new(center.X, p0.Y, center.Z) + dir * radius
 
         NC("care", true)
+        if Move.isTp() then
+            NC("care", false)
+            return Move.tp(stand)
+        end
         local tw0, lastPos, lastMove = os.clock(), p0, os.clock()
         while active() and os.clock() - tw0 < 30 do
             local p = hrp.Position
@@ -3121,7 +3258,11 @@ do
     -- thief on the plot = restock / care / cashier / buying all step aside
     local baseYield = Auto.yield
     Auto.yield = function() return baseYield() or (Thief.on and liveThieves() > 0) end
-    Auto.yieldTask = function() return (Thief.on and liveThieves() > 0) and true or false end
+    Auto.yieldTask = function()
+        if Thief.on and liveThieves() > 0 then return true end
+        if Auto.RCfg and Auto.RCfg.Priority == "Customers first" and baseYield() then return true end
+        return false
+    end
     local baseLeave = Auto.canLeaveDesk
     Auto.canLeaveDesk = function()
         if Thief.on and (deskHolds.thief or liveThieves() > 0) then return false end
@@ -3250,7 +3391,7 @@ do
             local h, hu = hrpOf(), humOf()
             if not (h and hu) then return false, "no character" end
             if (bat.Position - h.Position).Magnitude > TCfg.GrabRange then
-                hu:MoveTo(bat.Position)
+                if Move.isTp() then Move.tp(bat.Position) else hu:MoveTo(bat.Position) end
             else
                 hu:MoveTo(h.Position)
                 if os.clock() - lastFire > 0.4 then
@@ -3285,7 +3426,7 @@ do
             local tp = posOf(m)
             local flat = Vector3.new(tp.X - h.Position.X, 0, tp.Z - h.Position.Z)
             if flat.Magnitude > TCfg.Range then
-                hu:MoveTo(tp)
+                if Move.isTp() then Move.tp(tp - flat.Unit * 3, true) else hu:MoveTo(tp) end
                 task.wait(0.1)
             else
                 hu:MoveTo(h.Position)
@@ -3508,6 +3649,10 @@ do
         local hum = ch and ch:FindFirstChildOfClass("Humanoid")
         local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
         if not (hum and hrp) then return false end
+        if Move.isTp() then
+            local okT, target = pcall(function() return m:GetPivot().Position end)
+            return okT and m.Parent ~= nil and Move.tp(target)
+        end
         local t0, lastPos, lastMove = os.clock(), hrp.Position, os.clock()
         while active() and m.Parent and os.clock() - t0 < CLCfg.WalkTimeout do
             local okP, target = pcall(function() return m:GetPivot().Position end)
@@ -3693,6 +3838,18 @@ do
 end
 
 -- ===== MISC TAB =====
+local MoveBox = openSection(Tabs.Misc, "Movement", "footprints")
+MoveBox:Dropdown({
+    Title = "Movement mode",
+    Desc = "Walk (legit): the character walks everywhere, safest. Teleport (fast): jumps straight to the register, boxes, shelves, tanks, mess and the sign, no walking in between. Applies to every feature.",
+    Flag = "MoveMode",
+    Values = { "Walk (legit)", "Teleport (fast)" },
+    Value = "Walk (legit)",
+    Callback = function(v)
+        Move.teleport = pickValue(v):find("Teleport") ~= nil
+    end,
+})
+
 local UIBox = section(Tabs.Misc, "Interface", "palette")
 
 UIBox:Toggle({
@@ -3848,6 +4005,9 @@ do
         NC("openclose", true)
         -- opening needs to be 2 studs closer than closing, otherwise the server rejects OpenStore as too far
         local stopDist = (mode == "open") and math.max(2, STOP_DIST - 2) or STOP_DIST
+        if Move.isTp() and (hrp.Position - sign:GetPivot().Position).Magnitude > stopDist then
+            Move.tp(sign:GetPivot().Position)
+        end
         local reached, t = false, os.clock()
         while alive and OC.on and os.clock() - t < 15 do
             if Auto.thiefNow() then break end
