@@ -1104,19 +1104,39 @@ if Auto.ready then
         return room, waiting, tanks
     end
 
-    -- how many of this pet are already living in your tanks (like the shelf stock of a good)
-    Auto.fishStock = function(petType, petName)
-        local n = 0
-        local okG, pets = pcall(PDC.getPets)
-        if okG and typeof(pets) == "table" then
-            for _, p in pairs(pets) do
-                if typeof(p) == "table" and p.State == "Enclosure" and p.Enclosure
-                    and p.Type == petType and p.Name == petName then
-                    n += 1
-                end
+    Auto.fishSpace = petSpaceOf
+
+    -- per-tank count for one pet type: how many fish to order right now.
+    --   "Tank empty": only tanks with NO fish in them count, each one is filled to its full capacity
+    --   "Always":     every free spot in every tank counts
+    -- boxes already waiting (any fish of that type) and what this cycle already ordered are subtracted.
+    -- returns: fish to order, number of tanks that accept this pet type
+    Auto.fishPlan = function(petType, petName, pledged, mode)
+        local used = usageMap()
+        local plot = AP.getPlot()
+        local folder = plot and plot:FindFirstChild("Items")
+        local need = petSpaceOf(petType, petName)
+        local tanks, emptySpace, freeSpace = 0, 0, 0
+        for _, m in ipairs(folder and folder:GetChildren() or {}) do
+            local id = m:IsA("Model") and m:GetAttribute("ItemId")
+            local cap = m:IsA("Model") and tonumber(m:GetAttribute("Capacity"))
+            local accepts = m:GetAttribute("AcceptsType")
+            if id and cap and (accepts == nil or accepts == petType) then
+                tanks += 1
+                local u = used[id] or 0
+                freeSpace += math.max(cap - u, 0)
+                if u == 0 then emptySpace += cap end
             end
         end
-        return n
+        local waitingSpace = 0
+        for _, b in ipairs(getBoxes()) do
+            if isPetBox(b) and b:GetAttribute("PetType") == petType then
+                waitingSpace += petSpaceOf(petType, b:GetAttribute("PetName"))
+            end
+        end
+        local pool = (mode == "Always") and freeSpace or emptySpace
+        local space = math.max(pool - waitingSpace - (pledged or 0), 0)
+        return math.floor(space / need), tanks
     end
 
     -- nearest free fish box that some tank can still take (all tanks full -> nothing is picked up)
@@ -1867,8 +1887,7 @@ end
 local Fish = { on = false, ready = false }
 local FCfg = {
     Types = { "Fish" },  -- nil = semua tipe pet yang kebuka di level lo
-    Mode = "Tanks empty", -- Buy when: "Tanks empty" / "Below minimum" / "Always"
-    MinRoom = 3,         -- Below minimum: beli kalau tank masih muat segini banyak ikan itu
+    Mode = "Tank empty", -- Buy when: "Tank empty" (isi tank yang kosong sampai penuh) / "Always"
     CashReserve = 500,   -- jangan belanja kalau cash jadi di bawah ini
     BuyDelay = 0.4,      -- detik antar pembelian
     Cooldown = 6,        -- detik ikan dibiarin setelah dibeli, biar box-nya sempet muncul
@@ -2000,30 +2019,19 @@ do
             return okC and (res == true or after < before)
         end
 
-        -- how many of this fish to order, by tank capacity (same idea as Auto Buy goods):
-        --   Tanks empty:   none of that fish lives in any tank -> fill the room it has
-        --   Below minimum: the tanks can take at least MinRoom more of it -> fill the room
-        --   Always:        refills as soon as any tank has room
-        -- boxes already waiting are subtracted. Second value = no tank accepts it at all.
-        local function planBuy(r)
-            local okR, room, waiting, tanks = pcall(Auto.fishRoom, r.type, r.name)
+        -- how many of this fish to order, counted per tank (see Auto.fishPlan).
+        -- Second value = no tank accepts it at all.
+        local function planBuy(r, pledged)
+            local okR, n, tanks = pcall(Auto.fishPlan, r.type, r.name, pledged, FCfg.Mode)
             if not okR then return 0 end
             if tanks == 0 then return 0, true end
-            local want
-            if FCfg.Mode == "Tanks empty" then
-                local stock = Auto.fishStock(r.type, r.name)
-                want = (stock == 0) and room or 0
-            elseif FCfg.Mode == "Below minimum" then
-                want = (room >= FCfg.MinRoom) and room or 0
-            else
-                want = room
-            end
-            return math.max(want - waiting, 0), false
+            return n, false
         end
 
         local warnedFish = {}
         local function cycle()
             local any, bought, refused, noCash, full = false, 0, false, false, false
+            local pledged = {} -- space already ordered this cycle, per pet type (its boxes aren't in the world yet)
             for label in pairs(Selected) do
                 if not (alive and Fish.on) then return end
                 local r = Map[label]
@@ -2031,7 +2039,7 @@ do
                     any = true
                     local key = r.type .. "/" .. r.name
                     if (Cooldown[key] or 0) < os.clock() and not Refused[key] then
-                        local n, noTank = planBuy(r)
+                        local n, noTank = planBuy(r, pledged[r.type])
                         if noTank then
                             full = true
                             fstatus("No tank accepts " .. r.name)
@@ -2055,6 +2063,7 @@ do
                                 end
                                 if buyOnce(r) then
                                     bought += 1
+                                    pledged[r.type] = (pledged[r.type] or 0) + Auto.fishSpace(r.type, r.name)
                                     fstatus(("Buying %s (%d/%d)"):format(label, i, n))
                                     task.wait(FCfg.BuyDelay)
                                 else
@@ -2456,7 +2465,7 @@ Tabs.Fish:Paragraph({
 local FishBox = openSection(Tabs.Fish, "Auto Buy Fish", "fish")
 FishBox:Toggle({
     Title = "Auto Buy Fish",
-    Desc = "Orders the picked fish based on your tank space, not on a timer. Turn on Auto Restock with \"Fish tanks\" picked so the boxes get placed.",
+    Desc = "Orders the picked fish based on how many tanks you have and their size, not on a timer. Turn on Auto Restock with \"Fish tanks\" picked so the boxes get placed.",
     Value = false,
     Callback = function(v)
         if v and not Fish.ready then
@@ -2486,35 +2495,15 @@ local FishDropdown = FishBox:Dropdown({
 })
 FishBox:Dropdown({
     Title = "Buy when",
-    Desc = "Works on all tanks. Tanks empty: none of that fish is in any tank, then it fills the room. "
-        .. "Below minimum: the tanks can take at least the slider amount of it. "
-        .. "Always: refills as soon as any tank has room.",
+    Desc = "Counted per tank from your real tank sizes. Tank empty: a tank with no fish in it gets filled to its full capacity. "
+        .. "Always: fills every free spot as soon as there is one.",
     Flag = "FishBuyWhen",
-    Values = { "Tanks empty", "Below minimum", "Always" },
-    Value = "Tanks empty",
+    Values = { "Tank empty", "Always" },
+    Value = "Tank empty",
     Callback = function(v)
         Fish.FCfg.Mode = pickValue(v)
         Fish.wake()
     end,
-})
-FishBox:Slider({
-    Title = "Room needed",
-    Desc = "Only used by Below minimum: buys once the tanks can take this many of the fish.",
-    Flag = "FishMinRoom",
-    Step = 1,
-    Value = { Min = 1, Max = 20, Default = Fish.FCfg.MinRoom },
-    Callback = function(v)
-        Fish.FCfg.MinRoom = v
-        Fish.wake()
-    end,
-})
-FishBox:Slider({
-    Title = "Cash reserve",
-    Desc = "Never spend below this much cash.",
-    Flag = "FishReserve",
-    Step = 100,
-    Value = { Min = 0, Max = 10000, Default = Fish.FCfg.CashReserve },
-    Callback = function(v) Fish.FCfg.CashReserve = v end,
 })
 local FishStatusP = FishBox:Paragraph({ Title = "Status", Desc = "Ready" })
 setFishStatus = function(text)
