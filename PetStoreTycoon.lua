@@ -804,8 +804,7 @@ local RCfg = {
     RunGap = 0,            -- cashier on: minimum seconds between two restock runs (0 = none)
 }
 local BCfg = {
-    Mode = "Shelves empty", -- Buy when: "Shelves empty" / "Below minimum" / "Always"
-    MinSlots = 3,          -- Below minimum: buy once this many slots can take more of the good
+    Mode = "Shelves empty", -- Buy when: "Shelves empty" / "Always"
     BuyDelay = 0.4,        -- seconds between purchases
     Cooldown = 6,          -- seconds to leave a good alone after buying it, so its boxes can show up
     Safety = 15,           -- seconds between quiet local re-checks (no remotes) in case an event was missed
@@ -1789,8 +1788,6 @@ if Auto.ready then
             want = homes -- not on any shelf yet: buy enough to claim every free slot, not just 1
         elseif BCfg.Mode == "Shelves empty" then
             want = (stock == 0) and need or 0
-        elseif BCfg.Mode == "Below minimum" then
-            want = (need >= BCfg.MinSlots) and need or 0
         else
             want = need -- Always
         end
@@ -2510,24 +2507,12 @@ local BuyDropdown = BuyBox:Dropdown({
 BuyBox:Dropdown({
     Title = "Buy when",
     Desc = "Works on all shelves. Shelves empty: none of that good is left on any shelf. "
-        .. "Below minimum: the slots that can take more of it reach the slider. "
         .. "Always: refills as soon as any slot can take more.",
     Flag = "BuyWhen",
-    Values = { "Shelves empty", "Below minimum", "Always" },
+    Values = { "Shelves empty", "Always" },
     Value = "Shelves empty",
     Callback = function(v)
         Auto.BCfg.Mode = pickValue(v)
-        Auto.buyWake()
-    end,
-})
-BuyBox:Slider({
-    Title = "Slots needing stock",
-    Desc = "Only used by Below minimum: buys once this many slots can take more of the good.",
-    Flag = "BuyMinSlots",
-    Step = 1,
-    Value = { Min = 1, Max = 20, Default = Auto.BCfg.MinSlots },
-    Callback = function(v)
-        Auto.BCfg.MinSlots = v
         Auto.buyWake()
     end,
 })
