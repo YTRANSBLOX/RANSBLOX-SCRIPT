@@ -1106,16 +1106,15 @@ if Auto.ready then
 
     Auto.fishSpace = petSpaceOf
 
-    -- per-tank count for one pet type: how many fish to order right now.
-    --   "Tank empty": only tanks with NO fish in them count, each one is filled to its full capacity
+    -- free tank space (in fish spots) for one pet type, counted per tank:
+    --   "Tank empty": only tanks with NO fish in them count, each one with its full capacity
     --   "Always":     every free spot in every tank counts
-    -- boxes already waiting (any fish of that type) and what this cycle already ordered are subtracted.
-    -- returns: fish to order, number of tanks that accept this pet type
-    Auto.fishPlan = function(petType, petName, pledged, mode)
+    -- boxes already waiting (any fish of that type) are subtracted.
+    -- returns: space still to fill, number of tanks that accept this pet type
+    Auto.fishPool = function(petType, mode)
         local used = usageMap()
         local plot = AP.getPlot()
         local folder = plot and plot:FindFirstChild("Items")
-        local need = petSpaceOf(petType, petName)
         local tanks, emptySpace, freeSpace = 0, 0, 0
         for _, m in ipairs(folder and folder:GetChildren() or {}) do
             local id = m:IsA("Model") and m:GetAttribute("ItemId")
@@ -1135,8 +1134,7 @@ if Auto.ready then
             end
         end
         local pool = (mode == "Always") and freeSpace or emptySpace
-        local space = math.max(pool - waitingSpace - (pledged or 0), 0)
-        return math.floor(space / need), tanks
+        return math.max(pool - waitingSpace, 0), tanks
     end
 
     -- nearest free fish box that some tank can still take (all tanks full -> nothing is picked up)
@@ -2019,66 +2017,100 @@ do
             return okC and (res == true or after < before)
         end
 
-        -- how many of this fish to order, counted per tank (see Auto.fishPlan).
-        -- Second value = no tank accepts it at all.
-        local function planBuy(r, pledged)
-            local okR, n, tanks = pcall(Auto.fishPlan, r.type, r.name, pledged, FCfg.Mode)
-            if not okR then return 0 end
-            if tanks == 0 then return 0, true end
-            return n, false
+        -- One cycle. Fish are grouped by pet type (each type has its own tanks). Inside a group the free
+        -- tank space is shared out one fish at a time, round and round over the picked fish (cheapest first),
+        -- so picking 4 fish for 1 tank of 10 spots gives 3/3/2/2 instead of 10 of just one kind.
+        local warnedFish = {}
+        local function buyList(r, n)
+            local key = r.type .. "/" .. r.name
+            local label = r.type .. "/" .. r.name
+            local got, refused, noCash = 0, false, false
+            for i = 1, n do
+                if not (alive and Fish.on) then return got, refused, noCash, true end
+                local cash = lp:GetAttribute("Cash") or 0
+                if cash - r.price < FCfg.CashReserve then
+                    noCash = true
+                    Refused[key] = true -- retried when cash goes up
+                    break
+                end
+                if buyOnce(r) then
+                    got += 1
+                    fstatus(("Buying %s (%d/%d)"):format(r.name, i, n))
+                    task.wait(FCfg.BuyDelay)
+                else
+                    refused = true
+                    Refused[key] = true
+                    fstatus("Purchase refused (not enough cash?): " .. r.name)
+                    log("FISH", "refused", label)
+                    break
+                end
+            end
+            Cooldown[key] = os.clock() + FCfg.Cooldown
+            return got, refused, noCash, false
         end
 
-        local warnedFish = {}
         local function cycle()
             local any, bought, refused, noCash, full = false, 0, false, false, false
-            local pledged = {} -- space already ordered this cycle, per pet type (its boxes aren't in the world yet)
+            local groups = {}
             for label in pairs(Selected) do
-                if not (alive and Fish.on) then return end
                 local r = Map[label]
                 if r then
                     any = true
-                    local key = r.type .. "/" .. r.name
-                    if (Cooldown[key] or 0) < os.clock() and not Refused[key] then
-                        local n, noTank = planBuy(r, pledged[r.type])
-                        if noTank then
-                            full = true
-                            fstatus("No tank accepts " .. r.name)
-                            if (warnedFish[key] or 0) < os.clock() then
-                                warnedFish[key] = os.clock() + 120
-                                log("FISH", "no tank", label)
-                                WindUI:Notify({
-                                    Title = HUB_NAME,
-                                    Content = r.name .. ": you have no " .. r.type .. " tank to put it in. Not buying.",
-                                    Icon = "info", Duration = 8,
-                                })
-                            end
-                        elseif n > 0 then
-                            for i = 1, n do
-                                if not (alive and Fish.on) then return end
-                                local cash = lp:GetAttribute("Cash") or 0
-                                if cash - r.price < FCfg.CashReserve then
-                                    noCash = true
-                                    Refused[key] = true -- retried when cash goes up
-                                    break
+                    groups[r.type] = groups[r.type] or {}
+                    table.insert(groups[r.type], r)
+                end
+            end
+
+            for ptype, list in pairs(groups) do
+                table.sort(list, function(a, b)
+                    if a.price ~= b.price then return a.price < b.price end
+                    return a.name < b.name
+                end)
+                local okP, space, tanks = pcall(Auto.fishPool, ptype, FCfg.Mode)
+                if okP then
+                    if tanks == 0 then
+                        full = true
+                        fstatus("No tank accepts " .. ptype)
+                        if (warnedFish[ptype] or 0) < os.clock() then
+                            warnedFish[ptype] = os.clock() + 120
+                            log("FISH", "no tank", ptype)
+                            WindUI:Notify({
+                                Title = HUB_NAME,
+                                Content = "You have no " .. ptype .. " tank to put them in. Not buying.",
+                                Icon = "info", Duration = 8,
+                            })
+                        end
+                    else
+                        -- share the space: one fish per picked fish per round
+                        local counts, remaining, progress = {}, space, true
+                        while progress do
+                            progress = false
+                            for _, r in ipairs(list) do
+                                local key = r.type .. "/" .. r.name
+                                if (Cooldown[key] or 0) < os.clock() and not Refused[key] then
+                                    local need = Auto.fishSpace(r.type, r.name)
+                                    if need <= remaining then
+                                        remaining -= need
+                                        counts[key] = (counts[key] or 0) + 1
+                                        progress = true
+                                    end
                                 end
-                                if buyOnce(r) then
-                                    bought += 1
-                                    pledged[r.type] = (pledged[r.type] or 0) + Auto.fishSpace(r.type, r.name)
-                                    fstatus(("Buying %s (%d/%d)"):format(label, i, n))
-                                    task.wait(FCfg.BuyDelay)
-                                else
-                                    refused = true
-                                    Refused[key] = true
-                                    fstatus("Purchase refused (not enough cash?): " .. label)
-                                    log("FISH", "refused", label)
-                                    break
-                                end
                             end
-                            Cooldown[key] = os.clock() + FCfg.Cooldown
+                        end
+                        for _, r in ipairs(list) do
+                            local n = counts[r.type .. "/" .. r.name] or 0
+                            if n > 0 then
+                                local got, ref, nc, stop = buyList(r, n)
+                                if stop then return end
+                                bought += got
+                                refused = refused or ref
+                                noCash = noCash or nc
+                            end
                         end
                     end
                 end
             end
+
             if not any then
                 fstatus("Pick fish in the dropdown")
             elseif noCash and bought == 0 then
