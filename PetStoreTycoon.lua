@@ -3363,6 +3363,130 @@ do
     OStatusP = OCBox:Paragraph({ Title = "Status", Desc = "Ready" })
 end
 
+-- =====================================================================
+-- AUTO CONFIRM SET PRICE (restock gets stuck when the "Set price" window pops up)
+-- Finds the "Set price" window in PlayerGui and presses its Confirm button (market price stays).
+-- Only runs while Auto Restock is on, so it never touches prices you set by hand.
+-- =====================================================================
+do
+    local PC = { on = true }
+    local PStatusP, lastP
+    local titleLabel          -- cached "Set price" TextLabel
+    local lastScan = 0
+    local confirmed = 0
+
+    local function pstatus(t)
+        if t == lastP then return end
+        lastP = t
+        pcall(function() PStatusP:SetDesc(t) end)
+    end
+
+    local function isTitle(g)
+        return (g:IsA("TextLabel") or g:IsA("TextButton"))
+            and type(g.Text) == "string" and g.Text:lower():gsub("%s+", " ") == "set price"
+    end
+
+    local function scanForTitle()
+        lastScan = os.clock()
+        local n = 0
+        for _, g in ipairs(lp.PlayerGui:GetDescendants()) do
+            n += 1
+            if n % 800 == 0 then task.wait() end -- yield so the phone doesn't freeze
+            if isTitle(g) then return g end
+        end
+    end
+
+    -- the title and every parent up to the ScreenGui must be visible
+    local function shown(g)
+        local cur = g
+        while cur and cur ~= lp.PlayerGui do
+            if cur:IsA("GuiObject") and not cur.Visible then return false end
+            if cur:IsA("ScreenGui") and not cur.Enabled then return false end
+            cur = cur.Parent
+        end
+        return g.AbsoluteSize.X > 0
+    end
+
+    local function findConfirm(title)
+        local root = title:FindFirstAncestorWhichIsA("ScreenGui") or lp.PlayerGui
+        for _, g in ipairs(root:GetDescendants()) do
+            if (g:IsA("TextLabel") or g:IsA("TextButton")) and g.Text == "Confirm" then
+                if g:IsA("GuiButton") then return g end
+                local up = g:FindFirstAncestorWhichIsA("GuiButton")
+                if up then return up end
+                return g
+            end
+        end
+    end
+
+    local function press(btn)
+        if btn:IsA("GuiButton") then
+            for _, sig in ipairs({ "Activated", "MouseButton1Click", "MouseButton1Down", "MouseButton1Up" }) do
+                pcall(function() firesignal(btn[sig]) end)
+            end
+            return true
+        end
+        return false
+    end
+
+    -- remember the window as soon as the game creates it
+    table.insert(Connections, lp.PlayerGui.DescendantAdded:Connect(function(g)
+        if not titleLabel and (g:IsA("TextLabel") or g:IsA("TextButton")) then
+            task.defer(function() if isTitle(g) then titleLabel = g end end)
+        end
+    end))
+
+    task.spawn(function()
+        local seenAt, tries = nil, 0
+        while alive do
+            if PC.on and Auto.restockOn then
+                if titleLabel and not titleLabel:IsDescendantOf(game) then titleLabel = nil end
+                if not titleLabel and os.clock() - lastScan > 5 then titleLabel = scanForTitle() end
+
+                if titleLabel and shown(titleLabel) then
+                    seenAt = seenAt or os.clock()
+                    if os.clock() - seenAt >= 0.3 then
+                        local btn = findConfirm(titleLabel)
+                        if btn and press(btn) then
+                            tries += 1
+                            if tries == 1 then
+                                confirmed += 1
+                                log("PRICE", "confirm pressed", btn:GetFullName())
+                                pstatus("Confirmed price window (" .. confirmed .. ")")
+                            elseif tries == 4 then
+                                log("PRICE", "window still open after 4 presses")
+                                pstatus("Price window won't close, check the log")
+                            end
+                        else
+                            pstatus("Price window open, Confirm button not found")
+                        end
+                        task.wait(0.6)
+                    end
+                else
+                    seenAt, tries = nil, 0
+                    if confirmed == 0 then pstatus("Watching for the price window...") end
+                end
+            else
+                seenAt, tries = nil, 0
+            end
+            task.wait(0.25)
+        end
+    end)
+
+    local PBox = openSection(Tabs.Stock, "Auto Confirm Price", "check")
+    PBox:Toggle({
+        Title = "Auto Confirm Price",
+        Desc = "When Auto Restock is on and the Set price window pops up, it presses Confirm so you don't get stuck.",
+        Value = true,
+        Flag = "AutoConfirmPrice",
+        Callback = function(v)
+            PC.on = v
+            pstatus(v and "Watching for the price window..." or "Off")
+        end,
+    })
+    PStatusP = PBox:Paragraph({ Title = "Status", Desc = "Ready" })
+end
+
 -- ===== UNLOAD =====
 local function unload()
     if _G.PETSTORETYCOON_Unloaded == Window then return end
