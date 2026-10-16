@@ -826,6 +826,7 @@ Auto.fishRoom = nil   -- (petType, petName) -> room, waiting boxes, tanks; set b
 Auto.getPlot = function() return nil end
 local setRestockStatus = function() end
 local setBuyStatus = function() end
+local setScanText = function() end
 
 if Auto.ready then
     local AP, GC, SR, GR, GCO, PDC, LC = Mods.AP, Mods.GC, Mods.SR, Mods.GR, Mods.GCO, Mods.PDC, Mods.LC
@@ -1000,6 +1001,40 @@ if Auto.ready then
     local function boxLabel(b)
         return tostring(b:GetAttribute("GoodName") or b:GetAttribute("PetName")
             or b:GetAttribute("Pet") or b:GetAttribute("PetKey") or b.Name)
+    end
+
+    -- ===== shelf scan (what the Shelf scan line in the GUI shows) =====
+    -- shelves you own, how many slots are filled, how many are empty, how many loose boxes are waiting
+    local function shelfSummary()
+        local plot = AP.getPlot()
+        local folder = plot and plot:FindFirstChild("Items")
+        if not folder then return "No plot found yet" end
+        local goods = PDC.getGoods()
+        local data = typeof(goods) == "table" and goods.Shelves or {}
+        local shelves, slots, empty, partial = 0, 0, 0, 0
+        for _, sh in ipairs(folder:GetChildren()) do
+            local id = sh:IsA("Model") and sh:GetAttribute("ItemId")
+            if id and SR.isShelf(sh) then
+                shelves += 1
+                local d = typeof(data) == "table" and data[id] or nil
+                for _, sl in ipairs(SR.slotModels(sh)) do
+                    local idx = sl:GetAttribute("SlotIndex")
+                    if idx then
+                        slots += 1
+                        local rec = typeof(d) == "table" and d[tostring(idx)] or nil
+                        local good = typeof(rec) == "table" and typeof(rec.Good) == "string" and rec.Good or nil
+                        local qty = typeof(rec) == "table" and typeof(rec.Qty) == "number" and rec.Qty or 0
+                        if not good or qty <= 0 then empty += 1 else partial += 1 end
+                    end
+                end
+            end
+        end
+        local waiting = 0
+        for _, b in ipairs(getBoxes()) do
+            if b:GetAttribute("Carrier") == nil then waiting += 1 end
+        end
+        return ("Shelves: %d  |  Slots in use: %d/%d  |  Empty slots: %d  |  Boxes waiting: %d")
+            :format(shelves, partial, slots, empty, waiting)
     end
 
     -- pick up / drop: use the Pets remote if the game has one, else the Goods one
@@ -1545,8 +1580,17 @@ if Auto.ready then
         local busy = false
         local lastClear = os.clock()
         local lastWarn = 0
+        local lastScan, lastRunText = 0, ""
         while alive do
             task.wait(0.3)
+            -- keep the Shelf scan line fresh while restock or buy is on
+            if (Auto.restockOn or Auto.buyOn) and os.clock() - lastScan > 1.5 then
+                lastScan = os.clock()
+                local okS, txt = pcall(shelfSummary)
+                if okS then
+                    setScanText(txt .. (lastRunText ~= "" and ("  |  " .. lastRunText) or ""))
+                end
+            end
             if Auto.restockOn and not busy then
                 if RCfg.DoGoods and os.clock() - lastWarn > 5 then
                     lastWarn = os.clock()
@@ -1571,8 +1615,13 @@ if Auto.ready then
                     while Auto.cashierStarting and os.clock() - tw < 15 do task.wait(0.1) end
                     -- leave the register first: finish the current customer, then end the shift
                     if Auto.pauseCashier then pcall(Auto.pauseCashier) end
-                    local okR, e = pcall(runRestock)
-                    if not okR then log("ERR", "restock", e) end
+                    local okR, dn, fu, fa = pcall(runRestock)
+                    if not okR then
+                        log("ERR", "restock", dn)
+                    else
+                        lastRunText = ("Last run: %d placed, %d failed%s"):format(
+                            dn or 0, fa or 0, yielded and " (paused for customers)" or "")
+                    end
                     busy = false
                     Auto.hold("restock", false)
                     setNoclip(false)
