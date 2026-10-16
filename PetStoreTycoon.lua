@@ -2581,6 +2581,7 @@ Tabs.Cashier = Window:Tab({ Title = "Cashier", Icon = icon("banknote", "house"),
 Tabs.Stock = Window:Tab({ Title = "Stock", Icon = icon("package", "shopping-cart"), IconColor = Color3.fromHex("#FF8200"), IconShape = "Circle" })
 Tabs.Fish = Window:Tab({ Title = "Fish Tank", Icon = icon("fish", "paw-print"), IconColor = Color3.fromHex("#FF8200"), IconShape = "Circle" })
 Tabs.Security = Window:Tab({ Title = "Security", Icon = icon("shield", "shield-check", "info"), IconColor = Color3.fromHex("#FF8200"), IconShape = "Circle" })
+Tabs.Movement = Window:Tab({ Title = "Movement", Icon = icon("footprints", "move", "navigation"), IconColor = Color3.fromHex("#FF8200"), IconShape = "Circle" })
 Tabs.Misc = Window:Tab({ Title = "Misc", Icon = icon("info"),                IconColor = Color3.fromHex("#FF8200"), IconShape = "Circle" })
 
 -- sections start closed (Main / Misc)
@@ -3829,7 +3830,7 @@ do
 end
 
 -- ===== MISC TAB =====
-local MoveBox = openSection(Tabs.Misc, "Movement", "footprints")
+local MoveBox = openSection(Tabs.Movement, "Movement Mode", "footprints")
 MoveBox:Dropdown({
     Title = "Movement mode",
     Desc = "Walk (legit): moves naturally, safest. Teleport (fast): jumps straight to each spot. Applies to every feature.",
