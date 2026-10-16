@@ -3441,11 +3441,13 @@ do
         while Auto.cashierStarting and os.clock() - tw < 15 do task.wait(0.1) end
 
         NC("openclose", true)
+        -- opening needs to be 2 studs closer than closing, otherwise the server rejects OpenStore as too far
+        local stopDist = (mode == "open") and math.max(2, STOP_DIST - 2) or STOP_DIST
         local reached, t = false, os.clock()
         while alive and OC.on and os.clock() - t < 15 do
             if Auto.thiefNow() then break end
             local target = sign:GetPivot().Position
-            if (hrp.Position - target).Magnitude <= STOP_DIST then reached = true break end
+            if (hrp.Position - target).Magnitude <= stopDist then reached = true break end
             hum:MoveTo(target)
             task.wait(0.1)
         end
@@ -3480,6 +3482,101 @@ do
         return fired
     end
 
+    -- ===== DAY SUMMARY: press CONTINUE =====
+    -- After closing, the "Day complete" screen has a CONTINUE (n) button that must be pressed.
+    local contLabel, lastContScan = nil, 0
+    local CONT_SIGS = { "Activated", "MouseButton1Click", "MouseButton1Down", "MouseButton1Up" }
+
+    local function isContinue(g)
+        return (g:IsA("TextLabel") or g:IsA("TextButton"))
+            and type(g.Text) == "string" and string.match(g.Text:lower(), "^%s*continue") ~= nil
+    end
+
+    local function uiShown(g)
+        local cur = g
+        while cur and cur ~= lp.PlayerGui do
+            if cur:IsA("GuiObject") and not cur.Visible then return false end
+            if cur:IsA("ScreenGui") and not cur.Enabled then return false end
+            cur = cur.Parent
+        end
+        return g.AbsoluteSize.X > 0
+    end
+
+    -- remember the Continue label as soon as the game creates it (no heavy scan needed)
+    table.insert(Connections, lp.PlayerGui.DescendantAdded:Connect(function(g)
+        if g:IsA("TextLabel") or g:IsA("TextButton") then
+            task.defer(function() if isContinue(g) then contLabel = g end end)
+        end
+    end))
+
+    local function contUp()
+        return contLabel ~= nil and contLabel:IsDescendantOf(game) and uiShown(contLabel)
+    end
+
+    local function findContinue(allowScan)
+        if contLabel and not contLabel:IsDescendantOf(game) then contLabel = nil end
+        if contLabel and uiShown(contLabel) then return contLabel end
+        if not allowScan or os.clock() - lastContScan < 4 then return nil end
+        lastContScan = os.clock()
+        local n = 0
+        for _, g in ipairs(lp.PlayerGui:GetDescendants()) do
+            n += 1
+            if n % 800 == 0 then task.wait() end -- yield so the phone doesn't freeze
+            if isContinue(g) and uiShown(g) then contLabel = g return g end
+        end
+    end
+
+    -- the label may sit inside the button, or next to it
+    local function contButton(lbl)
+        local cur = lbl
+        for _ = 1, 4 do
+            if not cur or cur == lp.PlayerGui then break end
+            if cur:IsA("GuiButton") then return cur end
+            for _, c in ipairs(cur:GetChildren()) do
+                if c:IsA("GuiButton") then return c end
+            end
+            cur = cur.Parent
+        end
+    end
+
+    task.spawn(function()
+        local seenAt, tries = nil, 0
+        while alive do
+            if OC.on and not Auto.thiefNow() then
+                local pl = plotNow2()
+                local h = gameHour()
+                local summaryTime = pl and (pl:GetAttribute("StoreOpen") ~= true
+                    or pl:GetAttribute("DoorsLocked") == true
+                    or (h ~= nil and h >= OC.closeHour))
+                local lbl = findContinue(summaryTime and true or false)
+                if lbl then
+                    seenAt = seenAt or os.clock()
+                    if os.clock() - seenAt >= 0.5 then
+                        local btn = contButton(lbl)
+                        if btn then
+                            -- one signal per try (cycles), so the button is never double-fired
+                            local sig = CONT_SIGS[(tries % #CONT_SIGS) + 1]
+                            tries += 1
+                            pcall(function() firesignal(btn[sig]) end)
+                            ostatus("Day summary: pressed Continue")
+                            if tries == 1 or tries == 5 then log("OPENCLOSE", "continue pressed", btn:GetFullName(), sig, tries) end
+                        else
+                            ostatus("Continue button not found, check the log")
+                            if tries == 0 then log("OPENCLOSE", "continue label, no button", lbl:GetFullName()) end
+                            tries += 1
+                        end
+                        task.wait(0.8)
+                    end
+                else
+                    seenAt, tries = nil, 0
+                end
+            else
+                seenAt, tries = nil, 0
+            end
+            task.wait(0.25)
+        end
+    end)
+
     task.spawn(function()
         local lastAct, closeSince = 0, nil
         local lastDay, dayTries = nil, 0
@@ -3493,6 +3590,8 @@ do
                     ostatus("Waiting for the plot...")
                 elseif Auto.thiefNow() then
                     ostatus("Thief on the plot, waiting...")
+                elseif contUp() then
+                    ostatus("Day summary, pressing Continue...")
                 else
                     local isOpen = plot:GetAttribute("StoreOpen") == true
                     local inside = (plot:GetAttribute("CustomersInside") or 0) + (plot:GetAttribute("CustomersPending") or 0)
