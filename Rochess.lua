@@ -1,5 +1,5 @@
 local HUB_NAME = "Ro Chess"
-local VERSION  = "v1.2"
+local VERSION  = "v1.0"
 local YT_LINK  = "https://www.youtube.com/@RansbloxScript"
 local WEB_LINK = "https://ransblox.net"
 -- Raw URL of this script. Needed so it relaunches itself after teleports.
@@ -78,6 +78,8 @@ local S = {
     queueDelay = 2,
     tcChoice = "Same as last",
     autoExec = true,
+    style = "Balanced",
+    styleTol = 0.5,
 }
 
 local busy, lastPly, nextTry = false, -1, 0
@@ -286,6 +288,130 @@ local function getBestMove(fen, session)
 end
 
 ------------------------------------------------------------
+-- PLAYING STYLE
+-- Asks Lichess Cloud for the top 5 moves, keeps the ones that are
+-- "good enough" (within Style Flexibility of the best move), then
+-- picks the one that fits the chosen style the most.
+------------------------------------------------------------
+local STYLE_LIST = { "Balanced", "Aggressive", "Defensive", "Simplify" }
+local PIECE_VAL = { p = 1, n = 3, b = 3, r = 5, q = 9, k = 0 }
+
+local function clonePos(pos)
+    local b = {}
+    for r = 1, 8 do b[r] = table.clone(pos.board[r]) end
+    return { board = b, turn = pos.turn, castle = pos.castle, ep = pos.ep, half = pos.half, full = pos.full }
+end
+
+local function squareAttacked(b, r, c, byWhite)
+    local function at(rr, cc) return b[rr] and b[rr][cc] end
+    local pawn = byWhite and "P" or "p"
+    local pr = byWhite and r + 1 or r - 1
+    if at(pr, c - 1) == pawn or at(pr, c + 1) == pawn then return true end
+    local knight = byWhite and "N" or "n"
+    for _, d in ipairs({ {1,2}, {2,1}, {-1,2}, {-2,1}, {1,-2}, {2,-1}, {-1,-2}, {-2,-1} }) do
+        if at(r + d[1], c + d[2]) == knight then return true end
+    end
+    local king = byWhite and "K" or "k"
+    for dr = -1, 1 do
+        for dc = -1, 1 do
+            if (dr ~= 0 or dc ~= 0) and at(r + dr, c + dc) == king then return true end
+        end
+    end
+    local rook, bishop, queen = byWhite and "R" or "r", byWhite and "B" or "b", byWhite and "Q" or "q"
+    for _, d in ipairs({ {1,0}, {-1,0}, {0,1}, {0,-1}, {1,1}, {1,-1}, {-1,1}, {-1,-1} }) do
+        local diag = d[1] ~= 0 and d[2] ~= 0
+        local rr, cc = r + d[1], c + d[2]
+        while rr >= 1 and rr <= 8 and cc >= 1 and cc <= 8 do
+            local p = b[rr][cc]
+            if p then
+                if p == queen or (diag and p == bishop) or ((not diag) and p == rook) then return true end
+                break
+            end
+            rr, cc = rr + d[1], cc + d[2]
+        end
+    end
+    return false
+end
+
+local function styleScore(pos, uci, style)
+    local r1, f1 = sq(uci:sub(1, 2))
+    local r2, f2 = sq(uci:sub(3, 4))
+    local piece = pos.board[r1] and pos.board[r1][f1]
+    if not piece then return 0 end
+    local lower = piece:lower()
+    local white = piece == piece:upper()
+    local target = pos.board[r2][f2]
+
+    local cap = 0
+    if target then cap = PIECE_VAL[target:lower()] or 0
+    elseif lower == "p" and f1 ~= f2 then cap = 1 end
+
+    local after = clonePos(pos)
+    applyMove(after, uci)
+    local check = false
+    local enemyKing = white and "k" or "K"
+    for r = 1, 8 do
+        for f = 1, 8 do
+            if after.board[r][f] == enemyKing then
+                check = squareAttacked(after.board, r, f, white)
+            end
+        end
+    end
+
+    local fwd = white and (r1 - r2) or (r2 - r1) -- steps toward the enemy side
+    local castle = lower == "k" and math.abs(f2 - f1) == 2
+    local homeRank = white and 8 or 1
+    local developing = lower ~= "p" and lower ~= "k" and r1 == homeRank and r2 ~= homeRank
+    local mover = PIECE_VAL[lower] or 0
+
+    if style == "Aggressive" then
+        return cap + (check and 2 or 0) + math.max(fwd, 0) * 0.4 + (lower == "p" and 0.3 or 0)
+    elseif style == "Defensive" then
+        return (castle and 3 or 0) + (developing and 0.8 or 0)
+            - (lower == "p" and math.max(fwd, 0) * 0.5 or 0)
+            + (fwd < 0 and 0.4 or 0) + cap * 0.2
+    elseif style == "Simplify" then
+        if cap > 0 and cap >= mover then return cap * 1.5 + 1 end
+        if cap > 0 then return cap * 0.5 end
+        return 0
+    end
+    return 0
+end
+
+local function getStyledMove(fen, pos)
+    if S.style == "Balanced" or not httpReq then return end
+    local d = httpJson({
+        Url = "https://lichess.org/api/cloud-eval?multiPv=5&fen=" .. HttpService:UrlEncode(fen),
+        Method = "GET",
+    })
+    if not (d and d.pvs and #d.pvs > 1) then return end
+
+    local sign = (pos.turn == "w") and 1 or -1
+    local function score(pv)
+        if pv.mate then return (pv.mate * sign > 0) and 10000 or -10000 end
+        return (pv.cp or 0) * sign
+    end
+
+    local best = score(d.pvs[1])
+    if best >= 10000 then return end -- we have a forced mate, just play the best move
+    local tol = S.styleTol * 100
+
+    local pickMv, pickEval, pickScore
+    for _, pv in ipairs(d.pvs) do
+        local mv = type(pv.moves) == "string" and pv.moves:match("^(%S+)")
+        local sc = score(pv)
+        if mv and sc >= best - tol and sc > -10000 then
+            local s = styleScore(pos, normalizeMove(pos, mv), S.style)
+            if not pickScore or s > pickScore then
+                pickMv, pickScore = mv, s
+                pickEval = pv.mate and ("mate " .. tostring(pv.mate)) or fmtEval((pv.cp or 0) / 100)
+            end
+        end
+    end
+    return pickMv, pickEval
+end
+
+------------------------------------------------------------
 -- AUTO EXECUTE (built in: relaunches the script after every teleport)
 ------------------------------------------------------------
 local Players = game:GetService("Players")
@@ -348,6 +474,12 @@ local function step(force)
 
     local pos, fen = currentPos(session)
     local mv, info, name = getBestMove(fen, session)
+    if mv and S.style ~= "Balanced" then
+        local okSt, smv, sinfo = pcall(getStyledMove, fen, pos)
+        if okSt and smv then
+            mv, info, name = smv, sinfo, "Lichess (" .. S.style .. ")"
+        end
+    end
     if mv then mv = normalizeMove(pos, mv) end
 
     if not (mv and mv:match("^[a-h][1-8][a-h][1-8][qrbn]?$")) then
@@ -626,6 +758,29 @@ local StatusP = PlayBox:Paragraph({ Title = "Status", Desc = statusText })
 setStatus = function(text)
     pcall(function() StatusP:SetDesc(text) end)
 end
+
+local StyleBox = openSection(Tabs.Auto, "Playing Style", "swords")
+
+StyleBox:Dropdown({
+    Title = "Style",
+    Flag = "PlayStyle",
+    Desc = "Balanced = best move. Aggressive = captures, checks and attacks. "
+        .. "Defensive = safe, castles early. Simplify = trades pieces.",
+    Values = STYLE_LIST,
+    Value = "Balanced",
+    Callback = function(v)
+        S.style = pickValue(v)
+        lastPly = -1
+    end,
+})
+
+StyleBox:Slider({
+    Title = "Style Flexibility", Flag = "StyleTol",
+    Desc = "How much worse than the best move a styled move may be, in pawns. Lower = stronger, higher = more style.",
+    Step = 0.1,
+    Value = { Min = 0, Max = 1.5, Default = 0.5 },
+    Callback = function(v) S.styleTol = tonumber(v) or 0.5 end,
+})
 
 local TimeBox = openSection(Tabs.Auto, "Timing", "clock")
 
