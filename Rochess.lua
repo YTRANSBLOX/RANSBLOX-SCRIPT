@@ -2,8 +2,8 @@ local HUB_NAME = "Ro Chess"
 local VERSION  = "v1.2"
 local YT_LINK  = "https://www.youtube.com/@RansbloxScript"
 local WEB_LINK = "https://ransblox.net"
--- Raw URL of this script. Needed so it relaunches itself after teleports, e.g. "https://raw.githubusercontent.com/.../rochess.lua"
-local SCRIPT_URL = ""
+-- Raw URL of this script. Needed so it relaunches itself after teleports.
+local SCRIPT_URL = "https://raw.githubusercontent.com/YTRANSBLOX/RANSBLOX-SCRIPT/refs/heads/main/Rochess.lua"
 
 -- Re-execute safety: unload the previous instance first
 if _G.ROCHESS_Unload then pcall(_G.ROCHESS_Unload) end
