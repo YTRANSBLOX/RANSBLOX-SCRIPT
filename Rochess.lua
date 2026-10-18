@@ -298,10 +298,19 @@ local function queueSelf()
     return true
 end
 
-bind(Players.LocalPlayer.OnTeleport, function()
-    if S.autoExec then pcall(queueSelf) end
+-- queue exactly ONCE per teleport (OnTeleport fires several times with different states,
+-- and arming at startup too would stack duplicate copies that all run after the teleport)
+local queuedThisTeleport = false
+bind(Players.LocalPlayer.OnTeleport, function(state)
+    if state == Enum.TeleportState.Failed then
+        queuedThisTeleport = false -- teleport failed, we stay here, allow re-queue next time
+        return
+    end
+    if S.autoExec and not queuedThisTeleport then
+        queuedThisTeleport = true
+        pcall(queueSelf)
+    end
 end)
-pcall(queueSelf) -- arm it right away
 
 ------------------------------------------------------------
 -- PLAY LOOP
