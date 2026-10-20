@@ -296,7 +296,7 @@ end
 return ok
 end
 local flow={last=nil,lastT=0,spent=0,rate=nil}
-local function noteSpend(x)flow.spent=flow.spent+(x) end
+local function noteSpend(x)flow.spent+=x end
 local function flowTick(m,now)
 local g=m.gold or 0
 if not flow.last then
@@ -342,7 +342,7 @@ local r=R()
 local nc=r.NUKE_COST
 local base=type(nc)=="table"and nc[idx]
 if type(base)~="number"or base<=0 then return nil end
-if idx==2 then base=base+((r.MIRV_COST_STEP or 0)*(ctx.state.mirvs_launched or 0))end
+if idx==2 then base+=(r.MIRV_COST_STEP or 0)*(ctx.state.mirvs_launched or 0)end
 return base
 end
 local function nukePrice(name)
@@ -403,7 +403,7 @@ local reload=type(rt)=="table"and rt[5]or 90
 local n=0
 for _,s in ipairs(S.silos)do
 local ok,v=pcall(st.ready_missiles,st,s,reload)
-if ok and type(v)=="number"then n=n+(math.max(v,0))else n=n+(1) end
+if ok and type(v)=="number"then n+=math.max(v,0)else n+=1 end
 end
 return n
 end
@@ -496,7 +496,7 @@ return(m.gold or 0)/math.max(nukePrice("atom"),1)
 end
 local function borderList(border,maxN)
 local total=0
-for _ in pairs(border)do total=total+(1) end
+for _ in pairs(border)do total+=1 end
 local p=total>maxN and(maxN/total)or 1
 local out={}
 for t in pairs(border)do
@@ -509,10 +509,10 @@ local v=R().STRUCT_SPACING
 return(type(v)=="number"and v>0)and math.ceil(v)or 9
 end
 local function spaced(st,t)
-local x,y=t%W,math.floor(t/W)
+local x,y=t%W,t//W
 local minD=structSpacing()
 for _,s in pairs(st.structures)do
-local sx,sy=s.tile%W,math.floor(s.tile/W)
+local sx,sy=s.tile%W,s.tile//W
 if math.abs(sx-x)+math.abs(sy-y)<minD then return false end
 end
 return true
@@ -537,7 +537,7 @@ local function nearestOwnStructDist(st,x,y)
 local best=math.huge
 for _,s in pairs(st.structures)do
 if s.owner==st.local_owner then
-local d=math.abs((s.tile%W)-x)+math.abs((math.floor(s.tile/W))-y)
+local d=math.abs((s.tile%W)-x)+math.abs((s.tile//W)-y)
 if d<best then best=d end
 end
 end
@@ -594,12 +594,12 @@ local x,y=cx+dx,cy+dy
 if x>=0 and x<W and y>=0 and y<H then
 local t=y*W+x
 if isLand(st,t)then
-tot=tot+(1)
+tot+=1
 local o=ownerAt(st,t)
 if o==mine then
-own=own+(1)
+own+=1
 elseif o>0 and not allied(st,o)then
-foe=foe+(1)
+foe+=1
 end
 end
 end
@@ -647,7 +647,7 @@ end
 end
 end
 if best then
-spawnHist[#spawnHist+1]={best%W,math.floor(best/W)}
+spawnHist[#spawnHist+1]={best%W,best//W}
 if#spawnHist>6 then table.remove(spawnHist,1)end
 end
 return best
@@ -671,8 +671,8 @@ log("kind numerik belum dikenal: "..s.kind.." -- cek & update NAMES kalau perlu"
 end
 S.own[#S.own+1]={tile=s.tile,kind=k}
 if k and S.c[k]then
-S.c[k]=S.c[k]+(1)
-S.lv[k]=S.lv[k]+((s.level or 1))
+S.c[k]+=1
+S.lv[k]+=(s.level or 1)
 if k=="defense"then S.defs[#S.defs+1]=s end
 if s.active~=false then
 local l=S.tiles[k]
@@ -687,10 +687,10 @@ if oi and oi.alive and not allied(st,s.owner)then
 local f={tile=s.tile,kind=k,owner=s.owner}
 S.foes[#S.foes+1]=f
 if k=="sam"then S.foeSam[#S.foeSam+1]=f end
-if k=="silo"then S.foeSilo=S.foeSilo+(1) end
+if k=="silo"then S.foeSilo+=1 end
 local fs=S.fsum[s.owner]
 if not fs then fs={x=0,y=0,n=0};S.fsum[s.owner]=fs end
-fs.x=fs.x+(s.tile%W);fs.y=fs.y+(math.floor(s.tile/W));fs.n=fs.n+(1)
+fs.x+=s.tile%W;fs.y+=s.tile//W;fs.n+=1
 end
 end
 end
@@ -702,7 +702,7 @@ local border=ctx.borders and ctx.borders.border
 local nb,neutral,fallout,seen={},{},{},{}
 if border then
 for _,t in ipairs(borderList(border,4000))do
-local x,y=t%W,math.floor(t/W)
+local x,y=t%W,t//W
 if x>1 and x<W-2 and y>1 and y<H-2 then
 for _,d in ipairs(DIRS4)do
 local nt=t+d
@@ -729,7 +729,7 @@ end
 nb[o]=e
 end
 if e then
-e.contacts=e.contacts+(1)
+e.contacts+=1
 if#e.tiles<300 then e.tiles[#e.tiles+1]=t end
 if#e.etiles<300 and not seen[nt]then
 seen[nt]=true
@@ -778,7 +778,7 @@ local oi=st.owners[o]
 if oi and oi.alive then
 local e=out[o]
 if not e then e={gap=k,n=0,pairs={},claims={}};out[o]=e end
-e.n=e.n+(1)
+e.n+=1
 if k<e.gap then e.gap=k end
 if#e.pairs<60 then e.pairs[#e.pairs+1]={b=t,e=nt,k=k}end
 if firstNeutral and#e.claims<60 then e.claims[#e.claims+1]=firstNeutral end
@@ -888,7 +888,7 @@ local floorT=(m.max_troops or 0)*math.max(CFG.STOP_FILL,CFG.COUNTER_FLOOR,DYN.st
 local spent=0
 for i=#counterSpent,1,-1 do
 if now-counterSpent[i].t>CFG.COUNTER_WIN then table.remove(counterSpent,i)
-else spent=spent+(counterSpent[i].a) end
+else spent+=counterSpent[i].a end
 end
 local budget=(m.max_troops or 0)*CFG.COUNTER_BUDGET-spent
 local inc={}
@@ -924,7 +924,7 @@ if ratio>0.02 then
 counterCd[a.attacker]=now+2.5
 out[#out+1]={tile=e.etiles[math.random(#e.etiles)],ratio=ratio,owner=a.attacker,troops=T}
 counterSpent[#counterSpent+1]={t=now,a=mt*ratio}
-budget=budget-(mt*ratio)
+budget-=mt*ratio
 mt=mt*(1-ratio)
 end
 end
@@ -958,8 +958,8 @@ local incN,incT=0,0
 if type(st.attacks)=="table"then
 for _,a in pairs(st.attacks)do
 if type(a)=="table"and not a.dead and a.target==mine and a.attacker~=mine then
-incN=incN+(1)
-if type(a.troops)=="number"then incT=incT+(a.troops) end
+incN+=1
+if type(a.troops)=="number"then incT+=a.troops end
 end
 end
 end
@@ -968,10 +968,10 @@ for o,e in pairs(nb)do
 if e and e.troops>topT then top,topT,topC=o,e.troops,e.contacts end
 end
 local nk=0
-if type(st.nukes)=="table"then for _ in pairs(st.nukes)do nk=nk+(1) end end
+if type(st.nukes)=="table"then for _ in pairs(st.nukes)do nk+=1 end end
 local rv=info.rival and("owner "..info.rival.o)or"-"
 local hn=0
-for _ in pairs(info.hostile)do hn=hn+(1) end
+for _ in pairs(info.hostile)do hn+=1 end
 log(("REC troops=%d/%d gold=%d inc=%.0f/s tiles=%s city=%d(L%d) def=%d sam=%d silo=%d | serangan masuk=%d(%d troops) | tetangga terkuat=%d(%d, kontak %d) | rival=%s hostile=%d brutal=%s | nuke di udara=%d | foeSilo=%d"):format(
 math.floor(m.troops or 0),math.floor(m.max_troops or 0),math.floor(m.gold or 0),incomeRate(m),tostring(m.tiles),
 S.c.city,S.lv.city,S.c.defense,S.c.sam,S.c.silo,
@@ -1005,7 +1005,7 @@ if not leader then return end
 local oi=st.owners[leader]
 local c={city=0,port=0,factory=0,defense=0,sam=0,silo=0,warship=0}
 for _,f in ipairs(S.foes)do
-if f.owner==leader and f.kind and c[f.kind]~=nil then c[f.kind]=c[f.kind]+(1) end
+if f.owner==leader and f.kind and c[f.kind]~=nil then c[f.kind]+=1 end
 end
 local troops,tiles=oi.troops or 0,oi.tiles or 0
 local sameLeader=watch.leader==leader
@@ -1042,7 +1042,7 @@ local farMax=math.max(W,H)*CFG.FOCUS_FAR_FRAC
 local totalLiveTiles=0
 for o,oi in pairs(st.owners)do
 if type(o)=="number"and type(oi)=="table"and oi.alive then
-totalLiveTiles=totalLiveTiles+((oi.tiles or 0))
+totalLiveTiles+=(oi.tiles or 0)
 end
 end
 totalLiveTiles=math.max(totalLiveTiles,1)
@@ -1054,7 +1054,7 @@ and not allied(st,o)then
 local e=nb[o]
 local contact=(e and e.contacts>0)and true or false
 local cx,cy=foeCenter(S,o,oi)
-if not cx and e and#e.etiles>0 then cx,cy=e.etiles[1]%W,math.floor(e.etiles[1]/W) end
+if not cx and e and#e.etiles>0 then cx,cy=e.etiles[1]%W,e.etiles[1]//W end
 if cx then
 local d=math.sqrt(dist2(cx,cy,hx,hy))
 local tileShare=(oi.tiles or 0)/totalLiveTiles
@@ -1186,7 +1186,7 @@ local tileCd,cellCd,lastPurge={},{},0
 local function ownNbCount(st,t)
 local mine,n=st.local_owner,0
 for _,d in ipairs(DIRS4)do
-if ownerAt(st,t+d)==mine then n=n+(1) end
+if ownerAt(st,t+d)==mine then n+=1 end
 end
 return n
 end
@@ -1224,11 +1224,11 @@ if a and now-a.at<CFG.ANCHOR_HOLD and ownerAt(st,a.tile)==e.o then return a.tile
 local gx,gy,bestS
 for _,f in ipairs(S.foes)do
 if f.owner==e.o and VALUE[f.kind]then
-local d=math.sqrt(dist2(f.tile%W,math.floor(f.tile/W),hx,hy))
+local d=math.sqrt(dist2(f.tile%W,f.tile//W,hx,hy))
 local sc=VALUE[f.kind]/(1+d/40)
 if not bestS or sc>bestS then
 bestS=sc
-gx,gy=f.tile%W,math.floor(f.tile/W)
+gx,gy=f.tile%W,f.tile//W
 end
 end
 end
@@ -1240,7 +1240,7 @@ if not gx then return nil end
 local bt,bd
 for i=1,#e.etiles do
 local t=e.etiles[i]
-local d=dist2(t%W,math.floor(t/W),gx,gy)
+local d=dist2(t%W,t//W,gx,gy)
 if not bd or d<bd then bt,bd=t,d end
 end
 if bt then anchors[e.o]={tile=bt,at=now}end
@@ -1257,7 +1257,7 @@ local function coneTiles(list,hx,hy,dx,dy)
 local out={}
 for i=1,#list do
 local t=list[i]
-local vx,vy=t%W-hx,math.floor(t/W)-hy
+local vx,vy=t%W-hx,t//W-hy
 local l=math.sqrt(vx*vx+vy*vy)
 if l<1 or(vx*dx+vy*dy)/l>=CFG.FRONT_COS then out[#out+1]=t end
 end
@@ -1271,26 +1271,26 @@ if it then
 local T=math.max(e.troops or 1,1)
 if it.gT<0 then
 local v=math.clamp((-it.gT*8)/(T*0.15),0,1)*0.5
-if v>0.05 then mom=mom+(v);why[#why+1]="pasukan turun"end
+if v>0.05 then mom+=v;why[#why+1]="pasukan turun"end
 end
 local oi=st.owners[o]
 local tl=math.max(oi and oi.tiles or 1,1)
 if it.g<0 then
 local v=math.clamp((-it.g*8)/(tl*0.01),0,1)*0.3
-if v>0.05 then mom=mom+(v);why[#why+1]="tanah turun"end
+if v>0.05 then mom+=v;why[#why+1]="tanah turun"end
 end
 end
 local Ta=0
 if type(st.attacks)=="table"then
 for _,a in pairs(st.attacks)do
 if type(a)=="table"and not a.dead and a.target==o and a.attacker~=st.local_owner then
-Ta=Ta+((type(a.troops)=="number"and a.troops or 0))
+Ta+=(type(a.troops)=="number"and a.troops or 0)
 end
 end
 end
 if Ta>0 then
 local v=math.clamp(Ta/math.max(e.troops or 1,1),0,1)*0.5
-if v>0.05 then mom=mom+(v);why[#why+1]="diserang pihak lain"end
+if v>0.05 then mom+=v;why[#why+1]="diserang pihak lain"end
 end
 mom=math.min(mom,1)
 if mom>=0.4 and now-(momLog[o]or 0)>10 then
@@ -1330,7 +1330,7 @@ return nil
 end
 if not FRONT or FRONT.o~=pick.o then
 local seed=pickAnchor(st,S,pick,hx,hy,now)or pick.etiles[1]
-local dx,dy=frontNorm(seed%W-hx,math.floor(seed/W)-hy)
+local dx,dy=frontNorm(seed%W-hx,seed//W-hy)
 FRONT={o=pick.o,at=now,seed=seed,dx=dx,dy=dy,reseed=now}
 log(("FRONT -> owner %d P=%.2f arah=(%.2f,%.2f) pasukan musuh=%d"):format(
 pick.o,pick.P,dx,dy,math.floor(pick.troops)))
@@ -1338,7 +1338,7 @@ end
 local tiles=coneTiles(pick.etiles,hx,hy,FRONT.dx,FRONT.dy)
 if#tiles==0 then
 local seed=pickAnchor(st,S,pick,hx,hy,now)or pick.etiles[1]
-FRONT.dx,FRONT.dy=frontNorm(seed%W-hx,math.floor(seed/W)-hy)
+FRONT.dx,FRONT.dy=frontNorm(seed%W-hx,seed//W-hy)
 FRONT.seed,FRONT.reseed=seed,now
 tiles=coneTiles(pick.etiles,hx,hy,FRONT.dx,FRONT.dy)
 if#tiles==0 then tiles={seed}end
@@ -1346,7 +1346,7 @@ elseif now-FRONT.reseed>=CFG.FRONT_RESEED or ownerAt(st,FRONT.seed)~=FRONT.o the
 local seed=pickAnchor(st,S,{o=pick.o,etiles=tiles},hx,hy,now)
 if seed then
 FRONT.seed=seed
-local nx,ny=frontNorm(seed%W-hx,math.floor(seed/W)-hy)
+local nx,ny=frontNorm(seed%W-hx,seed//W-hy)
 FRONT.dx,FRONT.dy=frontNorm(FRONT.dx*0.7+nx*0.3,FRONT.dy*0.7+ny*0.3)
 end
 FRONT.reseed=now
@@ -1370,7 +1370,7 @@ local avgMagCache
 local function avgMag(t)
 if avgMagCache then return avgMagCache end
 local sum,n=0,0
-for _,v in pairs(t)do if type(v)=="number"then sum=sum+(v);n=n+(1) end end
+for _,v in pairs(t)do if type(v)=="number"then sum+=v;n+=1 end end
 avgMagCache=n>0 and sum/n or 80
 return avgMagCache
 end
@@ -1400,10 +1400,10 @@ if ok then terr=v end
 end
 mag=(terr and tonumber(magT[terr]))or avgMag(magT)
 end
-local tx,ty=t%W,math.floor(t/W)
+local tx,ty=t%W,t//W
 local rr2=defR()^2
 for _,f in ipairs(S.foes)do
-if f.owner==e.o and f.kind=="defense"and dist2(f.tile%W,math.floor(f.tile/W),tx,ty)<rr2 then
+if f.owner==e.o and f.kind=="defense"and dist2(f.tile%W,f.tile//W,tx,ty)<rr2 then
 mag=mag*(tonumber(Rl.DEFENSE_POST_MAG)or CFG.COST_DEF_MULT)
 break
 end
@@ -1445,11 +1445,11 @@ local R_,CAP=45,9000
 local dm,src={},{}
 local q,qh,n={},1,0
 for _,f in ipairs(neutral)do
-if not dm[f]then dm[f]=1;src[f]=f;q[#q+1]=f;n=n+(1) end
+if not dm[f]then dm[f]=1;src[f]=f;q[#q+1]=f;n+=1 end
 end
 local seeds,seedSeen={},{}
 while qh<=#q and n<CAP do
-local t=q[qh];qh=qh+(1)
+local t=q[qh];qh+=1
 local dt=dm[t]
 local x=t%W
 for i=1,4 do
@@ -1458,7 +1458,7 @@ if not((i==1 and x+1>=W)or(i==2 and x-1<0))and nt>=0 and nt<W*H then
 local o=ownerAt(st,nt)
 if o==0 then
 if dm[nt]==nil and dt<R_ and isLand(st,nt)then
-dm[nt]=dt+1;src[nt]=src[t];q[#q+1]=nt;n=n+(1)
+dm[nt]=dt+1;src[nt]=src[t];q[#q+1]=nt;n+=1
 end
 elseif o>0 and o~=mine and not seedSeen[nt]and not allied(st,o)then
 seedSeen[nt]=true;seeds[#seeds+1]=nt
@@ -1478,7 +1478,7 @@ end
 end
 end
 while h2<=#q2 do
-local t=q2[h2];h2=h2+(1)
+local t=q2[h2];h2+=1
 local dt=de[t]
 if dt<R_ then
 local x=t%W
@@ -1516,7 +1516,7 @@ local hx,hy=homeCenter(m)
 local activeN=0
 if type(st.attacks)=="table"then
 for _,a in pairs(st.attacks)do
-if type(a)=="table"and not a.dead and a.attacker==st.local_owner then activeN=activeN+(1) end
+if type(a)=="table"and not a.dead and a.attacker==st.local_owner then activeN+=1 end
 end
 end
 local room=math.max((EARLY and CFG.EARLY_ACTIVE or CFG.MAX_ACTIVE)-activeN,0)
@@ -1529,7 +1529,7 @@ if(tileCd[t]or 0)<=now then
 tileCd[t]=now+CFG.TILE_CD
 out[#out+1]={tile=t,kind="expand",ratio=0.15}
 avail=avail*0.85
-n=n+(1)
+n+=1
 end
 end
 end
@@ -1569,9 +1569,9 @@ if okc then cc=res else log("ERR contest: "..tostring(res))end
 end
 local nBlock=0
 for _,t in ipairs(neutral)do
-local d=dist2(t%W,math.floor(t/W),hx,hy)
+local d=dist2(t%W,t//W,hx,hy)
 local pr=cc and cc.score[t]or 0
-if pr>0 then nBlock=nBlock+(1) end
+if pr>0 then nBlock+=1 end
 if pr>0 then d=-pr
 elseif claimSet[t]then d=d*0.01 elseif ownNbCount(st,t)>=2 then d=d*0.3 end
 scored[#scored+1]={t=t,d=d,blk=pr>0}
@@ -1591,7 +1591,7 @@ if troops*(1-rr)<resT then break end
 out[#out+1]={tile=t,kind="expand",ratio=rr}
 avail=avail*(1-rr)
 troops=troops*(1-rr)
-got=got+(1)
+got+=1
 end
 end
 if(fill<0.75 and not hot)or expandOnly then return out,avail end
@@ -1610,7 +1610,7 @@ if e and#e.etiles>0 then
 local bestD=math.huge
 for i=1,math.min(#e.etiles,40)do
 local t=e.etiles[i]
-local d=dist2(t%W,math.floor(t/W),hx,hy)
+local d=dist2(t%W,t//W,hx,hy)
 if d<bestD then bestD=d end
 end
 e.nearDist=bestD
@@ -1652,22 +1652,22 @@ end
 local pool=(FRONT and FRONT.o==e.o and FRONT.tiles)or e.etiles
 local anchorTile
 if inStrike and strike.tile then
-local sx,sy=strike.tile%W,math.floor(strike.tile/W)
+local sx,sy=strike.tile%W,strike.tile//W
 local rr2=((strike.r or CFG.BLAST_R)+12)^2
 local near={}
 for _,t in ipairs(pool)do
-if dist2(t%W,math.floor(t/W),sx,sy)<=rr2 then near[#near+1]=t end
+if dist2(t%W,t//W,sx,sy)<=rr2 then near[#near+1]=t end
 end
 if#near>0 then pool=near end
 else
 anchorTile=(FRONT and FRONT.seed and ownerAt(st,FRONT.seed)==e.o)and FRONT.seed
 or pickAnchor(st,S,e,hx,hy,now)
 if anchorTile then
-local ax,ay=anchorTile%W,math.floor(anchorTile/W)
+local ax,ay=anchorTile%W,anchorTile//W
 local rr2=CFG.ANCHOR_R^2
 local near={}
 for _,t in ipairs(pool)do
-if dist2(t%W,math.floor(t/W),ax,ay)<=rr2 then near[#near+1]=t end
+if dist2(t%W,t//W,ax,ay)<=rr2 then near[#near+1]=t end
 end
 if#near>0 then pool=near end
 end
@@ -1696,7 +1696,7 @@ if slots<=0 then break end
 local L,X=attackNeed(st,S,e,cd.t,avail*0.3,dynN)
 local need=X*margin
 if costLogN<8 then
-costLogN=costLogN+(1)
+costLogN+=1
 log(("COST tile=%d loss/tile=%d x%d tile=%d kirim=%d pasukan=%d musuh=%d"):format(
 cd.t,math.floor(L),CFG.ATK_TILES,math.floor(X),math.floor(need),math.floor(troops),math.floor(e.troops or 0)))
 end
@@ -1733,12 +1733,12 @@ need=sent
 tileCd[cd.t]=now+CFG.TILE_CD
 out[#out+1]={tile=cd.t,kind="attack",ratio=ratio,owner=e.o}
 if sizeLogN<25 then
-sizeLogN=sizeLogN+(1)
+sizeLogN+=1
 log(("ATKSIZE owner %d N=%d ratio=%.2f mom=%.2f fill=%.2f P=%.2f"):format(e.o,dynN,ratio,e.mom or 0,fill,e.P or 0))
 end
-avail=avail-(need)
-troops=troops-(need)
-slots=slots-(1)
+avail-=need
+troops-=need
+slots-=1
 end
 end
 return out,avail
@@ -1746,7 +1746,7 @@ end
 local boatTargets,lastBoatScan={},0
 local boatReach=1
 local function cellKey(t)
-return(math.floor((math.floor(t/W))/CFG.BOAT_CELL))*1000+(math.floor((t%W)/CFG.BOAT_CELL))
+return((t//W)//CFG.BOAT_CELL)*1000+((t%W)//CFG.BOAT_CELL)
 end
 local function coastalStarts(st,mine,maxN)
 local border=ctx.borders and ctx.borders.border
@@ -1771,7 +1771,7 @@ end
 end
 local head,steps=1,0
 while head<=#queue and steps<CFG.BOAT_FLOOD_STEPS*boatReach do
-local t=queue[head];head=head+(1);steps=steps+(1)
+local t=queue[head];head+=1;steps+=1
 local x=t%W
 local dcur=dist[t]or 0
 local fromStart=startSet[t]
@@ -1824,7 +1824,7 @@ log("boat scan: "..#out.." target (<="..(CFG.BOAT_MAX_DIST*boatReach).." langkah
 if#out==0 then
 boatReach=math.min(boatReach+1,CFG.BOAT_REACH_MAX)
 elseif#out>300 and boatReach>1 then
-boatReach=boatReach-(1)
+boatReach-=1
 end
 end
 local function planBoats(st,m,info,now,availLeft,fcs,focusTile,landDone)
@@ -1849,7 +1849,7 @@ if r and r<=CFG.FOCUS_BOAT_MAX_RATIO then
 tileCd[focusTile]=now+CFG.TILE_CD
 out[#out+1]={tile=focusTile,ratio=r,kind="focus"}
 avail=math.max(avail-r*troops,0)
-slots=slots-(1)
+slots-=1
 end
 end
 end
@@ -1878,7 +1878,7 @@ tileCd[bt.tile]=now+CFG.TILE_CD
 cellCd[ck]=now+CFG.BOAT_CELL_CD
 out[#out+1]={tile=bt.tile,ratio=ratio,kind=(o==0)and"expand"or"attack"}
 avail=avail*(1-ratio)
-slots=slots-(1)
+slots-=1
 end
 end
 end
@@ -1897,8 +1897,8 @@ local p=probe[o]
 if p then
 for _,pr in ipairs(p.pairs)do
 local wk=w*(pr.k<=1 and 1 or math.max(0.2,1-(pr.k-1)/(maxK+2)))
-pts[#pts+1]={x=pr.b%W,y=math.floor(pr.b/W),ex=pr.e%W,ey=math.floor(pr.e/W),w=wk,o=o}
-totalW=totalW+(wk)
+pts[#pts+1]={x=pr.b%W,y=pr.b//W,ex=pr.e%W,ey=pr.e//W,w=wk,o=o}
+totalW+=wk
 byOwner[o]=(byOwner[o]or 0)+wk
 end
 end
@@ -1908,10 +1908,10 @@ local unc,U={},0
 for _,p in ipairs(pts)do
 local cov=false
 for _,s in ipairs(defs)do
-local sx,sy=s.tile%W,math.floor(s.tile/W)
+local sx,sy=s.tile%W,s.tile//W
 if(sx-p.x)^2+(sy-p.y)^2<Rd2 then cov=true break end
 end
-if not cov then unc[#unc+1]=p;U=U+(p.w) end
+if not cov then unc[#unc+1]=p;U+=p.w end
 end
 if#unc==0 or U<totalW*CFG.DEF_MIN_FRAC then return nil end
 table.sort(unc,function(a,b)return a.w>b.w end)
@@ -1931,13 +1931,13 @@ if not seenT[ct]and ownerAt(st,ct)==st.local_owner and isLand(st,ct)then
 seenT[ct]=true
 local free=true
 for _,s in pairs(st.structures)do
-local sx,sy=s.tile%W,math.floor(s.tile/W)
+local sx,sy=s.tile%W,s.tile//W
 if math.abs(sx-cx)+math.abs(sy-cy)<minDist then free=false break end
 end
 if free then
 local sc=0
 for _,q in ipairs(unc)do
-if(q.x-cx)^2+(q.y-cy)^2<Rd2 then sc=sc+(q.w) end
+if(q.x-cx)^2+(q.y-cy)^2<Rd2 then sc+=q.w end
 end
 sc=sc*(1-0.05*math.abs(f-CFG.DEF_INWARD))
 found[#found+1]={tile=ct,score=sc,owner=p.o}
@@ -1955,17 +1955,17 @@ return{cands=cs,urgent=urgent and true or false,frac=U/totalW,owner=cs[1].owner}
 end
 local lastNuke,nukePend,nukeFails,nukeOff,nukeOffAt=0,nil,0,false,0
 local function blastValue(S,nb,center,radius,focusO,fill)
-local cx,cy=center.tile%W,math.floor(center.tile/W)
+local cx,cy=center.tile%W,center.tile//W
 local R2=radius*radius
 local safe2=(radius+6)^2
 for _,s in ipairs(S.own)do
-local sx,sy=s.tile%W,math.floor(s.tile/W)
+local sx,sy=s.tile%W,s.tile//W
 if(sx-cx)^2+(sy-cy)^2<=safe2 then return 0,0 end
 end
 local v=0
 local Rd2=defR()^2
 for _,f in ipairs(S.foes)do
-local fx,fy=f.tile%W,math.floor(f.tile/W)
+local fx,fy=f.tile%W,f.tile//W
 if(fx-cx)^2+(fy-cy)^2<=R2 then
 local base=(VALUE[f.kind]or 100000)*(f.kind=="silo"and 1.5 or f.kind=="factory"and 1.6 or 1)
 if f.kind=="defense"and waterNear(ctx.state,f.tile)then base=base*1.8 end
@@ -1974,25 +1974,25 @@ base=base*1.5
 if f.kind=="defense"and nb[focusO]then
 local n=0
 for _,et in ipairs(nb[focusO].etiles)do
-if(et%W-fx)^2+(math.floor(et/W)-fy)^2<Rd2 then n=n+(1) end
+if(et%W-fx)^2+(et//W-fy)^2<Rd2 then n+=1 end
 end
 base=base+n*CFG.TILE_VALUE*2
 end
 if fill<CFG.OPENER_FILL then base=base*0.4 end
 end
-v=v+(base)
+v+=base
 end
 end
 if center.inv then
 local foe,own,tot=discStats(ctx.state,cx,cy,radius)
 if tot>0 and own/tot>CFG.INVADE_OWN_FRAC then return 0,0 end
-v=v+(foe*(CFG.DISC_STEP^2)*CFG.TILE_VALUE)
+v+=foe*(CFG.DISC_STEP^2)*CFG.TILE_VALUE
 end
 local sams=0
 local sr=samR()
 for _,sm in ipairs(S.foeSam)do
-local sx,sy=sm.tile%W,math.floor(sm.tile/W)
-if(sx-cx)^2+(sy-cy)^2<=sr^2 then sams=sams+(1) end
+local sx,sy=sm.tile%W,sm.tile//W
+if(sx-cx)^2+(sy-cy)^2<=sr^2 then sams+=1 end
 end
 v=v*(0.3^math.min(sams,3))
 if nb[center.owner]then v=v*1.3 end
@@ -2027,7 +2027,7 @@ local eT=(st.owners[e.o]and st.owners[e.o].troops)or 0
 if#e.etiles>0 and eT>=myT*0.05 then
 for _=1,per do
 local t=e.etiles[math.random(#e.etiles)]
-local x,y=t%W,math.floor(t/W)
+local x,y=t%W,t//W
 for _=1,CFG.INVADE_DIRS do
 local d=DIRS8[math.random(#DIRS8)]
 local k=(d[1]~=0 and d[2]~=0)and 0.7 or 1
@@ -2056,10 +2056,10 @@ local nowB=os.clock()
 local bad=RUN.nukeBad or{}
 for i=#bad,1,-1 do if bad[i].till<nowB then table.remove(bad,i)end end
 for _,f in ipairs(cs)do
-local d2=dist2(f.tile%W,math.floor(f.tile/W),hx,hy)
+local d2=dist2(f.tile%W,f.tile//W,hx,hy)
 local blocked=false
 for _,bd in ipairs(bad)do
-if dist2(f.tile%W,math.floor(f.tile/W),bd.x,bd.y)<=22*22 then blocked=true break end
+if dist2(f.tile%W,f.tile//W,bd.x,bd.y)<=22*22 then blocked=true break end
 end
 if d2<=maxD2 and not blocked then
 for k,kd in pairs(NUKE_KINDS)do
@@ -2120,11 +2120,11 @@ tile=nukePend.tile,r=nukePend.r}
 log("jendela serang ke owner "..nukePend.owner.." "..CFG.STRIKE_WINDOW.." detik (fokus zona ledak)")
 end
 else
-nukeFails=nukeFails+(1)
+nukeFails+=1
 noteSpend(-nukePend.price)
 log("bom gagal ("..nukeFails..") tile="..nukePend.tile)
 RUN.nukeBad=RUN.nukeBad or{}
-RUN.nukeBad[#RUN.nukeBad+1]={x=nukePend.tile%W,y=math.floor(nukePend.tile/W),till=now+90}
+RUN.nukeBad[#RUN.nukeBad+1]={x=nukePend.tile%W,y=nukePend.tile//W,till=now+90}
 if nukeFails>=4 then
 nukeOff=true;nukeOffAt=now-90
 log("nuke dimatikan 30 detik: 4x gagal beruntun")
@@ -2218,8 +2218,8 @@ if not ledger.at then ledger.at=now return end
 local dt=now-ledger.at
 if dt>0 then
 local k=0.5^(dt/POS.HALF)
-ledger.def=ledger.def*(k)
-ledger.eco=ledger.eco*(k)
+ledger.def*=k
+ledger.eco*=k
 ledger.at=now
 end
 end
@@ -2238,7 +2238,7 @@ if type(st.attacks)=="table"then
 for _,a in pairs(st.attacks)do
 if type(a)=="table"and not a.dead and a.target==mine and a.attacker~=mine
 and type(a.troops)=="number"then
-incT=incT+(a.troops)
+incT+=a.troops
 end
 end
 end
@@ -2318,11 +2318,11 @@ local eco={}
 local WT={city=2,factory=3,silo=3,port=1}
 for _,o in ipairs(S.own)do
 local w=WT[o.kind]
-if w then eco[#eco+1]={x=o.tile%W,y=math.floor(o.tile/W),w=w}end
+if w then eco[#eco+1]={x=o.tile%W,y=o.tile//W,w=w}end
 end
 if#eco==0 then return nil end
 local sams={}
-for _,t in ipairs(S.tiles.sam or{})do sams[#sams+1]={x=t%W,y=math.floor(t/W)}end
+for _,t in ipairs(S.tiles.sam or{})do sams[#sams+1]={x=t%W,y=t//W}end
 local cov2=(R2*0.85)^2
 local unc={}
 for _,a in ipairs(eco)do
@@ -2337,14 +2337,14 @@ local best,bestV
 for _,a in ipairs(unc)do
 local v=0
 for _,b in ipairs(unc)do
-if dist2(a.x,a.y,b.x,b.y)<=(R2*0.8)^2 then v=v+(b.w) end
+if dist2(a.x,a.y,b.x,b.y)<=(R2*0.8)^2 then v+=b.w end
 end
 if not bestV or v>bestV then best,bestV=a,v end
 end
 local sx,sy,sw=0,0,0
 for _,b in ipairs(unc)do
 if dist2(best.x,best.y,b.x,b.y)<=(R2*0.8)^2 then
-sx=sx+(b.x*b.w);sy=sy+(b.y*b.w);sw=sw+(b.w)
+sx+=b.x*b.w;sy+=b.y*b.w;sw+=b.w
 end
 end
 local cx,cy=sx/sw,sy/sw
@@ -2356,7 +2356,7 @@ if x>8 and x<W-8 and y>8 and y<H-8 then
 local t=y*W+x
 if ownerAt(st,t)==st.local_owner and isLand(st,t)and spaced(st,t)then
 local sc=-dist2(x,y,cx,cy)
-if interior(st,t)then sc=sc+(R2*R2*0.15) end
+if interior(st,t)then sc+=R2*R2*0.15 end
 if not bs or sc>bs then bt,bs=t,sc end
 end
 end
@@ -2400,7 +2400,7 @@ local BIAS={silo=0.03,sam=0.02,factory=0.01,city=0,port=-0.01}
 local avg,tl={},0
 for i=1,K do
 local r=rows[i]
-tl=tl+(r.tiles)
+tl+=r.tiles
 local t=per[r.o]or{}
 for _,k in ipairs(KEYS)do avg[k]=(avg[k]or 0)+(t[k]or 0)/K end
 end
@@ -2585,7 +2585,7 @@ local budget=avail-need0
 local n=1
 while n<math.min(CFG.UP_BATCH,room)do
 local nc=cost(real,cnt+n)
-if budget>=nc*1.1 then budget=budget-(nc);n=n+(1) else break end
+if budget>=nc*1.1 then budget-=nc;n+=1 else break end
 end
 if n>1 then amt=n end
 end
@@ -2624,7 +2624,7 @@ if not totalLand then
 local n=0
 for y=0,H-1,6 do
 for x=0,W-1,6 do
-if ru(st.map.land,y*W+x)~=0 then n=n+(1) end
+if ru(st.map.land,y*W+x)~=0 then n+=1 end
 end
 end
 totalLand=math.max(n*36,1)
@@ -2705,7 +2705,7 @@ if tv=="number"or tv=="string"or tv=="boolean"then
 out[#out+1]=k.."="..tostring(v)
 elseif tv=="table"then
 local n=0
-for _ in pairs(v)do n=n+(1) end
+for _ in pairs(v)do n+=1 end
 out[#out+1]=k.."=table("..n..")"
 end
 end
@@ -2727,7 +2727,7 @@ if tv=="number"or tv=="string"or tv=="boolean"then
 out[#out+1]=k.."="..tostring(v)
 elseif tv=="table"then
 local n=0
-for _ in pairs(v)do n=n+(1) end
+for _ in pairs(v)do n+=1 end
 out[#out+1]=k.."=table("..n..")"
 end
 break
@@ -2796,7 +2796,7 @@ if not LG.roadLog and now-LG.t0>=90 then
 LG.roadLog=true
 local nr,first=0,nil
 if type(st.roads)=="table"then
-for _,r in pairs(st.roads)do nr=nr+(1);first=first or r end
+for _,r in pairs(st.roads)do nr+=1;first=first or r end
 end
 local keys={}
 if type(first)=="table"then
@@ -2946,7 +2946,7 @@ local focusTile,focusTileAt,focusTileOwner=nil,0,nil
 local fast,deadLogged=false,false
 while getgenv().AF_BOT==RUN do
 task.wait(EARLY and CFG.EARLY_WAIT or(fast and(0.4+math.random()*0.3)or(0.7+math.random()*0.5)))
-if not RUN.paused then
+if RUN.paused then goto continue end
 local ok,err=pcall(function()
 local st=ctx.state
 local m=me(st)
@@ -2962,8 +2962,8 @@ spawnWaitAt=spawnWaitAt or os.clock()
 local tot,sp=0,0
 for o,oi in pairs(st.owners)do
 if type(o)=="number"and o~=0 and type(oi)=="table"and oi.alive~=false then
-tot=tot+(1)
-if oi.spawned then sp=sp+(1) end
+tot+=1
+if oi.spawned then sp+=1 end
 end
 end
 local waited=os.clock()-spawnWaitAt
@@ -2997,7 +2997,7 @@ playStart,spawnWaitAt,respawnN=nil,nil,0
 end
 if replayN<CFG.REPLAY_MAX and os.clock()-lastReplay>6 then
 lastReplay=os.clock()
-replayN=replayN+(1)
+replayN+=1
 local pa=getgenv().AF_PLAY_AGAIN
 if type(pa)=="function"then
 local okp,errp=pcall(pa)
@@ -3032,7 +3032,7 @@ end
 if near<CFG.RESPAWN_CROWD then
 local t=pickSpawn(st)
 if t then
-respawnN=respawnN+(1)
+respawnN+=1
 fire({type="spawn",tile=t})
 log(("RESPAWN: ada pemain %d tile dari gw -> coba pindah ke %d (%d/%d)"):format(near,t,respawnN,CFG.RESPAWN_MAX))
 end
@@ -3226,8 +3226,8 @@ local c=findCtx()
 if c then ctx=c;cands=findSender(ctx);send=nil end
 end
 end
-end
+::continue::
 end
 log("bot stop")
 end)
-log("bot v5.8 HARDCORE+MIMIC+PUNISH jalan")
+log("bot v5.8 HARDCORE+MIMIC+PUNISH jalan [fix v5.8: GUI hooks ditambah -- RUN.cfg (tuning live dari GUI), RUN.setHardcore(bool), RUN.setWarship/getWarship(bool), RUN.paused (pause tanpa kill loop), RUN.stats() buat baca tiles/troops/gold/income cepat] [fix v5.7: warship diaktifin default (dulu off permanen) + gagal build warship cuma retry 40s bukan mati total + SAM_CAP naik (3/5->5/7) + samCap scaling dipercepat (wealth/2+city/4, max 14) + prioritas build sam non-essential digeser ke atas city/factory biar nggak starve pas ekonomi gede] [fix v5.6: deteksi bom gagal pakai kompensasi income + blacklist tile gagal + nabung hydrogen + SAM stronger discount + SAM coverage tertimbang + log BOAT]  (matiin: getgenv().AF_HARDCORE=false sebelum execute): [fix v5.5: CADANGAN PASUKAN = 0.6-0.9x pasukan tetangga terkuat (dicap 60% max) -- expand/attack/punish/boat/hole cuma boleh pakai pasukan DI ATAS cadangan itu; tetangga setara/unggul -> expand maks 1 slot ratio 0.08, nggak ada punish ke target lain; rasio serang maks 40% (bukan 75%), log RESERVE tiap 10 detik] [fix v5.4: PUNISH nggak jalan kalau pasukan <35% penuh + kirim pasukan dicap (3x kebutuhan / 1.5x pasukan musuh) biar nggak buang 75% pasukan ke musuh receh + threshold serang dinaikin (P 1.5->1.8, punish 3.0) + KEEP dinaikin + max serangan aktif 8 + defense baru boleh dibangun kalau city>=3 biar ekonomi nggak kesedot] [fix v4.16: planBoats nggak lagi blokir SEMUA invasi laut total cuma gara2 info.rival/brutalAny (flag global, bisa kepicu dari ancaman di tempat lain yang sama sekali nggak relevan ke target yang mau diserang) -- sekarang cuma diblokir kalau pasukan beneran menipis (fill<0.6); kalau pasukan udah penuh/surplus (yang notabene kondisi paling sering pas lead), invasi laut ke musuh lemah via boat tetap jalan. Ini akar dari 'idle: nggak ada target layak' padahal ratio 64x dan boatTargets 800] [fix v4.15: info.dominant (threat()) ambangnya diturunin 3x -> 1.6x troops vs musuh terkuat, diselaraskan sama DOM_LO=1.5 yang dipake postureStep -- sebelumnya dominant cuma nyala pas 3x lebih kuat, jadi defWanted (bar cuma need>=0.12, gampang kepenuhi) tetep ngalir ke defense walau kamu udah jelas lebih unggul dari musuh terdekat] [fix v4.14: def cuma boleh nyerobot antrian essential (motong city<6/factory<2/silo<1) kalau posture udah EXISTENTIAL(>=0.9) -- sebelumnya defUrgent(need>=0.6, status DEFENSE DULU yang sering banget nyala) bikin def selalu disisipin duluan dari city tiap tick walau cuma 'urgent' bukan beneran kritis, jadi city growth ketunda-tunda. Def tetep dibangun pas urgent-tapi-nggak-existential, tapi di prioritas rendah (gentian sama growth), nggak nyerobot antrian] [fix v4.13: POS.STR_LO/STR_HI dilonggarin 0.6/1.6 -> 1.0/2.6 (tetangga harus beneran jauh lebih gede baru dianggap 'kuat') + aggrGate: nStr('kuat') dikali 0.35-1.0 tergantung ada serangan/kehilangan tanah nyata belakangan ini (45s half-life) -- sebelumnya posture bisa full URGENT cuma gara2 tetangga ukurannya segede/lebih gede dikit walau nggak pernah nyerang, bikin gold kesedot ke defense padahal harusnya city/factory kayak kompetitor rank-1] [fix v4.12: SAM pertama TIDAK di-skip lagi pas existentialAssault (sebelumnya air-defense mati total justru pas paling rawan nuke finishing-blow) + kandidat tile defense divalidasi ulang ownerAt/isLand/isFallout sebelum fire, bukan cuma lewat quote() cost-check] [fix: factory duluan, REPLAY setelah mati/early death (hook AF_PLAY_AGAIN), RESPAWN maks 3x, timer EARLY ke-reset tiap match] [v4.11: bot=lahan/player=ancaman, attack-first, SAM di pusat ekonomi, peer-floor, hole dibatasi, city sebelum defense] [FIX v4.10] SAM pertama dipindah DI ATAS defense berulang (defUrgent) di urutan build -- sebelumnya starved terus selama defUrgent true (hampir sepanjang game kalau underdog), jadi sam=0 walau syarat affordable udah lama kepenuhi; [FIX v4.9] POSTURE deteksi growth-rate musuh snowball (bukan cuma ratio snapshot, ketangkep sebelum musuh keburu overtake) + COUNTER bypass budget cap buat invasi existential (>=50% pasukan gw sekali serang, masih dijaga floorT) + DEF_ASSAULT_HOLD dilewatin kalau posture udah existential (>=0.9, biar defense bisa dibangun ulang walau lagi digempur) + COLLAPSE GUARD: expand/attack full-stop pas existential assault biar semua pasukan kekonsentrasi ke defense/front; [FIX v4.8] spaced() pakai STRUCT_SPACING scaled dari rules (bukan hardcode 18) + sampleOwn rail-aware (prefer tile dalam RAIL_MAX_PATH dari struktur terdekat, fallback random) + evalFocus track existential enemy (tileShare>=25% selalu masuk kandidat, ratio cutoff 0.3x) + dominant flag inject ke score evalFocus; logger rel/kereta + boat attack dicap 0.25 + defense nggak nyerobot tabungan city + boat reach adaptif + serangan receh diabaikan + silo pas macet + defense skip kalau dominan; counter dibatasi (budget+floor) + cadangan pasukan vs musuh terkuat + warship off + SAM pertama prioritas + WATCH skip ally; map "..W.."x"..H..", POSTURE adaptif (jatah defense dari ancaman + dominasi) + build income dulu (city 3, factory, port, city 6, factory 2) + power P + satu front satu arah + serangan terorganisir + boat invade + logger WATCH + counter-attack floor + spawn nunggu pemain lain + expand nutup musuh + momentum + ukuran serangan dinamis + push besar kalau unggul + logger terintegrasi (leaderboard, aliansi, nuke, aturan game)")
