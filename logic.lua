@@ -1,5 +1,16 @@
--- rofront_logic.lua
--- Core bot logic for RoFront (Airfront). Loaded remotely by the GUI shell via loadstring.
+local HUB_NAME = "RoFront"
+local VERSION  = "v1.0"
+local YT_LINK  = "https://www.youtube.com/@RansbloxScript"
+local WEB_LINK = "https://ransblox.net"
+
+if _G.ROFRONT_Unload then pcall(_G.ROFRONT_Unload) end
+
+pcall(function() setclipboard(YT_LINK) end)
+
+
+-- =====================================================================
+-- BOT (airfront_bot v5.6, embedded)
+-- =====================================================================
 local function startBot()
 local RUN={}
 getgenv().AF_BOT=RUN
@@ -84,6 +95,7 @@ RESPAWN_CROWD=35,
 ATK_MAX_COST_FRAC=0.5,
 ATK_MIN_P=1.0,
 COST_SCALE=1.0,
+RETREAT_RISK_SCALE=0.5,
 ATK_TILES=40,
 COST_DEF_MULT=5.0,
 DEF_SILO_MAX=0.35,
@@ -247,6 +259,11 @@ if os.clock()-lastWrite>5 then
 lastWrite=os.clock()
 flushLogs()
 end
+end
+getgenv().AF_COPY_LOG=function()
+flushLogs()
+local clip=setclipboard or toclipboard
+if clip then pcall(clip,table.concat(logs,"\n"))end
 end
 local function findCtx()
 for _,t in ipairs(getgc(true))do
@@ -1374,6 +1391,19 @@ if ok and type(v)=="number"then return v end
 end
 return 1
 end
+local function retreatMalus()
+return tonumber(R().RETREAT_MALUS)or 0.25
+end
+local function retreatHoldSec()
+local rt=R().RETREAT_DELAY_TICKS
+local tr=R().TICK_RATE
+if type(rt)=="number"and type(tr)=="number"and tr>0 then return rt/tr end
+return 2
+end
+local function retreatRisk(P0)
+-- 1.0 = marginal fight (bisa mental balik), 0.0 = jelas menang -> nggak perlu reserve ekstra
+return math.clamp(1-((P0 or 0)-1),0,1)
+end
 local function tileLoss(st,S,e,t,X)
 local Rl=R()
 local oi=st.owners[e.o]
@@ -1683,14 +1713,16 @@ if humanThreat then floorT=math.max(floorT,maxT*CFG.HUMAN_FLOOR,math.min(peerT*0
 elseif e.bot then floorT=math.max(CFG.STOP_FILL*maxT,math.min(floorT,maxT*CFG.BOT_FLOOR))end
 if info and info.punishE==e then floorT=math.min(floorT,math.max(troops*0.2,maxT*0.03))end
 floorT=math.max(floorT,(info and info.reserveT)or 0)
+local riskFrac=retreatRisk(e.P or 0)
+floorT=math.max(floorT,troops*retreatMalus()*riskFrac*CFG.RETREAT_RISK_SCALE)
 for _,cd in ipairs(cands)do
 if slots<=0 then break end
 local L,X=attackNeed(st,S,e,cd.t,avail*0.3,dynN)
 local need=X*margin
 if costLogN<8 then
 costLogN+=1
-log(("COST tile=%d loss/tile=%d x%d tile=%d kirim=%d pasukan=%d musuh=%d"):format(
-cd.t,math.floor(L),CFG.ATK_TILES,math.floor(X),math.floor(need),math.floor(troops),math.floor(e.troops or 0)))
+log(("COST tile=%d loss/tile=%d x%d tile=%d kirim=%d pasukan=%d musuh=%d risk=%.2f floor=%d"):format(
+cd.t,math.floor(L),CFG.ATK_TILES,math.floor(X),math.floor(need),math.floor(troops),math.floor(e.troops or 0),riskFrac,math.floor(floorT)))
 end
 if need>avail or troops-need<floorT or need>troops*costFrac then break end
 local ratio=math.clamp(need/math.max(troops,1),CFG.ATK_MIN_RATIO,CFG.ATK_MAX_RATIO)
@@ -1722,7 +1754,7 @@ ratio=sent/math.max(troops,1)
 if ratio<CFG.ATK_MIN_RATIO then break end
 if not e.bot and ratio<0.15 then break end
 need=sent
-tileCd[cd.t]=now+CFG.TILE_CD
+tileCd[cd.t]=now+math.max(CFG.TILE_CD,retreatHoldSec()*riskFrac)
 out[#out+1]={tile=cd.t,kind="attack",ratio=ratio,owner=e.o}
 if sizeLogN<25 then
 sizeLogN+=1
@@ -2835,6 +2867,10 @@ tostring(lead and math.floor(nz(lead.oi.troops)))},"|")
 if cur~=LG.sig then
 LG.sig,LG.sigAt=cur,now
 end
+if now-LG.clip>=(tonumber(getgenv().AF_LOGGER_CLIP)or 20)then
+LG.clip=now
+getgenv().AF_COPY_LOG()
+end
 if now-LG.last<6 then return end
 LG.last=now
 local per=lgStruct(st)
@@ -3212,4 +3248,14 @@ log("bot v5.6 HARDCORE+MIMIC+PUNISH jalan [fix v5.6: deteksi bom gagal pakai kom
 return true
 end
 
-return startBot
+
+-- ===== NO-GUI TEST BUILD =====
+-- Langsung jalanin bot, skip WindUI sepenuhnya. Log tetep jalan ke af_log.txt / clipboard
+-- via AF_COPY_LOG seperti biasa. Set getgenv().AF_HARDCORE=false SEBELUM execute kalau mau non-hardcore.
+getgenv().AF_HARDCORE = (getgenv().AF_HARDCORE ~= false)
+local okStart, errStart = pcall(startBot)
+if not okStart then
+    warn("[RoFront] bot gagal start: " .. tostring(errStart))
+else
+    print("[RoFront] bot jalan, no-GUI test build. Ketik getgenv().AF_COPY_LOG() buat copy log kapan aja.")
+end
