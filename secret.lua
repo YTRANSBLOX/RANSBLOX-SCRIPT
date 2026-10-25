@@ -13,7 +13,7 @@ local HUB_NAME = "Robot Fighter"
 
 local Core = {
     Name = HUB_NAME,
-    Version = "2.0-override", -- GUI shows this so you can tell which logic is really running
+    Version = "2.1-quest-idle", -- GUI shows this so you can tell which logic is really running
     Features = {},   -- id -> feature table { id, title, on, busy }
 
     -- hooks (GUI overrides these after loading the module)
@@ -1018,11 +1018,26 @@ end
 -- and when Quest Mode is turned off every feature goes back to what the user had picked.
 local QUEST_PAUSED = { "Buy", "Store", "Build", "Upgrade", "Crate", "Rebirth" }
 
+local questIdleShown = false
 local questModeF = feature("QuestMode", "Auto Quest Mode", 5, function()
-    -- everything that isn't needed to finish quests is paused while this mode runs
-    for _, id in ipairs(QUEST_PAUSED) do setOverride("quest", id, false) end
-
     local need = activeQuestTasks()
+
+    -- No quest needs anything (none today, all done, or data not readable yet):
+    -- do NOT pause anything. Everything runs exactly like the user's toggles say,
+    -- Tournament included. Only keep claiming rewards.
+    if not (need.train or need.fight or need.pull or need.scrap) then
+        clearOverrides("quest")
+        setOverride("quest", "ClaimQuests", true)
+        if not questIdleShown then
+            questIdleShown = true
+            setStatus("No quest to do, running your normal toggles")
+        end
+        return
+    end
+    questIdleShown = false
+
+    -- there IS quest work: everything that isn't needed to finish quests is paused
+    for _, id in ipairs(QUEST_PAUSED) do setOverride("quest", id, false) end
 
     -- Fight and Train are mutually exclusive; finish TrainHits first, then Fight/EarnMoney
     setOverride("quest", "Train", need.train == true)
@@ -1030,10 +1045,6 @@ local questModeF = feature("QuestMode", "Auto Quest Mode", 5, function()
     setOverride("quest", "Pull", need.pull == true)
     setOverride("quest", "Scrap", need.scrap == true)
     setOverride("quest", "ClaimQuests", true) -- always keep claiming finished quests
-
-    if not (need.train or need.fight or need.pull or need.scrap) then
-        setStatus("All quest objectives done, just claiming")
-    end
 end)
 
 -- ---------- auto tournament (Underground Tournament / PvP) ----------
