@@ -13,7 +13,7 @@ local HUB_NAME = "Robot Fighter"
 
 local Core = {
     Name = HUB_NAME,
-    Version = "2.3-build-gentle", -- GUI shows this so you can tell which logic is really running
+    Version = "2.5-build-real-minigame", -- GUI shows this so you can tell which logic is really running
     Features = {},   -- id -> feature table { id, title, on, busy }
 
     -- hooks (GUI overrides these after loading the module)
@@ -519,49 +519,121 @@ end
 
 local lastBedCount = -1
 local wiringSince, bootSince, lastPower, renameAt = nil, nil, 0, 0
-local wiringSent, bootSent = false, false
+local wiringTried, bootTried, wiringWarned, bootWarned = false, false, false, false
+
+-- ---- the game's OWN minigame code (found via getgc, by script + function name) ----
+-- Nothing is sent to the server by us and no GUI / attribute / camera is touched:
+-- we just call the functions the game's WiringClient / BootClient already use when you
+-- finish the minigame yourself, so the game closes and resets itself the normal way.
+local gameFn = {}
+local function findGameFn(scriptName, fnName)
+    local key = scriptName .. "." .. fnName
+    local c = gameFn[key]
+    if c then return c end
+    local okG, gc = pcall(getgc)
+    if not (okG and type(gc) == "table") then return nil end
+    for _, f in ipairs(gc) do
+        if type(f) == "function" and islclosure and islclosure(f)
+            and not (isexecutorclosure and isexecutorclosure(f)) then
+            local okS, src = pcall(debug.info, f, "s")
+            if okS and type(src) == "string" and src:find(scriptName, 1, true) then
+                local okN, nm = pcall(debug.info, f, "n")
+                if okN and nm == fnName then
+                    gameFn[key] = f
+                    return f
+                end
+            end
+        end
+    end
+    return nil
+end
+
+local function finishWiring()
+    local f = findGameFn("WiringClient", "success")
+    if not f then
+        setStatus("Wiring: couldn't find the game's own success(), finish it yourself")
+        return false
+    end
+    local okC, err = pcall(f)
+    if not okC then
+        gameFn["WiringClient.success"] = nil
+        warn("[" .. HUB_NAME .. "] wiring success(): " .. tostring(err))
+        setStatus("Wiring: the game's success() errored, finish it yourself")
+        return false
+    end
+    return true
+end
+
+local function finishBoot()
+    local f = findGameFn("BootClient", "release")
+    if not f then
+        setStatus("Boot: couldn't find the game's own release(), finish it yourself")
+        return false
+    end
+    -- release() only fires "BootDone" when you're holding AND the ring is inside the red zone,
+    -- so put the game's own state there first. Only if the state looks exactly as expected.
+    local okU, ups = pcall(debug.getupvalues, f)
+    if not (okU and type(ups) == "table"
+        and type(ups[1]) == "boolean" and type(ups[2]) == "boolean"
+        and type(ups[3]) == "number" and type(ups[4]) == "number" and type(ups[5]) == "number"
+        and ups[4] <= ups[5]) then
+        setStatus("Boot: can't verify the game's state, finish it yourself")
+        return false
+    end
+    pcall(debug.setupvalue, f, 1, true)
+    pcall(debug.setupvalue, f, 3, (ups[4] + ups[5]) / 2)
+    local okC, err = pcall(f)
+    if not okC then
+        gameFn["BootClient.release"] = nil
+        warn("[" .. HUB_NAME .. "] boot release(): " .. tostring(err))
+        setStatus("Boot: the game's release() errored, finish it yourself")
+        return false
+    end
+    return true
+end
 local robotFullNotified = false
 local buildF = feature("Build", "Auto Build Robot", 1, function()
     local pg = LP:FindFirstChild("PlayerGui")
     if not pg then return end
 
-    -- wiring minigame: wait 3s, send "Done" ONCE and let the game close its own GUI.
-    -- Only if the GUI is still open 4s later do we force it shut (last resort).
+    -- wiring + boot: finished through the game's OWN minigame functions (see finishWiring /
+    -- finishBoot above). No remotes from us, no GUI/attribute/camera edits: the game closes
+    -- and resets everything itself. The lever isn't pulled while a minigame is open.
     local wg = pg:FindFirstChild("WiringGui")
     if wg and wg.Enabled then
-        wiringSince = wiringSince or os.clock()
+        if not wiringSince then
+            wiringSince = os.clock()
+            wiringTried, wiringWarned = false, false
+        end
         local t = os.clock() - wiringSince
-        if not wiringSent and t >= 3 then
-            wiringSent = true
-            fire("WiringEvent", "Done")
-            setStatus("Wiring finished")
-        elseif wiringSent and t >= 7 then
-            wg.Enabled = false
-            resetCamera()
-            wiringSince, wiringSent = nil, false
+        if not wiringTried and t >= 3 then
+            wiringTried = true
+            if finishWiring() then setStatus("Wiring finished (game's own function)") end
+        elseif wiringTried and t >= 10 and not wiringWarned then
+            wiringWarned = true
+            setStatus("Wiring is still open, finish it yourself")
         end
         return
     end
-    wiringSince, wiringSent = nil, false
+    wiringSince, wiringTried = nil, false
 
-    -- boot minigame: same idea, wait 2.5s, send "BootDone" once, let the game close it
     local bg = pg:FindFirstChild("BootGui")
     if bg and bg.Enabled then
-        bootSince = bootSince or os.clock()
+        if not bootSince then
+            bootSince = os.clock()
+            bootTried, bootWarned = false, false
+        end
         local t = os.clock() - bootSince
-        if not bootSent and t >= 2.5 then
-            bootSent = true
-            fire("WiringEvent", "BootDone")
-            setStatus("Boot finished")
-        elseif bootSent and t >= 6.5 then
-            bg.Enabled = false
-            LP:SetAttribute("BootActive", nil)
-            resetCamera()
-            bootSince, bootSent = nil, false
+        if not bootTried and t >= 2.5 then
+            bootTried = true
+            if finishBoot() then setStatus("Boot finished (game's own function)") end
+        elseif bootTried and t >= 10 and not bootWarned then
+            bootWarned = true
+            setStatus("Boot is still open, finish it yourself")
         end
         return
     end
-    bootSince, bootSent = nil, false
+    bootSince, bootTried = nil, false
 
     -- name the new robot
     local ng = pg:FindFirstChild("RobotNameGui")
