@@ -161,10 +161,11 @@ local function openSection(tab, title, iconName)
 end
 
 -- toggle bound to a logic feature id. The logic handles all side effects.
-local function addToggle(box, title, desc, id)
+local function addToggle(box, title, desc, id, iconName)
     local t = box:Toggle({
         Title = title,
         Desc = desc,
+        Icon = iconName,
         Value = false,
         Callback = function(v) Core.SetFeature(id, v) end,
     })
@@ -222,8 +223,8 @@ Core.OnFeatureChanged = function(id, on)
 end
 
 local PartsBox = section(Tabs.Auto, "Parts", "puzzle")
-addToggle(PartsBox, "Auto Pull", "Pulls the gacha lever for new parts.", "Pull")
-addToggle(PartsBox, "Auto Buy Parts", "Buys and places parts automatically.", "Buy")
+addToggle(PartsBox, "Auto Pull", "Pulls the gacha lever for new parts.", "Pull", "disc")
+addToggle(PartsBox, "Auto Buy Parts", "Buys and places parts automatically.", "Buy", "shopping-cart")
 
 local function copyList(t)
     local out = {}
@@ -246,7 +247,7 @@ rarityDropdown("Head Rarity", "HeadRarity", "Which rarities to buy for the Head 
 rarityDropdown("Body Rarity", "BodyRarity", "Which rarities to buy for the Body slot.", "Upper")
 rarityDropdown("Leg Rarity",  "LegRarity",  "Which rarities to buy for the Leg slot.",  "Lower")
 
-addToggle(PartsBox, "Auto Store Part", "Stores picked rarities on the Parts Shelf instead of building them.", "Store")
+addToggle(PartsBox, "Auto Store Part", "Stores picked rarities on the Parts Shelf instead of building them.", "Store", "archive")
 PartsBox:Dropdown({
     Title = "Store Rarity",
     Flag = "StoreRarity",
@@ -258,12 +259,12 @@ PartsBox:Dropdown({
 })
 
 local ScrapBox = section(Tabs.Auto, "Scrap", "recycle")
-addToggle(ScrapBox, "Auto Farm Scrap", "Collects and sells scrap automatically.", "Scrap")
+addToggle(ScrapBox, "Auto Farm Scrap", "Collects and sells scrap automatically.", "Scrap", "recycle")
 
 local BuildBox = section(Tabs.Auto, "Robot", "bot")
-addToggle(BuildBox, "Auto Build Robot", "Builds your robot automatically.", "Build")
-addToggle(BuildBox, "Auto Fight", "Keeps your robot fighting.", "Fight")
-addToggle(BuildBox, "Auto Train", "Keeps your robot training.", "Train")
+addToggle(BuildBox, "Auto Build Robot", "Builds your robot automatically.", "Build", "wrench")
+addToggle(BuildBox, "Auto Fight", "Keeps your robot fighting.", "Fight", "swords")
+addToggle(BuildBox, "Auto Train", "Keeps your robot training.", "Train", "dumbbell")
 BuildBox:Dropdown({
     Title = "Fight Round",
     Flag = "FightRound",
@@ -282,7 +283,7 @@ BuildBox:Dropdown({
 })
 
 local UpBox = section(Tabs.Extra, "Upgrades", "trending-up")
-addToggle(UpBox, "Auto Upgrade", "Buys upgrades from the signs on your plot.", "Upgrade")
+addToggle(UpBox, "Auto Upgrade", "Buys upgrades from the signs on your plot.", "Upgrade", "trending-up")
 UpBox:Dropdown({
     Title = "Upgrades",
     Flag = "UpgradeList",
@@ -317,7 +318,7 @@ QuestInfoBox:Paragraph({
 })
 
 local QuestBox = section(Tabs.Quest, "Auto Quest", "target")
-addToggle(QuestBox, "Auto Quest Mode", "Stops every other automation and only does what's needed to finish and claim today's quests.", "QuestMode")
+addToggle(QuestBox, "Auto Quest Mode", "Stops every other automation and only does what's needed to finish and claim today's quests.", "QuestMode", "target")
 
 -- ===== TOURNAMENT TAB =====
 local TourneyInfoBox = openSection(Tabs.Tournament, "How it works", "info")
@@ -335,13 +336,13 @@ TourneyInfoBox:Paragraph({
 })
 
 local TourneyBox = section(Tabs.Tournament, "Tournament", "swords")
-addToggle(TourneyBox, "Auto Tournament", "Auto-joins the Underground Tournament, retreating from any current fight first, and resumes Auto Fight once it's over.", "Tournament")
+addToggle(TourneyBox, "Auto Tournament", "Auto-joins the Underground Tournament, retreating from any current fight first, and resumes Auto Fight once it's over.", "Tournament", "trophy")
 
 local RewardBox = section(Tabs.Extra, "Rewards", "gift")
-addToggle(RewardBox, "Auto Open Crates", "Opens crates you are holding.", "Crate")
+addToggle(RewardBox, "Auto Open Crates", "Opens crates you are holding.", "Crate", "gift")
 
 local RebirthBox = section(Tabs.Extra, "Rebirth", "rotate-ccw")
-addToggle(RebirthBox, "Auto Rebirth", "Rebirths as soon as it is available.", "Rebirth")
+addToggle(RebirthBox, "Auto Rebirth", "Rebirths as soon as it is available.", "Rebirth", "rotate-ccw")
 
 -- ===== MISC TAB =====
 local UIBox = section(Tabs.Misc, "Interface", "palette")
