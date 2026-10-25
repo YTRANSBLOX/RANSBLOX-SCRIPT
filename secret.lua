@@ -333,6 +333,24 @@ local function wantedPlateWaiting()
     return false
 end
 
+-- true while one of YOUR wanted plates is lying there AND you can afford it right now.
+-- Different from wantedPlateWaiting(): a wanted-but-unaffordable plate still blocks the
+-- lever (no point pulling for more), but it should NOT block Scrap - farming is exactly
+-- how you earn the money to go buy it.
+local function affordableWantedPlateWaiting()
+    local junk = workspace.Map:FindFirstChild("Junkyard")
+    local plates = junk and junk:FindFirstChild("ActivePlates")
+    if not plates then return false end
+    local money = tonumber(LP:GetAttribute("Money")) or 0
+    for _, p in ipairs(plates:GetChildren()) do
+        if p:GetAttribute("FoundBy") == LP.UserId and plateWanted(p) then
+            local price = tonumber(p:GetAttribute("Price")) or 0
+            if price <= money then return true end
+        end
+    end
+    return false
+end
+
 -- ---------- STEP 1: gacha pull ----------
 -- Parks you next to the lever when it starts (and stays there, no teleport back).
 -- Pauses while a wanted part still has to be bought and placed on the bed.
@@ -926,6 +944,16 @@ local function sellScrap()
 end
 
 local scrapF = feature("Scrap", "Auto Farm Scrap", 0.5, function()
+    -- Scrap is just the filler activity - Auto Buy/Build takes priority. If you're
+    -- holding a part, or a wanted part is sitting there and you can afford it right
+    -- now, step aside and let Buy grab/place it instead of continuing to farm.
+    -- (If the only wanted part isn't affordable yet, keep farming - that's exactly
+    -- how the money to buy it gets earned.)
+    if buyF and isActive(buyF) and (carryingPart() or affordableWantedPlateWaiting()) then
+        setStatus("A part's ready to grab, pausing Scrap for Auto Buy")
+        return
+    end
+
     -- 1) just turned on: look at the bag first
     if not scrapInit then
         scrapInit = true
