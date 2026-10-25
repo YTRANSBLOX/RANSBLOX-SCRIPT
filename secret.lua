@@ -1063,8 +1063,13 @@ local function runQuestMode()
         setOverride("quest", "Train", need.train == true)
         setOverride("quest", "Fight", (not need.train) and need.fight == true)
     end
-    setOverride("quest", "Pull", need.pull == true)
-    setOverride("quest", "Scrap", need.scrap == true)
+    -- Pull and Scrap are the CHARACTER's own actions (pulling the gacha lever,
+    -- farming scrap), not the robot's. Quest Mode can force them ON when a quest
+    -- needs them, but must never force them OFF - with no override, isActive() falls
+    -- back to the user's own toggle, so Auto Farm Scrap keeps running on its own even
+    -- while Quest Mode is busy managing the robot's Fight/Train.
+    setOverride("quest", "Pull", need.pull == true or nil)
+    setOverride("quest", "Scrap", need.scrap == true or nil)
     setOverride("quest", "ClaimQuests", true) -- always keep claiming finished quests
 end
 
