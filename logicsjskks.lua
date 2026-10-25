@@ -18,7 +18,7 @@ local Core = {
     -- hooks (GUI overrides these after loading the module)
     OnStatus         = function(text) end,
     OnNotify         = function(content, duration) end,
-    OnFeatureChanged = function(id, on) end, -- fired when logic flips a feature itself
+    OnFeatureChanged = function(id, on) end, -- only for Fight<->Train exclusion (GUI mirrors the switch)
 }
 
 local function setStatus(text) Core.OnStatus(text) end
@@ -167,16 +167,60 @@ local function readRobots()
 end
 
 -- ---------- feature runner ----------
+-- Every feature has TWO layers:
+--   f.on = what the user picked in the GUI (the toggle). ONLY the GUI changes this.
+--   f.ov = temporary overrides from Quest Mode / Tournament (true / false / nil).
+-- The loop runs while isActive(f). Overrides never touch f.on, so the GUI switches
+-- stay exactly where the user left them, and the user's choice comes back by itself
+-- as soon as the override is cleared.
+local Features = Core.Features
+local Hooks = {} -- id -> function(active), called when a feature really starts / stops
+
+local function isActive(f)
+    local o = f.ov
+    if o.tourney ~= nil then return o.tourney end
+    if o.quest ~= nil then return o.quest end
+    return f.on
+end
+
+local function refresh(f)
+    local a = isActive(f)
+    if a == f.active then return end
+    f.active = a
+    local h = Hooks[f.id]
+    if h then h(a) end
+end
+
+local function setOverride(source, id, val)
+    local f = Features[id]
+    if not f or f.ov[source] == val then return end
+    f.ov[source] = val
+    refresh(f)
+end
+
+local function clearOverrides(source)
+    for _, f in pairs(Features) do
+        if f.ov[source] ~= nil then
+            f.ov[source] = nil
+            refresh(f)
+        end
+    end
+end
+
+local function newFeature(id, title)
+    local f = { id = id, title = title, on = false, active = false, ov = {}, busy = false }
+    Features[id] = f
+    return f
+end
+
 -- id    : key used by the GUI (Core.SetFeature("Pull", true))
 -- title : human label used in status text (nil = no status message)
-local Features = Core.Features
 local function feature(id, title, every, step)
-    local f = { id = id, title = title, on = false, busy = false }
-    Features[id] = f
+    local f = newFeature(id, title)
     task.spawn(function()
         while alive do
             task.wait(every)
-            if f.on and not f.busy then
+            if isActive(f) and not f.busy then
                 f.busy = true
                 local okS, err = pcall(step)
                 if not okS then warn("[" .. HUB_NAME .. "] " .. id .. ": " .. tostring(err)) end
@@ -205,8 +249,7 @@ end
 
 -- rarities the user wants stored on the Parts Shelf instead of built (none by default)
 local selStoreRarity = {}
-local storeF = { id = "Store", title = "Auto Store Part", on = false, busy = false } -- flag only, no loop
-Features.Store = storeF
+local storeF = newFeature("Store", "Auto Store Part") -- flag only, no loop
 
 -- the game stores the part rarity as an attribute "Rarity" on the plate
 local function plateRarity(p)
@@ -239,7 +282,7 @@ local function plateWanted(p)
     local rarity = plateRarity(p)
     local slot = plateSlot(p)
     if not (rarity and slot and selRarity[slot] and selRarity[slot][rarity]) then return false end
-    local goingToStore = storeF.on and selStoreRarity[rarity]
+    local goingToStore = isActive(storeF) and selStoreRarity[rarity]
     if not goingToStore and placedPart(slot) then return false end
     return true
 end
@@ -299,7 +342,7 @@ local pullF = feature("Pull", "Auto Pull", 1.5, function()
     if not plot then return end
 
     -- pause: a wanted part is waiting / in your hands
-    if buyF and buyF.on and (carryingPart() or wantedPlateWaiting()) then
+    if buyF and isActive(buyF) and (carryingPart() or wantedPlateWaiting()) then
         if not pullPaused then
             pullPaused = true
             setStatus("Got a wanted part. Pull paused until it's bought and placed")
@@ -362,7 +405,7 @@ buyF = feature("Buy", "Auto Buy Parts", 1.5, function()
         end
 
         -- try the Parts Shelf first if this rarity is selected for storage
-        if storeF.on and selStoreRarity[carryRarity] then
+        if isActive(storeF) and selStoreRarity[carryRarity] then
             if storeIsFull() then
                 if not storageFullWarned then
                     storageFullWarned = true
@@ -573,7 +616,7 @@ local fightF = feature("Fight", "Auto Fight", 2, function()
 end)
 
 local trainF = feature("Train", "Auto Train", 3, function()
-    if fighting() or fightF.on then return end
+    if fighting() or isActive(fightF) then return end
     local cmd = LP:GetAttribute("RobotCommand")
     if cmd ~= "Train" and cmd ~= "ToArena" then
         fire("RobotCommandEvent", "Train")
@@ -970,34 +1013,22 @@ local function activeQuestTasks()
     return need
 end
 
--- Core.SetFeature is defined at the bottom; forward-declared so the
--- features below (quest mode / tournament) can switch other features on/off.
-local setFeature
+-- Quest Mode only PAUSES / FORCES features through overrides. The GUI toggles are never touched,
+-- and when Quest Mode is turned off every feature goes back to what the user had picked.
+local QUEST_PAUSED = { "Buy", "Store", "Build", "Upgrade", "Crate", "Rebirth" }
 
 local questModeF = feature("QuestMode", "Auto Quest Mode", 5, function()
-    -- everything that isn't needed to finish quests stays off while this mode runs
-    setFeature("Buy", false)
-    setFeature("Store", false)
-    setFeature("Build", false)
-    setFeature("Upgrade", false)
-    setFeature("Crate", false)
-    setFeature("Rebirth", false)
+    -- everything that isn't needed to finish quests is paused while this mode runs
+    for _, id in ipairs(QUEST_PAUSED) do setOverride("quest", id, false) end
 
     local need = activeQuestTasks()
 
     -- Fight and Train are mutually exclusive; finish TrainHits first, then Fight/EarnMoney
-    if need.train then
-        setFeature("Train", true) -- its own side effect turns Fight off
-    elseif need.fight then
-        setFeature("Fight", true) -- its own side effect turns Train off
-    else
-        setFeature("Fight", false)
-        setFeature("Train", false)
-    end
-
-    setFeature("Pull", need.pull == true)
-    setFeature("Scrap", need.scrap == true)
-    setFeature("ClaimQuests", true) -- always keep claiming finished quests
+    setOverride("quest", "Train", need.train == true)
+    setOverride("quest", "Fight", (not need.train) and need.fight == true)
+    setOverride("quest", "Pull", need.pull == true)
+    setOverride("quest", "Scrap", need.scrap == true)
+    setOverride("quest", "ClaimQuests", true) -- always keep claiming finished quests
 
     if not (need.train or need.fight or need.pull or need.scrap) then
         setStatus("All quest objectives done, just claiming")
@@ -1017,8 +1048,7 @@ local function inTournament()
     return LP:GetAttribute("PvpJoined") == true or LP:GetAttribute("PvP") == true
 end
 
--- true only while the PvE Auto Fight loop was paused by this feature (so we know
--- whether to turn it back on once the tournament is over, instead of guessing)
+-- true only while this feature is holding Auto Fight paused (override, toggle stays untouched)
 local pausedFightForTournament = false
 
 local tourneyF = feature("Tournament", "Auto Tournament", 3, function()
@@ -1027,10 +1057,8 @@ local tourneyF = feature("Tournament", "Auto Tournament", 3, function()
 
     if joining then
         -- the bot can't join while it's off fighting a normal PvE match, so pause that first
-        if fightF.on then
-            pausedFightForTournament = true
-            setFeature("Fight", false)
-        end
+        pausedFightForTournament = true
+        setOverride("tourney", "Fight", false)
 
         -- AutoFight=false only stops NEW fights from starting. A fight already in progress
         -- (or the robot walking to the Arena) keeps going unless we actually cancel it, the
@@ -1048,11 +1076,12 @@ local tourneyF = feature("Tournament", "Auto Tournament", 3, function()
         return
     end
 
-    -- tournament window closed and we're no longer in it -> give Auto Fight back
+    -- tournament window closed and we're no longer in it -> release the pause,
+    -- Auto Fight runs again only if the user's toggle (or Quest Mode) wants it
     if pausedFightForTournament then
         pausedFightForTournament = false
-        setFeature("Fight", true)
-        setStatus("Tournament's over, resuming Auto Fight")
+        setOverride("tourney", "Fight", nil)
+        setStatus("Tournament's over, Auto Fight released")
     end
 end)
 
@@ -1060,46 +1089,59 @@ end)
 -- PUBLIC API (this is the only thing the GUI should touch)
 -- =====================================================================
 
--- side effects that used to live inside the GUI toggle callbacks
-local SideEffects = {
-    Scrap = function(on)
-        if on then scrapInit = false end
-    end,
-    Fight = function(on)
-        if not on then fire("RobotCommandEvent", "AutoFight", false) end
-        if on then setFeature("Train", false) end
-    end,
-    Train = function(on)
-        if on then
-            if fightF.on then
-                setFeature("Fight", false) -- also sends AutoFight=false
-            else
-                fire("RobotCommandEvent", "AutoFight", false)
-            end
-        end
-    end,
-}
+-- what has to happen when a feature REALLY starts / stops (whoever caused it)
+Hooks.Scrap = function(active)
+    if active then scrapInit = false end
+end
+Hooks.Fight = function(active)
+    if not active then fire("RobotCommandEvent", "AutoFight", false) end
+end
+Hooks.Train = function(active)
+    if active then fire("RobotCommandEvent", "AutoFight", false) end
+end
+Hooks.QuestMode = function(active)
+    if not active then clearOverrides("quest") end
+end
+Hooks.Tournament = function(active)
+    if not active then
+        clearOverrides("tourney")
+        pausedFightForTournament = false
+    end
+end
 
--- turn a feature on/off (from the GUI toggle OR from other logic).
--- Fires OnFeatureChanged so the GUI can mirror the switch.
-setFeature = function(id, on)
+-- GUI toggle -> logic. This is the ONLY place that changes f.on.
+function Core.SetFeature(id, on)
     local f = Features[id]
     if not f then return end
     on = on and true or false
     if f.on == on then return end
     f.on = on
-    local fx = SideEffects[id]
-    if fx then fx(on) end
-    Core.OnFeatureChanged(id, on)
+    refresh(f)
+
+    -- Fight and Train can't both be picked: switching one on drops the other one's toggle
+    local other = on and ((id == "Fight" and "Train") or (id == "Train" and "Fight")) or nil
+    local o = other and Features[other]
+    if o and o.on then
+        o.on = false
+        refresh(o)
+        Core.OnFeatureChanged(other, false) -- GUI mirrors the switch
+    end
+
     if f.title then
         setStatus(on and (f.title .. " is on") or (f.title .. " is off"))
     end
 end
-Core.SetFeature = setFeature
 
+-- what the user picked (the toggle)
 function Core.IsOn(id)
     local f = Features[id]
     return f and f.on or false
+end
+
+-- what is really running right now (toggle + Quest/Tournament overrides)
+function Core.IsActive(id)
+    local f = Features[id]
+    return f and isActive(f) or false
 end
 
 -- ---------- settings (GUI passes plain strings / arrays / numbers) ----------
