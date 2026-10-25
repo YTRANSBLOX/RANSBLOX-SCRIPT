@@ -13,7 +13,7 @@ local HUB_NAME = "Robot Fighter"
 
 local Core = {
     Name = HUB_NAME,
-    Version = "2.5-build-real-minigame", -- GUI shows this so you can tell which logic is really running
+    Version = "2.6-pull-settle", -- GUI shows this so you can tell which logic is really running
     Features = {},   -- id -> feature table { id, title, on, busy }
 
     -- hooks (GUI overrides these after loading the module)
@@ -320,6 +320,15 @@ local function carryingPart()
     return v ~= nil and v ~= false and v ~= ""
 end
 
+-- a plate's Rarity / PartType can arrive a moment after the plate itself shows up.
+-- During that moment (max 3s) we can't judge it yet, so it counts as "might be wanted".
+local plateSeen = setmetatable({}, { __mode = "k" })
+local function plateUnresolved(p)
+    if plateRarity(p) and plateSlot(p) then return false end
+    plateSeen[p] = plateSeen[p] or os.clock()
+    return os.clock() - plateSeen[p] < 3
+end
+
 -- true while one of YOUR plates that we want is still lying there
 local function wantedPlateWaiting()
     local junk = workspace.Map:FindFirstChild("Junkyard")
@@ -327,7 +336,7 @@ local function wantedPlateWaiting()
     if not plates then return false end
     for _, p in ipairs(plates:GetChildren()) do
         if p:GetAttribute("FoundBy") == LP.UserId then
-            if plateWanted(p) then return true end
+            if plateUnresolved(p) or plateWanted(p) then return true end
         end
     end
     return false
@@ -356,6 +365,7 @@ end
 -- Pauses while a wanted part still has to be bought and placed on the bed.
 local buyF -- assigned in STEP 2
 local pullPaused = false
+local lastPullAt = 0
 local pullF = feature("Pull", "Auto Pull", 1.5, function()
     local plot = myPlot()
     if not plot then return end
@@ -369,6 +379,10 @@ local pullF = feature("Pull", "Auto Pull", 1.5, function()
         return
     end
     pullPaused = false
+
+    -- a pull needs a moment to spin and reveal its part. Pulling again before the new part
+    -- shows up and can be judged is what made the bot re-pull over a part it wanted.
+    if os.clock() - lastPullAt < 4.5 then return end
 
     local pr = findPrompt(plot:FindFirstChild("GachaPillar"), "PullPrompt", true)
     if not pr then return end
@@ -388,6 +402,7 @@ local pullF = feature("Pull", "Auto Pull", 1.5, function()
 
     if pr.Enabled and (hrp() and (hrp().Position - pos).Magnitude <= 6.5) then
         fireproximityprompt(pr)
+        lastPullAt = os.clock()
         setStatus("Pulled the gacha lever")
     end
 end)
