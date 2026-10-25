@@ -1031,7 +1031,7 @@ end
 local QUEST_PAUSED = { "Buy", "Store", "Build", "Upgrade", "Crate", "Rebirth" }
 
 local questIdleShown = false
-local questModeF = feature("QuestMode", "Auto Quest Mode", 5, function()
+local function runQuestMode()
     local need = activeQuestTasks()
 
     -- No quest needs anything (none today, all done, or data not readable yet):
@@ -1054,6 +1054,8 @@ local questModeF = feature("QuestMode", "Auto Quest Mode", 5, function()
     -- Fight and Train are mutually exclusive; finish TrainHits first, then Fight/EarnMoney.
     -- But never yank AutoFight off while a match is already running (that cancels the fight
     -- in-game) - let the current fight finish naturally, then switch over to Train.
+    -- Pull/Scrap are independent of Fight/Train, so they're always evaluated below,
+    -- including mid-fight, instead of being frozen until the fight ends.
     if fighting() then
         setOverride("quest", "Fight", true)
         setOverride("quest", "Train", false)
@@ -1064,6 +1066,17 @@ local questModeF = feature("QuestMode", "Auto Quest Mode", 5, function()
     setOverride("quest", "Pull", need.pull == true)
     setOverride("quest", "Scrap", need.scrap == true)
     setOverride("quest", "ClaimQuests", true) -- always keep claiming finished quests
+end
+
+-- Polled every 1s (fast) as a baseline, PLUS re-run instantly the moment a fight
+-- actually ends. fightF itself polls every 2s and will happily queue a brand new
+-- match the instant "Fighting" flips to false if AutoFight is still true - if Quest
+-- Mode only reacted on its own slow timer, there was a window for a stray extra
+-- fight to start (and the character to sit there fighting) before the switch to
+-- Train/Scrap landed. Reacting on the attribute change itself closes that gap.
+local questModeF = feature("QuestMode", "Auto Quest Mode", 1, runQuestMode)
+bind(LP:GetAttributeChangedSignal("Fighting"), function()
+    if isActive(questModeF) then runQuestMode() end
 end)
 
 -- ---------- auto tournament (Underground Tournament / PvP) ----------
