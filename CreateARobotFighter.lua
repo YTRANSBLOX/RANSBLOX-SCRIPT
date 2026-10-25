@@ -160,6 +160,25 @@ local function openSection(tab, title, iconName)
     return tab:Section({ Title = title, Icon = icon(iconName), Box = true, BoxBorder = true, Opened = true })
 end
 
+-- WindUI hardcodes the toggle-switch icon color to black. Find it after
+-- creation and re-tint it so it's actually visible.
+local function tintToggleIcon(t, iconName, color)
+    if not iconName then return end
+    local okI, iconData = pcall(WindUI.Creator.Icon, iconName)
+    if not okI or not iconData or not iconData[1] then return end
+    local imageId = iconData[1]
+    task.spawn(function()
+        task.wait()
+        local main = t.ToggleFrame and t.ToggleFrame.UIElements and t.ToggleFrame.UIElements.Main
+        if not main then return end
+        for _, inst in ipairs(main:GetDescendants()) do
+            if inst:IsA("ImageLabel") and inst.Image == imageId then
+                inst.ImageColor3 = color
+            end
+        end
+    end)
+end
+
 -- toggle bound to a logic feature id. The logic handles all side effects.
 local function addToggle(box, title, desc, id, iconName)
     local t = box:Toggle({
@@ -169,6 +188,7 @@ local function addToggle(box, title, desc, id, iconName)
         Value = false,
         Callback = function(v) Core.SetFeature(id, v) end,
     })
+    tintToggleIcon(t, iconName, Color3.fromHex("#FFFFFF"))
     toggles[id] = t
     return t
 end
