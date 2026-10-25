@@ -13,7 +13,7 @@ local HUB_NAME = "Robot Fighter"
 
 local Core = {
     Name = HUB_NAME,
-    Version = "2.1-quest-idle", -- GUI shows this so you can tell which logic is really running
+    Version = "2.2-quest-nopause", -- GUI shows this so you can tell which logic is really running
     Features = {},   -- id -> feature table { id, title, on, busy }
 
     -- hooks (GUI overrides these after loading the module)
@@ -1056,12 +1056,10 @@ end
 
 -- Quest Mode only PAUSES / FORCES features through overrides. The GUI toggles are never touched,
 -- and when Quest Mode is turned off every feature goes back to what the user had picked.
--- Buy and Build are NOT in this list on purpose: grabbing a part that's already
--- sitting on the ground and slotting it onto the bed costs nothing and never
--- conflicts with whatever the quest needs, so it should never sit there skipped
--- just because Quest Mode is busy with Scrap/Train/etc. They run purely on the
--- user's own toggle, same as Pull and Scrap.
-local QUEST_PAUSED = { "Store", "Upgrade", "Crate", "Rebirth" }
+-- Quest Mode only touches what a quest physically needs: Fight<->Train (the robot can only
+-- do one), Pull/Scrap (can be forced ON, never forced OFF) and ClaimQuests. Everything else
+-- (Store, Upgrade, Crate, Rebirth, Buy, Build...) is never paused: it runs purely on the
+-- user's own toggle, so Quest Mode can't stop it.
 
 local questIdleShown = false
 local function runQuestMode()
@@ -1081,8 +1079,7 @@ local function runQuestMode()
     end
     questIdleShown = false
 
-    -- there IS quest work: everything that isn't needed to finish quests is paused
-    for _, id in ipairs(QUEST_PAUSED) do setOverride("quest", id, false) end
+    -- there IS quest work: only Fight/Train/Pull/Scrap are steered below, nothing else is paused
 
     -- Fight and Train are mutually exclusive; finish TrainHits first, then Fight/EarnMoney.
     -- But never yank AutoFight off while a match is already running (that cancels the fight
