@@ -692,9 +692,21 @@ local upgradeF = feature("Upgrade", "Auto Upgrade", 8, function()
             btn = btn or (sign and sign:FindFirstChild("BuyButton"))
             if btn and board then
                 if canAffordSign(label, board, btn) then
-                    withVisit(board.Position, function() fire("SignButtonEvent", "Press", btn) end)
-                    setStatus("Upgrade: " .. label)
-                    task.wait(0.4)
+                    local pressed = false
+                    withVisit(board.Position, function()
+                        -- re-check right at the moment of pressing: money/price can
+                        -- shift during the walk-over, so the first check alone isn't enough
+                        if canAffordSign(label, board, btn) then
+                            pressed = true
+                            fire("SignButtonEvent", "Press", btn)
+                        end
+                    end)
+                    if pressed then
+                        setStatus("Upgrade: " .. label)
+                        task.wait(0.6) -- give Money time to sync before checking the next sign
+                    else
+                        setStatus(label .. ": price changed, skipping this pass")
+                    end
                 else
                     setStatus(label .. ": not enough money yet")
                 end
@@ -1039,9 +1051,16 @@ local questModeF = feature("QuestMode", "Auto Quest Mode", 5, function()
     -- there IS quest work: everything that isn't needed to finish quests is paused
     for _, id in ipairs(QUEST_PAUSED) do setOverride("quest", id, false) end
 
-    -- Fight and Train are mutually exclusive; finish TrainHits first, then Fight/EarnMoney
-    setOverride("quest", "Train", need.train == true)
-    setOverride("quest", "Fight", (not need.train) and need.fight == true)
+    -- Fight and Train are mutually exclusive; finish TrainHits first, then Fight/EarnMoney.
+    -- But never yank AutoFight off while a match is already running (that cancels the fight
+    -- in-game) - let the current fight finish naturally, then switch over to Train.
+    if fighting() then
+        setOverride("quest", "Fight", true)
+        setOverride("quest", "Train", false)
+    else
+        setOverride("quest", "Train", need.train == true)
+        setOverride("quest", "Fight", (not need.train) and need.fight == true)
+    end
     setOverride("quest", "Pull", need.pull == true)
     setOverride("quest", "Scrap", need.scrap == true)
     setOverride("quest", "ClaimQuests", true) -- always keep claiming finished quests
