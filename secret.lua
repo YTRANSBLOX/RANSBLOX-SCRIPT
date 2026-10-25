@@ -13,7 +13,7 @@ local HUB_NAME = "Robot Fighter"
 
 local Core = {
     Name = HUB_NAME,
-    Version = "2.2-quest-nopause", -- GUI shows this so you can tell which logic is really running
+    Version = "2.3-build-gentle", -- GUI shows this so you can tell which logic is really running
     Features = {},   -- id -> feature table { id, title, on, busy }
 
     -- hooks (GUI overrides these after loading the module)
@@ -519,41 +519,49 @@ end
 
 local lastBedCount = -1
 local wiringSince, bootSince, lastPower, renameAt = nil, nil, 0, 0
+local wiringSent, bootSent = false, false
 local robotFullNotified = false
 local buildF = feature("Build", "Auto Build Robot", 1, function()
     local pg = LP:FindFirstChild("PlayerGui")
     if not pg then return end
 
-    -- wiring minigame: wait 3s, then finish it
+    -- wiring minigame: wait 3s, send "Done" ONCE and let the game close its own GUI.
+    -- Only if the GUI is still open 4s later do we force it shut (last resort).
     local wg = pg:FindFirstChild("WiringGui")
     if wg and wg.Enabled then
         wiringSince = wiringSince or os.clock()
-        if os.clock() - wiringSince >= 3 then
+        local t = os.clock() - wiringSince
+        if not wiringSent and t >= 3 then
+            wiringSent = true
             fire("WiringEvent", "Done")
+            setStatus("Wiring finished")
+        elseif wiringSent and t >= 7 then
             wg.Enabled = false
             resetCamera()
-            wiringSince = nil
-            setStatus("Wiring finished")
+            wiringSince, wiringSent = nil, false
         end
         return
     end
-    wiringSince = nil
+    wiringSince, wiringSent = nil, false
 
-    -- boot minigame: wait 2.5s, then finish it
+    -- boot minigame: same idea, wait 2.5s, send "BootDone" once, let the game close it
     local bg = pg:FindFirstChild("BootGui")
     if bg and bg.Enabled then
         bootSince = bootSince or os.clock()
-        if os.clock() - bootSince >= 2.5 then
+        local t = os.clock() - bootSince
+        if not bootSent and t >= 2.5 then
+            bootSent = true
             fire("WiringEvent", "BootDone")
+            setStatus("Boot finished")
+        elseif bootSent and t >= 6.5 then
             bg.Enabled = false
             LP:SetAttribute("BootActive", nil)
             resetCamera()
-            bootSince = nil
-            setStatus("Boot finished")
+            bootSince, bootSent = nil, false
         end
         return
     end
-    bootSince = nil
+    bootSince, bootSent = nil, false
 
     -- name the new robot
     local ng = pg:FindFirstChild("RobotNameGui")
