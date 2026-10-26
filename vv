@@ -1,62 +1,56 @@
-keys: PredictHit, FireServer, HitScan, RequestHit, MeleeHit, DealDamage
-scripts scanned: 260
-
-===== Players.RansbloxScripts.PlayerScripts.ChatScript.ChatMain =====
+===== CONTROLLER FULL (first 5000 chars) =====
    ...
-938: 			end
-939: 			SendSystemMessageToSelf(v_u_23:Get("GameChat_ChatMain_SpeakerHasBeenUnMuted", string.format("Speaker \'%s\' has been unmuted.", v205), {
-940: 				["RBX_NAME"] = v205
-941: 			}))
-942: 		end
-943: 	end)
-944: end
-945: spawn(function()
-946: 	-- upvalues: (ref) v_u_39, (copy) v_u_12, (copy) v_u_13
-947: 	if v_u_39.UserId > 0 then
-948: 		local function v208()
-949: 			-- upvalues: (ref) v_u_12, (ref) v_u_13
-950: 			local v206 = v_u_12:GetCore("GetBlockedUserIds")
-951: 			local v207 = #v206 > 0 and v_u_13:FindFirstChild("SetBlockedUserIdsRequest")
-952: 			if v207 then
-953: 				v207:FireServer(v206)
-954: 			end
-955: 		end
-956: 		pcall(v208)
-957: 	end
-958: end)
-959: spawn(function()
-960: 	-- upvalues: (copy) v_u_11, (ref) v_u_39, (ref) v_u_40, (copy) v_u_37
-961: 	local function v209()
-962: 		-- upvalues: (ref) v_u_11, (ref) v_u_39
-963: 		return v_u_11:CanUserChatAsync(v_u_39.UserId)
-964: 	end
-965: 	local v210, v211 = pcall(v209)
-966: 	if v210 then
-967: 		v_u_40 = v_u_37:IsStudio() or v211
-968: 	end
-
-===== Players.RansbloxScripts.PlayerScripts.ChatScript.ChatMain.MessageSender =====
-1: local v1 = {}
-2: local _ = script.Parent
-3: local v_u_2 = {}
-4: v_u_2.__index = v_u_2
-5: function v_u_2.SendMessage(p3, p4, p5) -- name: SendMessage
-6: 	p3.SayMessageRequest:FireServer(p4, p5)
-7: end
-8: function v_u_2.RegisterSayMessageFunction(p6, p7) -- name: RegisterSayMessageFunction
-9: 	p6.SayMessageRequest = p7
-10: end
-11: function v1.new() -- name: new
-12: 	-- upvalues: (copy) v_u_2
-13: 	local v8 = v_u_2
-14: 	local v9 = setmetatable({}, v8)
-15: 	v9.SayMessageRequest = nil
-16: 	return v9
-17: end
-18: return v1.new()
-
-===== Players.RansbloxScripts.PlayerScripts.Combat.Controller =====
-   ...
+45: 	["Pistol"] = "Gun",
+46: 	["Blunderbuss"] = "Gun",
+47: 	["Knives"] = "Throw",
+48: 	["Javelin"] = "Throw",
+49: 	["Sling"] = "Throw",
+50: 	["Bomb"] = "Throw",
+51: 	["Herbs"] = "Use",
+52: 	["Trap"] = "Use",
+53: 	["Horn"] = "Use"
+54: }
+55: local v_u_24 = {}
+56: local v_u_25 = v_u_1.LocalPlayer
+57: local v_u_26 = nil
+58: local v_u_27 = {
+59: 	["char"] = nil,
+60: 	["hum"] = nil,
+61: 	["root"] = nil,
+62: 	["animator"] = nil,
+63: 	["handler"] = nil,
+64: 	["tool"] = nil,
+65: 	["kind"] = nil,
+66: 	["pressed"] = nil,
+67: 	["speed"] = nil,
+68: 	["baseSpeed"] = 1,
+69: 	["conns"] = nil,
+70: 	["shotId"] = 0,
+71: 	["lastSpeed"] = -1,
+72: 	["killStreak"] = 0,
+73: 	["lastKillAt"] = 0,
+74: 	["pressed"] = {},
+75: 	["speed"] = {},
+76: 	["conns"] = {}
+77: }
+78: local function v_u_29() -- name: alive
+79: 	-- upvalues: (copy) v_u_27
+80: 	local v28
+81: 	if v_u_27.hum == nil or (v_u_27.hum.Health <= 0 or v_u_27.char == nil) then
+82: 		v28 = false
+83: 	else
+84: 		v28 = v_u_27.char.Parent ~= nil
+85: 	end
+86: 	return v28
+87: end
+88: local v_u_30 = nil
+89: local v_u_31 = 0
+90: local v_u_32 = 0
+91: local v_u_33 = 0
+92: local v_u_34 = setmetatable({}, {
+93: 	["__mode"] = "k"
+94: })
+95: local v_u_35 = {
 96: 	["requests"] = 0,
 97: 	["stale"] = 0,
 98: 	["adopted"] = 0,
@@ -88,7 +82,33 @@ scripts scanned: 260
 124: 	["Block"] = "Block",
 125: 	["Reload"] = "Reload",
 126: 	["Use"] = "Use"
+127: }
+128: local function v_u_49() -- name: applySpeed
+129: 	-- upvalues: (copy) v_u_27, (copy) v_u_43, (copy) v_u_6
+130: 	local v44 = {
+131: 		["Aim"] = false,
+132: 		["Charge"] = false,
+133: 		["Block"] = false,
+134: 		["Reload"] = false,
+135: 		["Use"] = false
+136: 	}
+137: 	for v45 in v_u_27.speed do
+138: 		local v46 = v_u_43[v45]
+139: 		if not v46 then
+140: 			continue
+141: 		end
+142: 		v44[v46] = true
    ...
+414: 				v_u_102()
+415: 			elseif v_u_30 and os.clock() - v_u_36 > 2 then
+416: 				v_u_36 = os.clock()
+417: 				local v111 = v_u_35
+418: 				v111.reasked = v111.reasked + 1
+419: 				local v112 = v_u_30
+420: 				v_u_30 = v112
+421: 				v_u_31 = v_u_31 + 1
+422: 				v_u_34[v112] = v_u_31
+423: 				v_u_32 = os.clock()
 424: 				local v113 = v_u_35
 425: 				v113.requests = v113.requests + 1
 426: 				v_u_102()
@@ -120,7 +140,27 @@ scripts scanned: 260
 452: 		task.defer(function()
 453: 			-- upvalues: (ref) v_u_118, (ref) v_u_117, (ref) v_u_85
 454: 			v_u_118 = false
+455: 			v_u_117()
+456: 			v_u_85()
+457: 		end)
+458: 	end
+459: end
+460: function v_u_24.Equip(p120) -- name: Equip
+461: 	-- upvalues: (copy) v_u_27, (copy) v_u_90, (ref) v_u_30, (ref) v_u_31, (copy) v_u_34, (ref) v_u_32, (copy) v_u_35, (copy) v_u_102, (ref) v_u_26, (ref) v_u_33, (copy) v_u_85
+462: 	local v121 = v_u_27.char
+463: 	local v122 = v_u_27.hum
+464: 	if p120 and (v121 and (v122 and v122.Health > 0)) then
    ...
+471: 			if p120.Parent ~= v121 and p120.Parent ~= v124 then
+472: 				return false
+473: 			end
+474: 			if p120 == v_u_30 and p120.Parent == v121 then
+475: 				return true
+476: 			end
+477: 			v_u_30 = p120
+478: 			v_u_31 = v_u_31 + 1
+479: 			v_u_34[p120] = v_u_31
+480: 			v_u_32 = os.clock()
 481: 			local v125 = v_u_35
 482: 			v125.requests = v125.requests + 1
 483: 			v_u_102()
@@ -148,454 +188,53 @@ scripts scanned: 260
 505: 	-- upvalues: (ref) v_u_30
 506: 	return v_u_30
 507: end
-508: local function v_u_153(p_u_129) -- name: onCharacter
-509: 	-- upvalues: (copy) v_u_27, (copy) v_u_68, (ref) v_u_30, (copy) v_u_11, (copy) v_u_8, (ref) v_u_26, (copy) v_u_35, (ref) v_u_118, (copy) v_u_117, (copy) v_u_85, (copy) v_u_12, (copy) v_u_18, (copy) v_u_49
-510: 	for _, v130 in v_u_27.conns do
-511: 		v130:Disconnect()
-   ...
-714: 								local v175 = v_u_35
-715: 								v175.requests = v175.requests + 1
-716: 								v_u_102()
-717: 								local v176 = v_u_30
-718: 								if v176 and v_u_26 then
-719: 									v_u_33 = os.clock()
-720: 									local v177 = {
-721: 										["tool"] = v176,
-722: 										["seq"] = v_u_31
-723: 									}
-724: 									local v178 = v177.tool
-725: 									if v178 and v_u_34[v178] then
-726: 										v177.eq = v_u_34[v178]
-727: 									end
-728: 									v177.ct = os.clock()
-729: 									v_u_26:FireServer("Equip", v177)
-730: 								end
-731: 							end
-732: 						end
-733: 					end
-734: 					if not v171 then
-735: 						local v179 = v_u_163(type(v167) ~= "number" and type(v167) ~= "string" and 1 or v167, v_u_164)
-736: 						if v179 then
-737: 							v_u_24.Equip(v179)
-738: 						end
-739: 					end
-740: 				end
-741: 				task.wait(0.1)
-742: 			end
-743: 		end)
-744: 	end
-   ...
-2061: 								local v459 = v_u_35
-2062: 								v459.requests = v459.requests + 1
-2063: 								v_u_102()
-2064: 								local v460 = v_u_30
-2065: 								if v460 and v_u_26 then
-2066: 									v_u_33 = os.clock()
-2067: 									local v461 = {
-2068: 										["tool"] = v460,
-2069: 										["seq"] = v_u_31
-2070: 									}
-2071: 									local v462 = v461.tool
-2072: 									if v462 and v_u_34[v462] then
-2073: 	
+508: local function v_
 
-===== Players.RansbloxScripts.PlayerScripts.Combat.Effects =====
-   ...
-444: 		v_u_144.OutlineTransparency = 0.05
-445: 		v_u_5:Create(v_u_144, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-446: 			["OutlineTransparency"] = 1
-447: 		}):Play()
-448: 		local v_u_145 = (v_u_144:GetAttribute("Tok") or 0) + 1
-449: 		v_u_144:SetAttribute("Tok", v_u_145)
-450: 		task.delay(0.3, function()
-451: 			-- upvalues: (copy) v_u_144, (copy) v_u_145
-452: 			if v_u_144.Parent and v_u_144:GetAttribute("Tok") == v_u_145 then
-453: 				v_u_144:Destroy()
-454: 			end
-455: 		end)
-456: 	end
-457: end
-458: local v_u_146 = {}
-459: function v_u_14.PredictHit(p147, p148, p149, _, _, _) -- name: PredictHit
-460: 	-- upvalues: (copy) v_u_10, (copy) v_u_146
-461: 	if v_u_10.CanPredictHit(p147) then
-462: 		v_u_146[p147] = os.clock()
-463: 		if p148 then
-464: 			v_u_10.Sound(p148, p149)
-465: 		end
-466: 	end
-467: end
-468: function v_u_14.ConsumePrediction(p150) -- name: ConsumePrediction
-469: 	-- upvalues: (copy) v_u_146
-470: 	if not p150 then
-471: 		return false
-472: 	end
-473: 	local v151 = v_u_146[p150]
-474: 	v_u_146[p150] = nil
-475: 	local v152
-476: 	if v151 == nil then
-   ...
-1404: 			end)
-1405: 		end
-1406: 	end
-1407: 	if p426 and (p422.mine and (p427 and not p422.impactPlayed)) then
-1408: 		local v434 = nil
-1409: 		local v435 = false
-1410: 		local v436 = p422.predict
-1411: 		if v436 then
-1412: 			local v437 = v436.damage
-1413: 			if type(v437) == "number" then
-1414: 				local v438 = v436.tuning or {}
-1415: 				v435 = v_u_7.IsHeadPart(p428)
-1416: 				v434 = v436.damage * v_u_7.Falloff(v438, (p423 - p422.origin).Magnitude) * (v435 and (v438.headshotMult or 1.5) or 1)
-1417: 			end
-1418: 		end
-1419: 		v_u_14.PredictHit(p427, nil, p423, true, v434, v435)
-1420: 	end
-1421: 	local v439 = p422.shot.vel.Magnitude <= 0 and Vector3.new(0, 0, 1) or p422.shot.vel.Unit
-1422: 	local v440 = not p422.far
-1423: 	if not v440 then
-1424: 		local v441 = workspace.CurrentCamera
-1425: 		v440 = (not v441 and 0 or (v441.CFrame.Position - p423).Magnitude) <= v_u_14.NEAR
-1426: 	end
-1427: 	if v_u_306[p422.kind] then
-1428: 		local v442 = p422.model
-1429: 		local v443 = CFrame.lookAt(p423 - v439 * 0.6, p423 - v439 * 0.6 + v439)
-1430: 		if v442:IsA("Model") then
-1431: 			v442:PivotTo(v443)
-1432: 		elseif v442:IsA("BasePart") then
-1433: 			v442.CFrame = v443
-1434: 		end
-
-===== Players.RansbloxScripts.PlayerScripts.Combat.Util =====
-   ...
-283: 	local v98 = v97:GetAttribute("ItemLevels")
-284: 	if type(v98) ~= "string" or v98 == "" then
-285: 		return 1
-286: 	end
-287: 	if v_u_95 == nil then
-288: 		local v99 = v_u_11:FindFirstChild("Shards")
-289: 		local v100 = require
-290: 		local v101, v102 = pcall(v100, v99)
-291: 		if not v101 or type(v102) ~= "table" then
-292: 			v102 = false
-293: 		end
-294: 		v_u_95 = v102
-295: 	end
-296: 	return not v_u_95 and 1 or v_u_95.Bonus(v_u_95.DecodeLevels(v98)[p96] or 1)
-297: end
-298: function v_u_8.CanPredictHit(p103) -- name: CanPredictHit
-299: 	-- upvalues: (copy) v_u_9, (copy) v_u_1, (copy) v_u_8
-300: 	if not p103 then
-301: 		return false
-302: 	end
-303: 	local v104 = v_u_9.Character
-304: 	if v_u_1:HasTag(p103, "TrainingDummy") then
-305: 		if v104 then
-306: 			v104 = v104:GetAttribute("MatchId")
-307: 		end
-308: 		return (type(v104) ~= "string" and "" or v104) == ""
-309: 	end
-310: 	local v105 = v_u_8.IsEnemy(p103)
-311: 	if v105 then
-312: 		if v104 then
-313: 			v104 = v104:GetAttribute("MatchId")
-   ...
-677: 	local v227 = v226.Direction.X
-678: 	local v228 = v226.Direction.Z
-679: 	local v229 = Vector3.new(v227, 0, v228)
-680: 	if v229.Magnitude < 0.05 then
-681: 		return 0
-682: 	end
-683: 	local v230 = v229.Unit
-684: 	local v231 = v221.cone
-685: 	local v232 = math.rad(v231)
-686: 	local v233 = math.cos(v232)
-687: 	local v234 = v_u_8.Targets()
-688: 	local v235 = nil
-689: 	local v236 = (1 / 0)
-690: 	local v237 = nil
-691: 	for _, v238 in v234 do
-692: 		if not v_u_8.CanPredictHit(v238) then
-693: 			continue
-694: 		end
-695: 		local v239 = v238:FindFirstChildOfClass("Humanoid")
-696: 		local v240 = v238:FindFirstChild("HumanoidRootPart")
-697: 		if not v239 or (v239.Health <= 0 or not (v240 and v240:IsA("BasePart"))) then
-698: 			continue
-699: 		end
-700: 		local v241 = v240.Position - v223.Position
-701: 		local v242 = v241.X
-702: 		local v243 = v241.Z
-703: 		local v244 = Vector3.new(v242, 0, v243)
-704: 		local v245 = v244.Magnitude
-705: 		if p218 + v221.reach < v245 or v245 < 0.5 then
-706: 			continue
-707: 		end
-   ...
-1128: 		v373 = v373:GetAttribute("Speed")
-1129: 	end
-1130: 	if type(v373) == "number" then
-1131: 		v372 = v372 * v373
-1132: 	end
-1133: 	v371:Play(p369 or 0.08, p370 or 1, v372)
-1134: 	return v371
-1135: end
-1136: function v_u_8.PlayAnim(p375, p376, p377, p378, p379) -- name: PlayAnim
-1137: 	-- upvalues: (copy) v_u_374, (ref) v_u_361, (copy) v_u_9, (copy) v_u_365
-1138: 	local v380 = v_u_374(p375, p376, p377, p378, p379)
-1139: 	if v380 and p376 then
-1140: 		local v381 = v_u_361
-1141: 		local v382 = v_u_9.Character
-1142: 		if v381 and (p375 and (v382 and p375:IsDescendantOf(v382))) then
-1143: 			v381:FireServer("Play", p376, p377 or 1, p378 or 0.08, p379 or 1, v_u_365())
-1144: 		end
-1145: 	end
-1146: 	return v380
-1147: end
-1148: function v_u_8.PlayHold(p383, p384, p385) -- name: PlayHold
-1149: 	-- upvalues: (copy) v_u_374, (ref) v_u_361, (copy) v_u_9, (copy) v_u_365
-1150: 	local v_u_386 = v_u_374(p383, p384, p385, 0.08)
-1151: 	if not v_u_386 then
-1152: 		return nil
-1153: 	end
-1154: 	local v387 = v_u_361
-1155: 	local v388 = v_u_9.Character
-1156: 	if v387 and (p383 and (v388 and p383:IsDescendantOf(v388))) then
-1157: 		v387:FireServer("Hold", p384, p385 or 1, 0.08, 1, v_u_365())
-1158: 	end
-1159: 	task.spawn(function()
-1160: 		-- upvalues: (copy) v_u_386
-1161: 		local v389 = os.clock()
-1162: 		while v_u_386.Length == 0 and os.clock() - v389 < 2 do
-1163: 			task.wait()
-1164: 		end
-1165: 		local v390 = v_u_386.Speed
-1166: 		local v391 = math.max(0.05, v390)
-1167: 		local v392 = task.wait
-1168: 		local v393 = v_u_386.Length / v391 - 0.04
-1169: 		v392((math.max(0, v393)))
-1170: 		if v_u_386.IsPlaying then
-1171: 			local v394 = v_u_386
-1172: 			local v395 = v_u_386.Length - 0.03
-   ...
-1177: 	return v_u_386
-1178: end
-1179: function v_u_8.StopAnim(p396, p397, p398) -- name: StopAnim
-1180: 	-- upvalues: (copy) v_u_349, (ref) v_u_361, (copy) v_u_9, (copy) v_u_365
-1181: 	if p396 and p397 then
-1182: 		local v399 = v_u_349[p396]
-1183: 		if v39
-
-===== Players.RansbloxScripts.PlayerScripts.Combat.Ping =====
-   ...
-290: 			if v101 then
-291: 				local v103 = v_u_10.FindCharacter(v101.Instance)
-292: 				if v103 and v103 ~= v_u_14.Character then
-293: 					local v104 = v_u_14:GetAttribute("MatchId")
-294: 					local v105 = type(v104) ~= "string" and "" or v104
-295: 					local v106 = v_u_14:GetAttribute("Team")
-296: 					if (v105 ~= "" and (v103:GetAttribute("MatchId") == v105 and v106 ~= nil) and (v103:GetAttribute("Team") == v106 and "ally" or "enemy") or nil) == "enemy" then
-297: 						v102 = v103
-298: 					end
-299: 				end
-300: 			end
-301: 			v_u_23 = v96
-302: 			v_u_65(v_u_14.UserId, v100, v102 and "enemy" or "spot")
-303: 			local v107 = workspace.CurrentCamera
-304: 			if v_u_21 and v107 then
-305: 				v_u_21:FireServer(v100, v102, v107.CFrame.Position)
-306: 			end
-307: 		end
-308: 	end
-309: end
-310: local function v_u_124() -- name: refreshButton
-311: 	-- upvalues: (copy) v_u_14, (copy) v_u_32, (copy) v_u_40, (ref) v_u_26, (copy) v_u_6, (ref) v_u_27, (ref) v_u_25
-312: 	local v109
-313: 	if v_u_14:GetAttribute("Alive") == false then
-314: 		v109 = true
-315: 	else
-316: 		local v110 = v_u_14.Character
-317: 		if v110 then
-318: 			v110 = v110:FindFirstChildOfClass("Humanoid")
-319: 		end
-320: 		v109 = not v110 or v110.Health <= 0
-
-===== Players.RansbloxScripts.PlayerScripts.Combat.Handlers.Melee =====
-   ...
-213: 	end)
-214: 	local v70 = #v57
-215: 	local v71 = {}
-216: 	for v72 = 1, math.min(v70, p43) do
-217: 		local v73 = v57[v72].model
-218: 		table.insert(v71, v73)
-219: 	end
-220: 	return v71
-221: end
-222: local function v_u_90(p74, p75, p76, p77, p78, p79) -- name: predictImpacts
-223: 	-- upvalues: (copy) v_u_3, (copy) v_u_5
-224: 	if p76 then
-225: 		p76 = p76 * v_u_3.ItemBonus(p79)
-226: 	end
-227: 	for _, v80 in p74 do
-228: 		if not v_u_3.CanPredictHit(v80) then
-229: 			continue
-230: 		end
-231: 		local v81 = v80:FindFirstChild("UpperTorso") or (v80:FindFirstChild("Torso") or v80:FindFirstChild("HumanoidRootPart"))
-232: 		if not (v81 and v81:IsA("BasePart")) then
-233: 			continue
-234: 		end
-235: 		local v82 = false
-236: 		local v83 = v80:FindFirstChild("HumanoidRootPart")
-237: 		local v84
-238: 		if p76 and (p77 and (p77.backstabMult and (p78 and (v83 and v83:IsA("BasePart"))))) then
-239: 			local v85 = (p78.Position - v83.Position) * Vector3.new(1, 0, 1)
-240: 			local v86 = -(v83.CFrame.LookVector * Vector3.new(1, 0, 1))
-241: 			if v85.Magnitude > 0.05 and v86.Magnitude > 0.05 then
-242: 				local v87 = v85.Unit:Dot(v86.Unit)
-243: 				local v88 = p77.backstabAngle or 70
-244: 				local v89 = math.rad(v88)
-245: 				if math.cos(v89) <= v87 then
-246: 					v84 = p76 * p77.backstabMult
-247: 					v82 = true
-248: 				else
-249: 					v84 = p76
-250: 				end
-251: 			else
-252: 				v84 = p76
-253: 			end
-254: 		else
-255: 			v84 = p76
-256: 		end
-257: 		v_u_5.CharacterImpact(v81.Position, nil, false)
-258: 		v_u_5.PredictHit(v80, p75, v81.Position + Vector3.new(0, 1, 0), false, v84, v82)
-259: 	end
-260: end
-261: function v_u_9.Ready(p91) -- name: Ready
-262: 	local v92 = os.clock()
-263: 	local v93
-264: 	if p91.busyUntil <= v92 then
-265: 		v93 = v92 - p91.lastSwing >= p91:Cooldown()
-266: 	else
-267: 		v93 = false
-268: 	end
-269: 	return v93
-270: end
-271: function v_u_9.Swing(p_u_94) -- name: Swing
-272: 	-- upvalues: (copy) v_u_3, (copy) v_u_5, (copy) v_u_90
-273: 	local v_u_95 = p_u_94.ctx
-
-===== Players.RansbloxScripts.PlayerScripts.Core.AnalyticsClient =====
-   ...
-23: 	if v8 then
-24: 		v10 = v8.ViewportSize
-25: 	else
-26: 		v10 = Vector2.zero
-27: 	end
-28: 	local v11 = v10.X
-29: 	local v12 = v10.Y
-30: 	return math.min(v11, v12) >= 600 and "Tablet" or "Phone"
-31: end
-32: function v7.Start() -- name: Start
-33: 	-- upvalues: (copy) v_u_4, (copy) v_u_13, (copy) v_u_2, (copy) v_u_3
-34: 	local v14 = require(v_u_4:WaitForChild("Shared"):WaitForChild("Net"))
-35: 	local v_u_15 = require(script.Parent:WaitForChild("InputStats"))
-36: 	v_u_15.Start()
-37: 	local v_u_16 = v14.Event("AnalyticsReport")
-38: 	v_u_16:FireServer("Platform", (v_u_13()))
-39: 	local v_u_17 = v_u_2.LocalPlayer
-40: 	local v_u_18 = 0
-41: 	local v_u_19 = 0
-42: 	v_u_3.RenderStepped:Connect(function(p20)
-43: 		-- upvalues: (copy) v_u_17, (ref) v_u_18, (ref) v_u_19
-44: 		if v_u_17:GetAttribute("State") == "Match" and (v_u_17:GetAttribute("Alive") == true and v_u_17:GetAttribute("ReplayPlaying") ~= true) then
-45: 			v_u_18 = v_u_18 + 1
-46: 			v_u_19 = v_u_19 + p20
-47: 		end
-48: 	end)
-49: 	v14.Event("MatchEvent").OnClientEvent:Connect(function(p21)
-50: 		-- upvalues: (ref) v_u_18, (ref) v_u_19, (copy) v_u_16, (copy) v_u_15
-51: 		if p21 == "RoundStart" then
-52: 			v_u_18 = 0
-53: 			v_u_19 = 0
-54: 		elseif p21 == "RoundEnd" then
-55: 			if v_u_19 >= 10 then
-56: 				local v22 = v_u_16
-57: 				local v23 = v_u_18 / v_u_19 * 10 + 0.5
-58: 				v22:FireServer("Fps", math.floor(v23) / 10, v_u_15.Take())
-59: 			end
-60: 			v_u_18 = 0
-61: 			v_u_19 = 0
-62: 		end
-63: 	end)
-64: end
-65: return v7
-
-===== Players.RansbloxScripts.PlayerScripts.UI.Remotes =====
-   ...
-70: 	table.insert(v23, p22)
-71: 	local v24 = v_u_3
-72: 	if v24 then
-73: 		v24 = v24:FindFirstChild(p21)
-74: 	end
-75: 	if v24 then
-76: 		v_u_10(v24)
-77: 	end
-78: end
-79: function v_u_2.Fire(p25, ...) -- name: Fire
-80: 	-- upvalues: (copy) v_u_2
-81: 	local v26 = v_u_2.Get(p25)
-82: 	if not (v26 and (v26:IsA("RemoteEvent") or v26:IsA("UnreliableRemoteEvent"))) then
-83: 		return false
-84: 	end
-85: 	v26:FireServer(...)
-86: 	return true
-87: end
-88: v_u_2.Timeouts = {
-89: 	["QueueAction"] = 20,
-90: 	["ProfileAction"] = 20
-91: }
-92: function v_u_2.Invoke(p27, ...) -- name: Invoke
-93: 	-- upvalues: (copy) v_u_2
-94: 	local v_u_28 = v_u_2.Get(p27, 3)
-95: 	if v_u_28 and v_u_28:IsA("RemoteFunction") then
-96: 		local v_u_29 = table.pack(...)
-97: 		local v_u_30 = false
-98: 		local v_u_31 = {}
-99: 		local v_u_32 = coroutine.running()
-100: 		local v_u_33 = true
-
-===== Players.RansbloxScripts.PlayerScripts.Replay.ViewStream =====
-   ...
-106: 					v_u_20 = v39
-107: 					v_u_21 = v40
-108: 					v_u_22 = v41
-109: 					local v44 = v_u_16
-110: 					local v45 = v_u_6.Q16
-111: 					local v46 = v_u_6.ROT_Q
-112: 					buffer.writei16(v44, 0, v45(v33, v46))
-113: 					local v47 = v_u_16
-114: 					local v48 = v_u_6.Q16
-115: 					local v49 = v_u_6.ROT_Q
-116: 					buffer.writei16(v47, 2, v48(v36, v49))
-117: 					local v50 = v_u_16
-118: 					buffer.writeu8(v50, 4, v39)
-119: 					local v51 = v_u_16
-120: 					buffer.writeu8(v51, 5, v40)
-121: 					v_u_27:FireServer(v_u_16)
-122: 					v_u_17 = v_u_17 + 1
-123: 				end
-124: 			else
-125: 				v_u_21 = -1
-126: 				return
-127: 			end
-128: 		end
-129: 	end)
-130: end
-131: function v8.Sent() -- name: Sent
-132: 	-- upvalues: (ref) v_u_17
-133: 	return v_u_17
-134: end
-135: return v8
-
-===== REMOTES =====
+===== ALL REMOTES in RS =====
+RemoteEvent  ReplicatedStorage.Remotes.MatchState
+RemoteFunction  ReplicatedStorage.Remotes.GetMatchState
+RemoteEvent  ReplicatedStorage.Remotes.MatchEvent
+RemoteFunction  ReplicatedStorage.Remotes.QueueAction
+RemoteFunction  ReplicatedStorage.Remotes.GetProfile
+RemoteEvent  ReplicatedStorage.Remotes.ProfileChanged
+RemoteFunction  ReplicatedStorage.Remotes.ProfileAction
+RemoteEvent  ReplicatedStorage.Remotes.Notify
+RemoteEvent  ReplicatedStorage.Remotes.Leaderboards
+RemoteEvent  ReplicatedStorage.Remotes.AnalyticsReport
+RemoteEvent  ReplicatedStorage.Remotes.EconomyEvent
+RemoteFunction  ReplicatedStorage.Remotes.StoreAction
+RemoteFunction  ReplicatedStorage.Remotes.PartyAction
+RemoteEvent  ReplicatedStorage.Remotes.PartyState
+RemoteEvent  ReplicatedStorage.Remotes.CheaterBanned
+RemoteFunction  ReplicatedStorage.Remotes.TribeAction
+RemoteEvent  ReplicatedStorage.Remotes.TribeEvent
+RemoteEvent  ReplicatedStorage.Remotes.ModEvent
+RemoteFunction  ReplicatedStorage.Remotes.ModAction
+RemoteFunction  ReplicatedStorage.Remotes.CustomHost
+RemoteEvent  ReplicatedStorage.Remotes.CustomState
+RemoteFunction  ReplicatedStorage.Remotes.CustomAction
+RemoteFunction  ReplicatedStorage.Remotes.LetterAction
+RemoteEvent  ReplicatedStorage.Remotes.NewsAction
+RemoteEvent  ReplicatedStorage.Remotes.WeaponAction
+RemoteEvent  ReplicatedStorage.Remotes.CombatFX
+UnreliableRemoteEvent  ReplicatedStorage.Remotes.CombatFXU
+RemoteEvent  ReplicatedStorage.Remotes.HitConfirm
+RemoteEvent  ReplicatedStorage.Remotes.DamageTaken
+RemoteEvent  ReplicatedStorage.Remotes.AnimRelay
+UnreliableRemoteEvent  ReplicatedStorage.Remotes.SfxPlay
+UnreliableRemoteEvent  ReplicatedStorage.Remotes.ReplayView
+RemoteEvent  ReplicatedStorage.Remotes.Ping
+RemoteEvent  ReplicatedStorage.DefaultChatSystemChatEvents.OnNewMessage
+RemoteEvent  ReplicatedStorage.DefaultChatSystemChatEvents.OnMessageDoneFiltering
+RemoteEvent  ReplicatedStorage.DefaultChatSystemChatEvents.OnNewSystemMessage
+RemoteEvent  ReplicatedStorage.DefaultChatSystemChatEvents.OnChannelJoined
+RemoteEvent  ReplicatedStorage.DefaultChatSystemChatEvents.OnChannelLeft
+RemoteEvent  ReplicatedStorage.DefaultChatSystemChatEvents.OnMuted
+RemoteEvent  ReplicatedStorage.DefaultChatSystemChatEvents.OnUnmuted
+RemoteEvent  ReplicatedStorage.DefaultChatSystemChatEvents.OnMainChannelSet
+RemoteEvent  ReplicatedStorage.DefaultChatSystemChatEvents.ChannelNameColorUpdated
+RemoteEvent  ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest
+RemoteEvent  ReplicatedStorage.DefaultChatSystemChatEvents.SetBlockedUserIdsRequest
+RemoteFunction  ReplicatedStorage.DefaultChatSystemChatEvents.GetInitDataRequest
+RemoteFunction  ReplicatedStorage.DefaultChatSystemChatEvents.MutePlayerRequest
+RemoteFunction  ReplicatedStorage.DefaultChatSystemChatEvents.UnMutePlayerRequest
