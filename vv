@@ -1,40 +1,624 @@
-keys: Targets, cone, reach, MELEE_NUDGE, AssistActive, getSorted
-scripts scanned: 263
+keys: SpawnProjectile, SimulateProjectile, ProjectileHit, ResolveProjectile, StepProjectile, WorldParams, FilterDescendantsInstances, gravity, velocity
+scripts scanned: 261
+
+===== Players.RansbloxScripts.PlayerScripts.Character.Footsteps =====
+   ...
+93: 		end
+94: 		for _, v22 in v19:GetChildren() do
+95: 			v21(v22)
+96: 		end
+97: 		v19.ChildAdded:Connect(v21)
+98: 	end
+99: end
+100: local v_u_24 = {}
+101: local v_u_25 = 0
+102: local function v_u_49(p26, p27, p28, p29, p30) -- name: step
+103: 	-- upvalues: (copy) v_u_11, (ref) v_u_25, (copy) v_u_7, (copy) v_u_24, (copy) v_u_12, (copy) v_u_3, (copy) v_u_9, (copy) v_u_4, (copy) v_u_16
+104: 	local v31 = p26 == v_u_11.Character
+105: 	if v31 or v_u_25 < v_u_7.budget.maxSteps then
+106: 		local v32 = p27:GetAttribute("SWade")
+107: 		if type(v32) == "number" and v32 >= 0.3 then
+108: 			return
+109: 		else
+110: 			local v33 = p27.Position
+111: 			local v34 = p28.HipHeight + p27.Size.Y / 2
+112: 			local v35 = v33 - Vector3.new(0, v34, 0)
+113: 			local v36
+114: 			if v31 and p28.FloorMaterial ~= Enum.Material.Air then
+115: 				v36 = p28.FloorMaterial
+116: 			else
+117: 				v_u_24[1] = p26
+118: 				v_u_12.FilterDescendantsInstances = v_u_24
+119: 				local v37 = v_u_3
+120: 				local v38 = p27.Position
+121: 				local v39 = -(p28.HipHeight + p27.Size.Y / 2 + 1.5)
+122: 				local v40 = v37:Raycast(v38, Vector3.new(0, v39, 0), v_u_12)
+123: 				if not v40 then
+124: 					return
+125: 				end
+126: 				v36 = v40.Material
+127: 				v35 = v40.Position
+128: 			end
+129: 			local v41 = v_u_9[v36] or "Stone"
+130: 			if v41 ~= "Water" then
+131: 				local v42 = p30 > 23
+132: 				local v43 = (v42 and 1 or 0.8) * (v31 and 0.55 or 1)
+133: 				p29.leftFoot = not p29.leftFoot
+134: 				local v44 = p27.CFrame.RightVector * (p29.leftFoot and -0.5 or 0.5)
+135: 				local v45 = v_u_4.PlaySoundAt(v_u_16(v41), v35 + v44, {
+136: 					["volume"] = nil,
+137: 					["pitchVar"] = 0.09,
+138: 					["speed"] = nil,
+139: 					["maxDistance"] = 90,
+140: 					["volume"] = v43,
+141: 					["speed"] = v42 and 1.05 or 1
+142: 				})
+143: 				if v45 then
+
+===== Players.RansbloxScripts.PlayerScripts.Character.Movement =====
+   ...
+135: 	v_u_6.ResumeCharacterRotation("Slide")
+136: end
+137: local function v_u_52(p43) -- name: feetOf
+138: 	-- upvalues: (copy) v_u_6
+139: 	local v44 = p43.humanoid.HipHeight
+140: 	local v45 = p43.root:GetAttribute("SHipBase")
+141: 	if type(v45) == "number" then
+142: 		if v45 >= v44 then
+143: 			v45 = v44
+144: 		end
+145: 	else
+146: 		v45 = v44
+147: 	end
+148: 	local v46 = v_u_6.Drawn
+149: 	local v47 = p43.root
+150: 	local v48, v49 = pcall(v46, v47)
+151: 	if not v48 or (typeof(v49) ~= "Instance" or not v49:IsA("BasePart")) then
+152: 		v49 = p43.root
+153: 	end
+154: 	local v50 = v49.Position
+155: 	local v51 = v45 + p43.root.Size.Y / 2 - 0.2
+156: 	return v50 - Vector3.new(0, v51, 0)
+157: end
+158: local v_u_53 = RaycastParams.new()
+159: v_u_53.FilterType = Enum.RaycastFilterType.Include
+160: v_u_53.FilterDescendantsInstances = { workspace.Terrain }
+161: v_u_53.IgnoreWater = false
+162: local function v_u_58(p54) -- name: waterSplashAt
+163: 	-- upvalues: (copy) v_u_53
+164: 	local v55 = p54.root:GetAttribute("SWade")
+165: 	if type(v55) == "number" and v55 >= 0.3 then
+166: 		local v56 = p54.root.Position
+167: 		local v57 = workspace:Raycast(v56 + Vector3.new(0, 4, 0), Vector3.new(0, -12, 0), v_u_53)
+168: 		if v57 and v57.Material == Enum.Material.Water then
+169: 			return v57.Position
+170: 		else
+171: 			return nil
+172: 		end
+173: 	else
+174: 		return nil
+175: 	end
+176: end
+177: local function v_u_68(p59) -- name: onJumped
+178: 	-- upvalues: (copy) v_u_8, (copy) v_u_6, (copy) v_u_58, (copy) v_u_52
+179: 	local v60 = os.clock()
+180: 	if v60 - p59.lastJumpFx < 0.4 then
+181: 		return
+182: 	else
+183: 		p59.airStart = v60
+184: 		p59.minVy = 0
+185: 		p59.lastJumpFx = v60
+
+===== Players.RansbloxScripts.PlayerScripts.Character.RemoteAnimate =====
+   ...
+246: local function v_u_109(p63, p64, p65) -- name: step
+247: 	-- upvalues: (copy) v_u_57, (copy) v_u_19, (copy) v_u_3, (copy) v_u_20, (copy) v_u_49, (copy) v_u_9
+248: 	local v66 = p63.humanoid
+249: 	local v67 = p63.root
+250: 	if v66.Health <= 0 then
+251: 		if p63.active then
+252: 			v_u_57(p63)
+253: 		end
+254: 	else
+255: 		p63.active = true
+256: 		local v68 = p63.targets
+257: 		for v69 in p63.tracks do
+258: 			v68[v69] = 0
+259: 		end
+260: 		local v70 = v67.AssemblyLinearVelocity
+261: 		local v71 = v70.X
+262: 		local v72 = v70.Z
+263: 		local v73 = Vector3.new(v71, 0, v72).Magnitude
+264: 		local v74 = v67:GetAttribute("SHipBase")
+265: 		local v75 = 0.5
+266: 		if type(v74) ~= "number" then
+267: 			v74 = v66.HipHeight
+268: 		end
+269: 		local v76 = v74 / 2
+270: 		local v77 = math.max(v75, v76)
+271: 		v_u_19.FilterDescendantsInstances = { p63.character }
+272: 		local v78 = v66.HipHeight + v67.Size.Y / 2 + 0.9
+273: 		local v79 = v70.Y
+274: 		local v80
+275: 		if math.abs(v79) < 12 then
+276: 			local v81 = v_u_3
+277: 			local v82 = v67.Position
+278: 			local v83 = -v78
+279: 			v80 = v81:Raycast(v82, Vector3.new(0, v83, 0), v_u_19) ~= nil
+280: 		else
+281: 			v80 = false
+282: 		end
+283: 		if v80 then
+284: 			p63.groundedAt = p65
+285: 		elseif v70.Y > 8 and p65 - p63.groundedAt < 0.25 then
+286: 			p63.jumpAt = p65
+287: 		end
+288: 		if v80 or p65 - p63.groundedAt < 0.1 then
+289: 			local v84 = (v73 - 0.6) / 2.5
+290: 			local v85 = math.clamp(v84, 0, 1)
+291: 			local v86 = (v73 / v77 - 9) / 5
+292: 			local v87 = math.clamp(v86, 0, 1)
+293: 			v68.idle = 1 - v85
+294: 			v68.walk = v85 * (1 - v87)
+295: 			v68.run = v85 * v87
+296: 			local v88 = 1
+
+===== Players.RansbloxScripts.PlayerScripts.Character.ViewModel =====
+   ...
+1635: 						end
+1636: 						v_u_267("nock")
+1637: 						return
+1638: 					end
+1639: 				elseif p268 == "Release" then
+1640: 					v_u_206.draw = false
+1641: 					v_u_206.nocked = false
+1642: 					v_u_206.drawHold = v_u_206.now + 0.16
+1643: 					local v332 = v270.charge
+1644: 					local v333 = tonumber(v332) or 1
+1645: 					local v334 = math.clamp(v333, 0.2, 1) * (not (v271 and v271.cfg.kick) and 1 or v271.cfg.kick)
+1646: 					if not v_u_267("release") then
+1647: 						v_u_203:Impulse(Vector3.new(0, 0.2, 1.2) * v334)
+1648: 						v_u_204:Impulse(Vector3.new(120, 0, 0) * v334 * 0.017453292519943295)
+1649: 						return
+1650: 					end
+1651: 				else
+1652: 					if p268 == "Fire" then
+1653: 						v_u_206.boltIn = false
+1654: 						local v335 = v_u_206
+1655: 						local v336 = v_u_206
+1656: 						local v337 = v_u_206.now
+1657: 						v335.stringV = 1
+1658: 						v336.stringT0 = v337
+1659: 						v_u_206.hammerTarget = 1
+1660: 						v_u_208.velocity = 30
+1661: 						v_u_206.frizzenTarget = 1
+1662: 						v_u_209.velocity = 22
+1663: 						local v338
+1664: 						if (v_u_206.clipName == "draw" or v_u_206.clipName == "redraw") and v_u_206.clip ~= nil then
+1665: 							v338 = v_u_206.now - v_u_206.clipT0 < v_u_206.clip.release * v_u_206.clipScale * 0.7
+1666: 						else
+1667: 							v338 = false
+1668: 						end
+1669: 						if v338 then
+1670: 							local v339 = v_u_206.fxQueue
+1671: 							table.insert(v339, "muzzle")
+1672: 						end
+1673: 						local v340 = v_u_206
+1674: 						v340.shotN = v340.shotN + 1
+1675: 						if v338 or not v_u_267("fire") then
+1676: 							local v341 = v270.kick
+1677: 							local v342 = (tonumber(v341) or 2) / 3 * (not (v271 and v271.cfg.kick) and 1 or v271.cfg.kick)
+1678: 							local v343 = math.min(v342, 3.5)
+1679: 							v_u_203:Impulse(Vector3.new(0, 0.5, 3) * v343)
+1680: 							local v344 = v_u_204
+1681: 							local v345 = (math.random() - 0.5) * 40
+1682: 							local v346 = (math.random() - 0.5) * 40
+1683: 							v344:Impulse(Vector3.new(420, v345, v346) * v343 * 0.017453292519943295)
+1684: 						else
+1685: 							local v347 = ({
+1686: 								["Musket"] = Vector3.new(160, 80, 280),
+1687: 								["Blunderbuss"] = Vector3.new(220, 80, 260),
+   ...
+1975: 			v_u_13.Play("embers", CFrame.identity, {
+1976: 				["on"] = false
+1977: 			})
+1978: 		end
+1979: 		if v_u_206.fuse > 0 then
+1980: 			v_u_206.fuse = 0
+1981: 			v_u_13.Play("fuse", CFrame.identity, {
+1982: 				["on"] = false
+1983: 			})
+1984: 		end
+1985: 		local v437 = v_u_206
+1986: 		v_u_206.boltIn = true
+1987: 		v437.boltT0 = -10
+1988: 		v_u_206.hammerTarget = 0.5
+1989: 		v_u_208:Snap(0.5)
+1990: 		v_u_206.frizzenTarget = 0
+1991: 		v_u_209:Snap(0)
+1992: 		if v_u_206.shown then
+1993: 			if v_u_206.shown.drawFrom and (v_u_206.shown.clips and v_u_206.shown.clips.draw) then
+1994: 				v_u_205:Snap(0)
+1995: 				v_u_206.pendingDraw = "draw"
+1996: 			else
+1997: 				local v438 = v_u_205
+1998: 				local v439 = v_u_205
+1999: 				v_u_205.value = -1
+2000: 				v438.velocity = 0
+2001: 				v439.target = 0
+2002: 			end
+2003: 		end
+2004: 	end
+2005: 	local v440 = v_u_206.shown
+2006: 	if not v440 then
+2007: 		return Vector3.new(0, 0, 0), Vector3.new(0, 0, 0), nil
+2008: 	end
+2009: 	local v441 = v440.cfg
+2010: 	if v_u_206.lastRootY and v418 > 0 then
+2011: 		local v442 = (p416.rootY - v_u_206.lastRootY) / v418
+2012: 		local v443 = math.abs(v442) > 150 and 0 or v442
+2013: 		local v444 = v_u_206
+2014: 		local v445 = v444.vy
+2015: 		local v446 = v443 - v_u_206.vy
+2016: 		local v447 = v418 * -14
+2017: 		v444.vy = v445 + v446 * (1 - math.exp(v447))
+2018: 	end
+2019: 	v_u_206.lastRootY = p416.rootY
+2020: 	if p416.grounded then
+2021: 		if not v_u_206.grounded then
+2022: 			local v448 = -v_u_206.minVy
+2023: 			if v448 > 6 then
+2024: 				local v449 = v_u_201
+2025: 				local v450 = v448 * v_u_16.landK
+   ...
+2384: 	local v612 = v569 + Vector3.new(v611, 0, 0)
+2385: 	if v_u_206.dropAt then
+2386: 		local v613 = (v419 - v_u_206.dropAt) / v_u_16.dropTime
+2387: 		local v614 = math.clamp(v613, 0, 1)
+2388: 		local v615 = v614 * v614
+2389: 		local v616 = -v_u_16.equipDrop * v615
+2390: 		v610 = v610 + Vector3.new(0, v616, 0)
+2391: 		local v617 = -v_u_16.equipTilt * 0.017453292519943295 * v615
+2392: 		v612 = v612 + Vector3.new(v617, 0, 0)
+2393: 	end
+2394: 	if v_u_206.hiddenUntil > 0 and v_u_206.hiddenUntil <= v419 then
+2395: 		v_u_206.hiddenUntil = 0
+2396: 		v_u_206.vanishAt = nil
+2397: 		if v_u_206.action == "throw" or v_u_206.action == "place" then
+2398: 			v_u_206.action = nil
+2399: 		end
+2400: 		if v440.drawFrom and (v440.clips and (v440.clips.redraw or v440.clips.draw)) then
+2401: 			local v618 = v_u_206
+2402: 			v_u_206.clip = nil
+2403: 			v618.clipName = nil
+2404: 			v_u_206.pendingDraw = v440.clips.redraw and "redraw" or "draw"
+2405: 		else
+2406: 			local v619 = v_u_205
+2407: 			local v620 = v_u_205
+2408: 			v_u_205.value = -1
+2409: 			v619.velocity = 0
+2410: 			v620.target = 0
+2411: 		end
+2412: 	end
+2413: 	v_u_206.frame = nil
+2414: 	v_u_206.wallPush = 0
+2415: 	local v621 = v_u_197.value
+2416: 	local v622 = v_u_198.value
+2417: 	local v623 = v610 - v621
+2418: 	local v624 = v612 - v622
+2419: 	local v625 = v_u_206
+2420: 	v_u_206.layerPos = v623
+2421: 	v625.layerRot = v624
+2422: 	local v626 = CFrame.new(v621) * CFrame.fromEulerAnglesYXZ(v622.X, v622.Y, v622.Z) * v440.styleRot
+2423: 	v_u_206.restFrame = v626
+2424: 	if v_u_206.pendingDraw then
+2425: 		local v627 = v_u_206.pendingDraw
+2426: 		v_u_206.pendingDraw = nil
+2427: 		if v440.drawFrom then
+2428: 			v_u_267(v627, nil, v_u_10.StartFrame(v440.drawFrom, v626))
+2429: 			v_u_206.clipFromVel = {
+2430: 				["pos"] = Vector3.new(0, 3.5, 0),
+2431: 				["tip"] = Vector3.new(0, 0, 0),
+2432: 				["edge"] = Vector3.new(0, 0, 0)
+2433: 			}
+2434: 		end
+   ...
+2492: 					local v642 = v634[4]
+2493: 					local v643 = "sfx:" .. v641 .. (type(v642) ~= "number" and "" or "@" .. v634[4])
+2494: 					table.insert(v640, v643)
+2495: 				end
+2496: 				local v644 = v_u_206
+2497: 				v644.clipFx = v644.clipFx + 1
+2498: 			end
+249
+
+===== Players.RansbloxScripts.PlayerScripts.Combat.Controller =====
+   ...
+1168: 					if p269.heavy == true then
+1169: 						v_u_13.GroundScuff(v272.Position + v272.CFrame.LookVector * 4 - Vector3.new(0, 2.8, 0))
+1170: 						return
+1171: 					end
+1172: 				end
+1173: 			end
+1174: 		else
+1175: 			return
+1176: 		end
+1177: 	elseif p268 == "Projectile" then
+1178: 		local v283 = p269.shooter
+1179: 		if typeof(v283) == "Instance" then
+1180: 			if v283:IsA("Player") then
+1181: 				v283 = v283.Character
+1182: 			elseif not v283:IsA("Model") then
+1183: 				v283 = nil
+1184: 			end
+1185: 		else
+1186: 			v283 = nil
+1187: 		end
+1188: 		if v283 and (v283 == v270 and p269.deflected ~= true) then
+1189: 			return
+1190: 		end
+1191: 		local v284 = p269.origin
+1192: 		if typeof(v284) == "Vector3" then
+1193: 			local v285 = p269.velocity
+1194: 			if typeof(v285) == "Vector3" then
+1195: 				local v286 = p269.key
+1196: 				if type(v286) == "string" then
+1197: 					local v287 = p269.gravity
+1198: 					local v288 = tonumber(v287) or 0
+1199: 					local v289 = p269.pellets
+1200: 					local v290 = tonumber(v289)
+1201: 					if v290 and v290 > 1 then
+1202: 						local v291 = p269.velocity
+1203: 						local v292 = v_u_13.Pellets
+1204: 						local v293 = p269.key
+1205: 						local v294 = p269.kind
+1206: 						local v295 = p269.origin
+1207: 						local v296 = v291.Unit
+1208: 						local v297 = v291.Magnitude
+1209: 						local v298 = p269.spread
+1210: 						local v299 = tonumber(v298) or 6
+1211: 						local v300 = p269.seed
+1212: 						v292(v293, v294, v295, v296, v297, v288, v290, v299, tonumber(v300) or 0, v283)
+1213: 					else
+1214: 						v_u_13.Projectile(p269.key, p269.kind, p269.origin, p269.velocity, v288, v283)
+1215: 					end
+1216: 					local v301 = v_u_8.Kind(p269.weaponId)
+1217: 					local v302 = p269.weaponId
+1218: 					local v303 = v_u_14.For(v302, v301 or "Bow")
+1219: 					local v304 = p269.origin
+1220: 					local v305
+1221: 					if v304 == nil then
+1222: 						v305 = false
+1223: 					else
+1224: 						v305 = v_u_13.CamDistance(v304) > v_u_13.NEAR
+1225: 					end
+1226: 					local v306 = not v305
+1227: 					if v306 and (v303.flash or v303.puff) then
+1228: 						v_u_13.Muzzle(CFrame.lookAt(p269.origin, p269.origin + p269.velocity), v301 ~= "Pistol", v303.puff ~= false)
+1229: 					end
+1230: 					if v283 and v303.kick then
+1231: 						v_u_16.Kick(v283, v303.kick * 5)
+1232: 					end
+1233: 					local v307 = os.clock()
+1234: 					local v308 = v283 or workspace
+1235: 					if v307 - (v_u_264[v308] or 0) > 0.08 then
+1236: 						v_u_264[v308] = v307
+1237: 						local v309 = v303.fireSound or (v303.throwSound or "Bow_Release")
+1238: 						if v306 or v303.flash then
+1239: 							v_u_11.Sound(v309, p269.origin)
+1240: 							return
+1241: 						end
+1242: 					end
+1243: 				end
+1244: 			else
+1245: 				return
+1246: 			end
+1247: 		else
+1248: 			return
+1249: 		end
+1250: 	else
+1251: 		if p268 == "ProjectileHit" then
+1252: 			v_u_13.ResolveProjectile(p269)
+1253: 			return
+1254: 		end
+1255: 		if p268 == "Explosion" then
+1256: 			local v310 = p269.position
+1257: 			if typeof(v310) == "Vector3" then
+1258: 				local v311 = v_u_13.Explosion
+1259: 				local v312 = p269.position
+1260: 				local v313 = p269.radius
+1261: 				local v314 = tonumber(v313) or 10
+1262: 				local v315 = p269.zoneRadius
+1263: 				local v316 = tonumber(v315)
+1264: 				local v317 = p269.zoneTime
+1265: 				v311(v312, v314, v316, (tonumber(v317)))
+1266: 				return
+1267: 			end
+1268: 			return
+1269: 		elseif p268 == "Smoke" then
+1270: 			local v318 = p269.position
+1271: 			if typeof(v318) == "Vector3" then
+1272: 				local v319 = p269.duration
+1273: 				local v320 = tonumber(v319) or 7
+1274: 				local v321 = v_u_13.SmokeCloud
+1275: 				local v322 = p269.position
+1276: 				local v323 = p269.radius
+1277: 				v321(v322, tonumber(v323) or 13, v320)
+
+===== Players.RansbloxScripts.PlayerScripts.Combat.Effects =====
+   ...
+192: 	end
+193: 	local v65 = {
+194: 		["parts"] = v61,
+195: 		["rels"] = v62
+196: 	}
+197: 	v_u_56[p57] = v65
+198: 	return v65
+199: end
+200: function v_u_14.CamDistance(p67) -- name: camDistance
+201: 	local v68 = workspace.CurrentCamera
+202: 	return not v68 and 0 or (v68.CFrame.Position - p67).Magnitude
+203: end
+204: function v_u_14.WeaponColor(p69) -- name: WeaponColor
+205: 	-- upvalues: (copy) v_u_8, (copy) v_u_13
+206: 	if p69 then
+207: 		p69 = p69:GetAttribute("WeaponId")
+208: 	end
+209: 	local v70 = v_u_8.Get(p69)
+210: 	if v70 then
+211: 		v70 = v_u_13.Kind(v70.kind)
+212: 	end
+213: 	return v70 and (v70.slashColor or v70.glow) or Color3.fromRGB(226, 170, 100)
+214: end
+215: function v_u_14.GroundAt(p71, p72) -- name: groundAt
+216: 	-- upvalues: (copy) v_u_10
+217: 	local v73 = v_u_10.WorldParams(v_u_10.Targets())
+218: 	local v74 = workspace
+219: 	local v75 = p71 + Vector3.new(0, 1.5, 0)
+220: 	local v76 = -(p72 + 1.5)
+221: 	local v77 = v74:Raycast(v75, Vector3.new(0, v76, 0), v73)
+222: 	if v77 then
+223: 		return v77.Position, v77.Normal
+224: 	else
+225: 		return nil, nil
+226: 	end
+227: end
+228: local function v_u_98(p78, p79, p80, p81, p82, p83, p_u_84, p85, p_u_86) -- name: groundDecal
+229: 	-- upvalues: (copy) v_u_12, (ref) v_u_17, (copy) v_u_5, (copy) v_u_1
+230: 	if v_u_12.decals then
+231: 		local v87 = p79.Unit
+232: 		local v88 = v87:Cross(Vector3.new(0, 0, 1))
+233: 		if v88.Magnitude < 0.1 then
+234: 			v88 = v87:Cross(Vector3.new(1, 0, 0))
+235: 		end
+236: 		local v89 = v88.Unit
+237: 		local v90 = v89:Cross(v87).Unit
+238: 		local v91 = CFrame.fromMatrix(p78 + v87 * 0.06, v89, v87, -v90)
+239: 		local v92 = Vector3.new(p82, 0.05, p82)
+240: 		local v93 = Enum.Material.SmoothPlastic
+241: 		local v94 = Instance.new("Part")
+242: 		v94.Name = "GroundFX"
+   ...
+827: 			v_u_223.CFrame = CFrame.fromMatrix(v273, v276, Vector3.new(0, 1, 0))
+828: 			local v277 = -v_u_216 * math.sin(v_u_219)
+829: 			local v278 = -v_u_216 * math.cos(v_u_219)
+830: 			local v279 = Vector3.new(v277, 0, v278)
+831: 			local v280 = -math.cos(v_u_219)
+832: 			local v281 = math.sin(v_u_219)
+833: 			local v282 = Vector3.new(v280, 0, v281) * v_u_214
+834: 			v_u_224.CFrame = CFrame.fromMatrix(v279, v282, Vector3.new(0, 1, 0))
+835: 			v_u_270()
+836: 			local v_u_283 = nil
+837: 			v_u_283 = v_u_4.RenderStepped:Connect(function()
+838: 				-- upvalues: (copy) v_u_221, (copy) v_u_270, (ref) v_u_283
+839: 				if not (v_u_221.Parent and v_u_270()) then
+840: 					v_u_283:Disconnect()
+841: 					v_u_221:Destroy()
+842: 				end
+843: 			end)
+844: 		end
+845: 	else
+846: 		return
+847: 	end
+848: end
+849: function v_u_14.GroundScuff(p284) -- name: GroundScuff
+850: 	-- upvalues: (copy) v_u_10, (copy) v_u_98
+851: 	local v285 = p284 + Vector3.new(0, 2, 0)
+852: 	local v286 = v_u_10.WorldParams(v_u_10.Targets())
+853: 	local v287 = workspace:Raycast(v285 + Vector3.new(0, 1.5, 0), Vector3.new(0, -7.5, 0), v286)
+854: 	local v288, v289
+855: 	if v287 then
+856: 		v288 = v287.Position
+857: 		v289 = v287.Normal
+858: 	else
+859: 		v288 = nil
+860: 		v289 = nil
+861: 	end
+862: 	if v288 and v289 then
+863: 		v_u_98(v288, v289, "rbxassetid://10430755572", Color3.fromRGB(70, 55, 40), 3, 4.2, 0.15, 0.35, 1.2)
+864: 		v_u_98(v288, v289, "rbxassetid://10871117278", Color3.fromRGB(190, 165, 130), 1.5, 8, 0.25, 0.35)
+865: 	end
+866: end
+867: function v_u_14.Muzzle(p290, p291, p292, p293) -- name: Muzzle
+868: 	-- upvalues: (copy) v_u_14, (ref) v_u_17, (copy) v_u_5, (copy) v_u_1
+869: 	local v294 = p290.Position
+870: 	local v295 = workspace.CurrentCamera
+871: 	local v296 = (not v295 and 0 or (v295.CFrame.Position - v294).Magnitude) > v_u_14.NEAR
+872: 	local v297 = p291 and 1.4 or 1
+873: 	if not (v296 or p293) then
+874: 		local v298 = Vector3.new(0.5, 0.5, 1.4) * v297
+875: 		local v299 = p290 * CFrame.new(0, 0, v297 * -0.7)
+876: 		local v300 = Color3.fromRGB(255, 170, 70)
+877: 		local v301 = Enum.Material.SmoothPlastic
+   ...
+1045: 		if type(v336) == "string" and v336 ~= "" then
+1046: 			for _, v338 in v_u_10.Targets() do
+1047: 				if v338:GetAttribute("MatchId") ~= v336 or v338:GetAttribute("Team") ~= v337 then
+1048: 					continue
+1049: 				end
+1050: 				table.insert(v335, v338)
+1051: 			end
+1052: 			local v339 = v_u_15.Character
+1053: 			if v339 and (p331 ~= v339 and (v339:GetAttribute("MatchId") == v336 and v339:GetAttribute("Team") == v337)) then
+1054: 				table.insert(v335, v339)
+1055: 			end
+1056: 		end
+1057: 	end
+1058: 	local v340 = RaycastParams.new()
+1059: 	v340.FilterType = Enum.RaycastFilterType.Exclude
+1060: 	local v341 = {}
+1061: 	for _, v342 in { workspace:FindFirstChild("FX"), workspace:FindFirstChild("Projectiles") } do
+1062: 		if not v342 then
+1063: 			continue
+1064: 		end
+1065: 		table.insert(v341, v342)
+1066: 	end
+1067: 	for _, v343 in v335 do
+1068: 		table.insert(v341, v343)
+1069: 	end
+1070: 	v340.FilterDescendantsInstances = v341
+1071: 	v340.IgnoreWater = true
+1072: 	v_u_329[v332] = {
+1073: 		["p"] = v340,
+1074: 		["t"] = v334
+1075: 	}
+1076: 	return v340
+1077: end
+1078: task.spawn(function()
+1079: 	-- upvalues: (copy) v_u_329
+1080: 	while true do
+1081: 		task.wait(3)
+1082: 		local v345 = os.clock()
+1083: 		for v346, v347 in v_u_329 do
+1084: 			if v345 - v347.t <= 2 then
+1085: 				continue
+1086: 			end
+1087: 			v_u_329[v346] = nil
+1088: 		end
+1089: 	end
+1090: end)
+1091: local v_u_348 = 0
+1092: local function v_u_351(p349) -- name: fallbackModel
+1093: 	-- upvalues: (copy) v_u_25
+1094: 	local v350 = Instance.new("Part")
+1095: 	v350.Size = (p349 == "Ball" or (p349 == "Pellet" or p349 == "Stone")) and Vector3.new(0.3, 0.3, 0.3) or Vector3.new(0.2, 0.2, 2)
+   ...
+1564: 						v482 = CFrame.Angles(0, v481, 0)
+1565: 					else
+1566: 						v482 = CFrame.Angles(-v481, 0, 0)
+1567: 					end
+1568: 					v480 = v480 * v482
+1569: 				end
+1570: 				local v483 = v_u_66(v452.model)
+1571: 				for v484, v485 in v483.parts do
+1572: 					local v486 = v_u_447
+1573: 					table.insert(v486, v485)
+1574: 					local v487 = v_u_448
+1575: 					local v488 = v480 * v483.rels[v484]
+1576: 	
 
 ===== Players.RansbloxScripts.PlayerScripts.Combat.Util =====
    ...
-374: 			v119 = v119:FindFirstChild(v117)
-375: 		end
-376: 		if v119 then
-377: 			v119 = v119:GetAttribute("Phase")
-378: 		end
-379: 		v118 = v119 == "Live" and true or v119 == "Overtime"
-380: 	end
-381: 	return v118
-382: end
-383: local function v_u_123() -- name: fxFolders
-384: 	local v120 = {}
-385: 	for _, v121 in { "FX", "Projectiles" } do
-386: 		local v122 = workspace:FindFirstChild(v121)
-387: 		if not v122 then
-388: 			continue
-389: 		end
-390: 		table.insert(v120, v122)
-391: 	end
-392: 	return v120
-393: end
-394: function v_u_8.Targets() -- name: Targets
-395: 	-- upvalues: (copy) v_u_9, (copy) v_u_2, (copy) v_u_1
-396: 	local v124 = v_u_9.Character
-397: 	local v125 = {}
-398: 	for _, v126 in v_u_2:GetPlayers() do
-399: 		local v127 = v126.Character
-400: 		if not v127 or (v127 == v124 or not v127:IsDescendantOf(workspace)) then
-401: 			continue
-402: 		end
-403: 		table.insert(v125, v127)
-404: 	end
-405: 	local v128 = {}
 406: 	for _, v129 in v125 do
 407: 		v128[v129] = true
 408: 	end
@@ -73,7 +657,38 @@ scripts scanned: 263
 441: 		for _, v138 in p134 do
 442: 			table.insert(v136, v138)
 443: 		end
-   ...
+444: 	end
+445: 	v135.FilterDescendantsInstances = v136
+446: 	v135.IgnoreWater = true
+447: 	return v135
+448: end
+449: function v_u_8.AimPoint(p139) -- name: AimPoint
+450: 	-- upvalues: (ref) v_u_13, (copy) v_u_123, (copy) v_u_8
+451: 	if v_u_13 then
+452: 		local v140 = v_u_13.GetAimPoint
+453: 		if type(v140) == "function" then
+454: 			local v141 = v_u_123()
+455: 			for _, v142 in v_u_8.Teammates() do
+456: 				table.insert(v141, v142)
+457: 			end
+458: 			local v143 = v_u_13.GetAimPoint
+459: 			local v144, v145, v146 = pcall(v143, p139, v141)
+460: 			if v144 and typeof(v145) == "Vector3" then
+461: 				return v145, v146
+462: 			end
+463: 		end
+464: 	end
+465: 	local v147 = v_u_8.GetAimRay()
+466: 	local v148 = p139 or 1000
+467: 	local v149 = workspace:Raycast(v147.Origin, v147.Direction.Unit * v148, v_u_8.WorldParams(v_u_8.Teammates()))
+468: 	if v149 then
+469: 		return v149.Position, v149
+470: 	else
+471: 		return v147.Origin + v147.Direction.Unit * v148, nil
+472: 	end
+473: end
+474: function v_u_8.AimDirection(p150) -- name: AimDirection
+475: 	-- upvalues: (copy) v_u_8
 476: 	local v151 = v_u_8.GetAimRay()
 477: 	local v152 = v_u_8.AimPoint() - p150
 478: 	if v152.Magnitude < 2 or v152.Unit:Dot(v151.Direction.Unit) < 0.2 then
@@ -91,73 +706,7 @@ scripts scanned: 263
 490: 	["gamepad"] = {
 491: 		["ranged"] = 1.5,
 492: 		["aimed"] = 1.5,
-493: 		["scoped"] = 1.5
-494: 	}
-495: }
-496: v_u_8.MELEE_NUDGE = {
-497: 	["touch"] = {
-498: 		["cone"] = 50,
-499: 		["max"] = 20,
-500: 		["reach"] = 1.5
-501: 	},
-502: 	["gamepad"] = {
-503: 		["cone"] = 40,
-504: 		["max"] = 12,
-505: 		["reach"] = 1
-506: 	}
-507: }
-508: local function v_u_157(p153, ...) -- name: camCall
-509: 	-- upvalues: (ref) v_u_13
-510: 	local v154 = v_u_13
-511: 	if v154 then
-512: 		v154 = v_u_13[p153]
-513: 	end
-514: 	if type(v154) == "function" then
-515: 		local v155, v156 = pcall(v154, ...)
-516: 		if v155 then
-517: 			return v156
-518: 		else
-519: 			return nil
-520: 		end
-521: 	else
-522: 		return nil
-523: 	end
-524: end
-525: function v_u_8.AssistActive() -- name: AssistActive
-526: 	-- upvalues: (ref) v_u_13, (copy) v_u_157
-527: 	if v_u_13 and v_u_157("GetAimAssistEnabled") ~= false then
-528: 		return v_u_157("IsAssistedInput") == true
-529: 	else
-530: 		return false
-531: 	end
-532: end
-533: local function v_u_186(p158, p159, p160, p161) -- name: rawHitsBody
-534: 	local v162 = p160:FindFirstChild("HumanoidRootPart") or (p160:FindFirstChild("UpperTorso") or p160:FindFirstChild("Torso"))
-535: 	local v163 = p160:FindFirstChild("Head")
-536: 	if not (v162 and v162:IsA("BasePart")) then
-537: 		return false
-538: 	end
-539: 	if p161 then
-540: 		local v164 = p159.X
-541: 		local v165 = p159.Z
-542: 		local v166 = Vector3.new(v164, 0, v165)
-543: 		if v166.Magnitude < 0.001 then
-544: 			return false
-545: 		end
    ...
-571: 	local v180 = v178 - v179 * v179
-572: 	local v181
-573: 	if v180 > 1e-6 then
-574: 		local v182 = (v179 * v175:Dot(v177) - v176:Dot(v177)) / v180
-575: 		v181 = math.clamp(v182, 0, 1)
-576: 	else
-577: 		v181 = 0
-578: 	end
-579: 	local v183 = v173 + v176 * v181
-580: 	local v184 = (v183 - p158):Dot(v175)
-581: 	local v185
-582: 	if v184 > 0 then
-583: 		v185 = (v183 - p158 - v175 * v184).Magnitude <= 1.1
 584: 	else
 585: 		v185 = false
 586: 	end
@@ -176,4 +725,2599 @@ scripts scanned: 263
 599: 			if typeof(v192) == "Instance" then
 600: 				local v193 = v190.model
 601: 				local v194 = v190.point
-602:
+602: 				local v195 = (v_u_8.ASSIST_MAGNET[v190.input] or v_u_8.ASSIST_MAGNET.touch)[v190.class]
+603: 				if type(v195) ~= "number" or v_u_186(p187, p188, v193, p189) then
+604: 					return p188
+605: 				end
+606: 				if v_u_12.SmokeBlocks(p187, v194) then
+607: 					return p188
+608: 				end
+609: 				local v196 = workspace:Raycast(p187, v194 - p187, v_u_8.WorldParams(v_u_8.Targets()))
+610: 				if v196 and not v196.Instance:IsDescendantOf(v193) then
+611: 					return p188
+612: 				end
+613: 				local v197 = (v194 - p187).Unit
+614: 				if p189 then
+615: 					local v198 = v197.X
+616: 					local v199 = v197.Z
+617: 					local v200 = Vector3.new(v198, 0, v199)
+618: 					local v201 = p188.X * p188.X + p188.Z * p188.Z
+619: 					local v202 = math.sqrt(v201)
+620: 					if v200.Magnitude < 0.001 or v202 < 0.001 then
+621: 						return p188
+622: 					end
+623: 					local v203 = v200.Unit * v202
+624: 					local v204 = v203.X
+625: 					local v205 = p188.Y
+626: 					local v206 = v203.Z
+627: 					v197 = Vector3.new(v204, v205, v206).Unit
+628: 				end
+629: 				local v207 = p188.Unit
+630: 				local v208 = v207:Dot(v197)
+631: 				local v209 = math.clamp(v208, -1, 1)
+632: 				local v210 = math.acos(v209)
+633: 				local v211 = math.rad(v195)
+634: 				if v_u_4:IsStudio() then
+   ...
+695: 		local v239 = v238:FindFirstChildOfClass("Humanoid")
+696: 		local v240 = v238:FindFirstChild("HumanoidRootPart")
+697: 		if not v239 or (v239.Health <= 0 or not (v240 and v240:IsA("BasePart"))) then
+698: 			continue
+699: 		end
+700: 		local v241 = v240.Position - v223.Position
+701: 		local v242 = v241.X
+702: 		local v243 = v241.Z
+703: 		local v244 = Vector3.new(v242, 0, v243)
+704: 		local v245 = v244.Magnitude
+705: 		if p218 + v221.reach < v245 or v245 < 0.5 then
+706: 			continue
+707: 		end
+708: 		local v246 = v241.Y
+709: 		if math.abs(v246) > 6 then
+710: 			continue
+711: 		end
+712: 		local v247 = v244.Unit:Dot(v230)
+713: 		if v247 < v233 then
+714: 			continue
+715: 		end
+716: 		local v248 = (1 - v247) * 10 + v245 * 0.05
+717: 		if v236 <= v248 or v_u_12.SmokeBlocks(v225, v240.Position) then
+718: 			continue
+719: 		end
+720: 		v235 = v235 or v_u_8.WorldParams(v234)
+721: 		if workspace:Raycast(v225, v240.Position - v225, v235) then
+722: 			continue
+723: 		end
+724: 		v237 = v240.Position
+725: 		v236 = v248
+726: 	end
+727: 	if not v237 then
+728: 		return 0
+729: 	end
+730: 	local v249 = v237.X - v223.Position.X
+731: 	local v250 = v237.Z - v223.Position.Z
+732: 	local v251 = Vector3.new(v249, 0, v250).Unit
+733: 	local v252 = -v251.X
+734: 	local v253 = -v251.Z
+735: 	local v254 = math.atan2(v252, v253)
+736: 	local v255 = -v230.X
+737: 	local v256 = -v230.Z
+738: 	local v257 = (v254 - math.atan2(v255, v256) + 3.
+
+===== Players.RansbloxScripts.PlayerScripts.Combat.Ping =====
+   ...
+230: 	local v83 = (p67.CFrame.Position - p66.position).Magnitude + 0.5
+231: 	local v84 = math.floor(v83)
+232: 	v82.Text = tostring(v84)
+233: end
+234: local function v_u_95() -- name: spectateAim
+235: 	-- upvalues: (copy) v_u_6, (copy) v_u_12, (copy) v_u_14
+236: 	local v86 = workspace.CurrentCamera
+237: 	if v86 then
+238: 		local v87
+239: 		if v_u_6.MouseBehavior == Enum.MouseBehavior.LockCenter or v_u_6.PreferredInput ~= Enum.PreferredInput.KeyboardAndMouse then
+240: 			v87 = v_u_12.GetAimRay()
+241: 		else
+242: 			local v88 = v_u_6:GetMouseLocation()
+243: 			v87 = v86:ViewportPointToRay(v88.X, v88.Y)
+244: 		end
+245: 		local v89 = {}
+246: 		for _, v90 in v_u_12.Targets() do
+247: 			local v91 = v_u_14:GetAttribute("MatchId")
+248: 			local v92 = type(v91) ~= "string" and "" or v91
+249: 			local v93 = v_u_14:GetAttribute("Team")
+250: 			if (v92 ~= "" and (v90:GetAttribute("MatchId") == v92 and v93 ~= nil) and (v90:GetAttribute("Team") == v93 and "ally" or "enemy") or nil) ~= "ally" then
+251: 				continue
+252: 			end
+253: 			table.insert(v89, v90)
+254: 		end
+255: 		local v94 = workspace:Raycast(v87.Origin, v87.Direction.Unit * 600, v_u_12.WorldParams(v89))
+256: 		if v94 then
+257: 			return v94.Position, v94
+258: 		else
+259: 			return nil, nil
+260: 		end
+261: 	else
+262: 		return nil, nil
+263: 	end
+264: end
+265: local function v_u_108() -- name: ping
+266: 	-- upvalues: (copy) v_u_14, (ref) v_u_23, (copy) v_u_40, (copy) v_u_95, (copy) v_u_12, (copy) v_u_10, (copy) v_u_65, (ref) v_u_21
+267: 	local v96 = os.clock()
+268: 	local v97
+269: 	if v_u_14:GetAttribute("Alive") == false then
+270: 		v97 = true
+271: 	else
+272: 		local v98 = v_u_14.Character
+273: 		if v98 then
+274: 			v98 = v98:FindFirstChildOfClass("Humanoid")
+275: 		end
+276: 		v97 = not v98 or v98.Health <= 0
+277: 	end
+278: 	local v99 = v_u_14:GetAttribute("MatchId")
+279: 	if (type(v99) ~= "string" and "" or v99) == "" or (v96 - v_u_23 < 0.6 or v_u_40(v97)) then
+280: 		return
+
+===== Players.RansbloxScripts.PlayerScripts.Combat.RankFx =====
+   ...
+207: 					local v76 = v55 * 3.1 + v73.phase
+208: 					local v77 = v75 * (math.sin(v76) * 0.15 + 0.85)
+209: 					local v78 = math.cos(v74) * v77
+210: 					local v79 = v55 * v73.bob + v73.phase
+211: 					local v80 = math.sin(v79) * 0.45 + math.sin(v74) * v73.tilt
+212: 					local v81 = math.sin(v74) * v77
+213: 					local v82 = Vector3.new(v78, v80, v81)
+214: 					local v83 = -math.sin(v74)
+215: 					local v84 = math.cos(v74) * v73.tilt * 0.6
+216: 					local v85 = math.cos(v74)
+217: 					local v86 = Vector3.new(v83, v84, v85)
+218: 					local v87 = v60.pos + v82
+219: 					local v88 = CFrame.lookAt(v87, v87 - v86)
+220: 					for v89, v90 in v73.parts do
+221: 						local v91 = v_u_52
+222: 						table.insert(v91, v90)
+223: 						local v92 = v_u_53
+224: 						local v93 = v88 * v73.rel[v89]
+225: 						table.insert(v92, v93)
+226: 					end
+227: 				end
+228: 			end
+229: 			local v94 = v60.ring
+230: 			if v94 and v55 - v60.ringAt > 0.1 then
+231: 				v60.ringAt = v55
+232: 				v_u_51.FilterDescendantsInstances = { workspace:FindFirstChild("FX") or workspace, v56 }
+233: 				local v95 = workspace:Raycast(v60.pos, Vector3.new(0, -14, 0), v_u_51)
+234: 				if v95 then
+235: 					v94.CFrame = CFrame.lookAt(v95.Position + v95.Normal * 0.06, v95.Position + v95.Normal * 1.06) * CFrame.Angles(0, 1.5707963267948966, 0)
+236: 					v94.Transparency = 0.6
+237: 				else
+238: 					v94.Transparency = 1
+239: 				end
+240: 			end
+241: 			if not v61 or (v61 ~= v56 or not v57) then
+242: 				continue
+243: 			end
+244: 			local v96 = 1 - ((v57.Position + Vector3.new(0, 0.6, 0) - v60.pos).Magnitude - v60.reach) / 5
+245: 			local v97 = math.clamp(v96, 0, 1)
+246: 			v58 = math.max(v58, v97)
+247: 		end
+248: 	end
+249: 	if #v_u_52 > 0 then
+250: 		workspace:BulkMoveTo(v_u_52, v_u_53, Enum.BulkMoveMode.FireCFrameChanged)
+251: 	end
+252: 	local v98 = v_u_22
+253: 	local v99 = v58 - v_u_22
+254: 	local v100 = -p54 * (v_u_22 < v58 and 10 or 3)
+255: 	v_u_22 = v98 + v99 * (1 - math.exp(v100))
+256: 	v_u_8.StepBuzz(p54, v_u_22)
+257: 	if not v59 and (v_u_22 < 0.01 and v_u_21) then
+
+===== Players.RansbloxScripts.PlayerScripts.Combat.Handlers.Bow =====
+   ...
+163: 	local v32 = p30.tuning
+164: 	if p30.drawing then
+165: 		if v_u_3.CanAct() then
+166: 			local v33 = p30:Charge()
+167: 			p30.drawing = false
+168: 			p30.lastShot = os.clock()
+169: 			v31.emit("Release", {
+170: 				["charge"] = v33
+171: 			})
+172: 			local v34 = p30.tuning.cooldown or 0.2
+173: 			p30.nextCd = v34 + ((p30.tuning.tapCooldown or (p30.tuning.cooldown or 0.2)) - v34) * (1 - v33)
+174: 			if p30.drawSound then
+175: 				p30.drawSound:Stop()
+176: 				p30.drawSound = nil
+177: 			end
+178: 			v_u_3.StopAnim(v31.animator, p30.preset.draw, 0.05)
+179: 			v_u_3.PlayAnim(v31.animator, p30.preset.fire, p30.preset.fireAnimSpeed or 1.2, 0.03)
+180: 			v_u_3.SetCameraModifier("CombatDraw", nil)
+181: 			v31.setSpeed("Draw", nil)
+182: 			v_u_4.SetCharge(0)
+183: 			v_u_5.ChargeGlow(v31.tool, 0)
+184: 			local v35 = v_u_3.ShotOrigin(v31.tool, "Muzzle")
+185: 			local v36 = v_u_3.AssistDirection(v35, v_u_3.AimDirection(v35), true)
+186: 			local v37, v38 = v_u_6.DrawnShot(v32, v33)
+187: 			local v39 = v31.nextId()
+188: 			v_u_5.Projectile(v_u_5.MyKey(v39), v_u_3.ShotKind(v31.char, v32.ammo, v32.projectile or "Arrow"), v35, v36 * v38, v32.gravity or 60, v31.char, {
+189: 				["damage"] = v37 * v_u_3.ItemBonus(v31.weaponId),
+190: 				["tuning"] = v32
+191: 			})
+192: 			v31.send("Shoot", {
+193: 				["tool"] = v31.tool,
+194: 				["origin"] = v35,
+195: 				["dir"] = v36,
+196: 				["id"] = v39,
+197: 				["charge"] = v33
+198: 			})
+199: 			v_u_3.Sound(p30.preset.fireSound or "Bow_Release", v31.root, {
+200: 				["PlaybackSpeed"] = 0.9 + 0.25 * v33,
+201: 				["Volume"] = 0.6 + 0.4 * v33
+202: 			})
+203: 			v_u_3.Recoil(1 + 1.8 * v33, (math.random() - 0.5) * 0.6)
+204: 			v_u_3.Shake(0.1 + 0.15 * v33, 0.12)
+205: 			v_u_4.Kick(6 * v33)
+206: 		else
+207: 			p30:CancelDraw()
+208: 		end
+209: 	else
+210: 		return
+211: 	end
+212: end
+213: function v_u_7.Input(p40, p41, p42) -- name: Input
+
+===== Players.RansbloxScripts.PlayerScripts.Combat.Handlers.Gun =====
+   ...
+250: 	if p_u_53.ammo <= 0 then
+251: 		p_u_53.lastShot = v57
+252: 		v_u_3.Sound(v56.emptySound or "Dry_Fire", v_u_54.root)
+253: 		p_u_53:RequestReload()
+254: 		return "empty"
+255: 	end
+256: 	p_u_53.lastShot = v57
+257: 	p_u_53.bufferedAt = nil
+258: 	p_u_53.ammo = p_u_53.ammo - 1
+259: 	v_u_4.SetPips(p_u_53.ammo, p_u_53.magazine)
+260: 	v_u_3.FaceCamera()
+261: 	local v58 = v_u_3.ShotOrigin(v_u_54.tool, "Muzzle")
+262: 	local v59 = v_u_3.AssistDirection(v58, v_u_3.AimDirection(v58), false)
+263: 	local v60 = v_u_54.nextId()
+264: 	local v61 = v_u_5.MyKey(v60)
+265: 	local v62 = v_u_7.ShotSpeed(v55)
+266: 	local v63 = v_u_3.ShotKind(v_u_54.char, v55.ammo, v55.projectile or "Bolt")
+267: 	local v64 = p_u_53:Aimed()
+268: 	if p_u_53.kind == "Blunderbuss" then
+269: 		local v65
+270: 		if v64 then
+271: 			v65 = v55.spreadAim or v55.spread
+272: 		else
+273: 			v65 = v55.spread
+274: 		end
+275: 		v_u_5.Pellets(v61, v63, v58, v59, v62, v55.gravity or 0, v55.pellets or 8, v65 or 6, p_u_53:Seed(v60), v_u_54.char, {
+276: 			["damage"] = v55.damage * v_u_3.ItemBonus(v_u_54.weaponId),
+277: 			["tuning"] = v55
+278: 		})
+279: 	else
+280: 		local v66
+281: 		if p_u_53.kind == "Crossbow" then
+282: 			v66 = 0
+283: 		elseif v64 then
+284: 			v66 = v55.spreadAim or 0
+285: 		else
+286: 			v66 = v55.spreadHip or 0
+287: 		end
+288: 		local v67 = v_u_7.SpreadDir(v59, v66, p_u_53:Seed(v60), 0)
+289: 		v_u_5.Projectile(v61, v63, v58, v67 * v62, v55.gravity or 0, v_u_54.char, {
+290: 			["damage"] = v55.damage * v_u_3.ItemBonus(v_u_54.weaponId),
+291: 			["tuning"] = v55
+292: 		})
+293: 	end
+294: 	v_u_54.send("Shoot", {
+295: 		["tool"] = v_u_54.tool,
+296: 		["origin"] = v58,
+297: 		["dir"] = v59,
+298: 		["id"] = v60
+299: 	})
+300: 	v_u_3.PlayAnim(v_u_54.animator, v56.fire, v56.fireAnimSpeed or 1.2, 0.02)
+301: 	v_u_3.Sound(v56.fireSound or "Crossbow_Fire", v_u_54.root)
+302: 	if v56.flash or v56.puff then
+303: 		v_u_5.Muzzle(CFrame.lookAt(v58, v58 + v59), p_u_53.kind ~= "Pistol", v56.puff ~= false, v_u_3.InFirstPerson())
+304: 	end
+305: 	local v68 = v55.kick or (v56.kick or 2)
+306: 	v_u_54.emit("Fire", {
+307: 		["kick"] = v68,
+308: 		["aimed"] = v64
+309: 	})
+310: 	local v69 = v55.climb
+311: 	if type(v69) == "number" then
+312: 		local v70 = v55.jolt or v68 * 0.585
+313: 		v_u_3.RecoilSlow(v70, (math.random() - 0.5) * v70 * 0.25, v69, (math.random() - 0.5) * v69 * 0.5)
+314: 	else
+
+===== Players.RansbloxScripts.PlayerScripts.Combat.Handlers.Melee =====
+   ...
+147: 	v_u_4.SetCharge(0)
+148: 	v_u_4.SetGuard(nil)
+149: end
+150: function v_u_9.Detect(p40, p41, p42, p43) -- name: Detect
+151: 	-- upvalues: (copy) v_u_3
+152: 	local v44 = p40.ctx
+153: 	local v45 = v44.root
+154: 	local v46 = v44.char:FindFirstChild("Head")
+155: 	local v47
+156: 	if v46 then
+157: 		v47 = v46.Position
+158: 	else
+159: 		v47 = v45.Position
+160: 	end
+161: 	local v48 = v_u_3.GetAimRay()
+162: 	local v49 = v48.Direction.X
+163: 	local v50 = v48.Direction.Z
+164: 	local v51 = Vector3.new(v49, 0, v50)
+165: 	if v51.Magnitude < 0.05 then
+166: 		v51 = v45.CFrame.LookVector
+167: 	end
+168: 	local v52 = v51.Unit
+169: 	local v53 = math.rad(p42)
+170: 	local v54 = math.cos(v53)
+171: 	local v55 = v_u_3.Targets()
+172: 	local v56 = v_u_3.WorldParams(v55)
+173: 	local v57 = {}
+174: 	for _, v58 in v55 do
+175: 		if v_u_3.IsTeammate(v58) then
+176: 			continue
+177: 		end
+178: 		local v59 = v58:FindFirstChildOfClass("Humanoid")
+179: 		local v60 = v58:FindFirstChild("HumanoidRootPart")
+180: 		if not v59 or (not v60 or v59.Health <= 0) then
+181: 			continue
+182: 		end
+183: 		local v61 = v60.Position - v45.Position
+184: 		local v62 = v61.Magnitude
+185: 		if v62 > p41 + 1.2 then
+186: 			continue
+187: 		end
+188: 		local v63 = v61.Y
+189: 		if math.abs(v63) >= 8 then
+190: 			continue
+191: 		end
+192: 		local v64 = v61.X
+193: 		local v65 = v61.Z
+194: 		local v66 = Vector3.new(v64, 0, v65)
+195: 		local v67
+196: 		if v62 < 3.2 then
+197: 			v67 = true
+   ...
+821: 		p217.parryReadyAt = os.clock() + v219
+822: 		v_u_4.SetArc(v219, Color3.fromRGB(150, 196, 236))
+823: 		p217:LowerParry(false, true)
+824: 	end
+825: end
+826: function v_u_9.Hurl(p_u_220) -- name: Hurl
+827: 	-- upvalues: (copy) v_u_3, (copy) v_u_7, (copy) v_u_5, (copy) v_u_4, (copy) v_u_8
+828: 	local v_u_221 = p_u_220.ctx
+829: 	local v222 = p_u_220.tuning.throw
+830: 	local v223 = os.clock()
+831: 	if type(v222) == "table" and (not p_u_220:OneHanded() and (v223 - p_u_220.lastThrow >= (v222.cooldown or 0.45) and (v223 >= p_u_220.busyUntil and v_u_3.CanAct()))) then
+832: 		local v224 = v_u_221.tool
+833: 		if v224 then
+834: 			v224 = v_u_221.tool:GetAttribute("Cooldown")
+835: 		end
+836: 		if type(v224) ~= "number" or workspace:GetServerTimeNow() >= v224 then
+837: 			p_u_220.lastThrow = v223
+838: 			p_u_220.thrownLocalUntil = v223 + 0.8
+839: 			p_u_220.busyUntil = v223 + 0.2
+840: 			p_u_220.bufferedAt = nil
+841: 			v_u_3.FaceCamera()
+842: 			local v225 = v_u_3.ShotOrigin(nil)
+843: 			local v226 = v_u_3.AimPoint(v222.range or 170)
+844: 			local v227 = v_u_3.AssistDirection(v225, v_u_3.AimDirection(v225), true)
+845: 			local v228 = v222.speed or 120
+846: 			local v229 = v222.gravity or 0
+847: 			local v230 = (v226 - v225).Magnitude
+848: 			if v229 > 0 and v230 > 1 then
+849: 				local v231 = v230 / v228
+850: 				local v232 = v227 * v230
+851: 				local v233 = 0.5 * v229 * v231 * v231
+852: 				v227 = (v232 + Vector3.new(0, v233, 0)).Unit
+853: 			end
+854: 			local v234 = v_u_221.nextId()
+855: 			v_u_221.emit("Hurl", {})
+856: 			v_u_3.PlayAnim(v_u_221.animator, p_u_220.preset.throw, 1.2, 0.03)
+857: 			v_u_3.Sound(p_u_220.preset.throwSound or "Hatchet_Throw", v_u_221.root)
+858: 			v_u_7.ShowOffHand(v_u_221.tool, false)
+859: 			v_u_5.Projectile(v_u_5.MyKey(v234), "Hatchet", v225, v227 * v228, v229, v_u_221.char, {
+860: 				["damage"] = (v222.damage or 40) * v_u_3.ItemBonus(v_u_221.weaponId),
+861: 				["tuning"] = v222
+862: 			})
+863: 			v_u_221.send("Hurl", {
+864: 				["tool"] = v_u_221.tool,
+865: 				["origin"] = v225,
+866: 				["dir"] = v227,
+867: 				["id"] = v234
+868: 			})
+869: 			v_u_4.SetArc(v222.returnTime or 5, Color3.fromRGB(214, 170, 120))
+870: 			v_u_8.SetAltDim(true)
+871: 			local v_u_235 = v_u_221.tool
+
+===== Players.RansbloxScripts.PlayerScripts.Combat.Handlers.Throw =====
+   ...
+211: 	v_u_3.FaceCamera()
+212: 	if p50.preset.windup then
+213: 		v_u_3.StopAnim(v52.animator, p50.preset.windup, 0.04)
+214: 	end
+215: 	v_u_3.PlayAnim(v52.animator, p50.preset.throw, p50.preset.throwAnimSpeed or 1.3, 0.03)
+216: 	local v57 = v52.nextId()
+217: 	local v58
+218: 	if v53.splash or (v53.smoke or v53.caltrops) then
+219: 		v58 = nil
+220: 	else
+221: 		local v59
+222: 		if p50.winds then
+223: 			v59 = v_u_6.DrawnShot(v53, p51)
+224: 		else
+225: 			v59 = v53.damage
+226: 		end
+227: 		v58 = {
+228: 			["damage"] = v59 * v_u_3.ItemBonus(v52.weaponId),
+229: 			["tuning"] = v53
+230: 		}
+231: 	end
+232: 	local v60 = v53.returns
+233: 	if type(v60) == "table" then
+234: 		v_u_5.Chakram(v_u_5.MyKey(v57), v54, v55, v56, v53.returns.range or 45, v53.returns.catch or 4.5, v52.char)
+235: 	else
+236: 		v_u_5.Projectile(v_u_5.MyKey(v57), v53.projectile or "Javelin", v54, v55 * v56, v53.gravity or 60, v52.char, v58)
+237: 	end
+238: 	v52.send("Shoot", {
+239: 		["tool"] = v52.tool,
+240: 		["origin"] = v54,
+241: 		["dir"] = v55,
+242: 		["id"] = v57,
+243: 		["charge"] = p51
+244: 	})
+245: 	v_u_3.Sound(p50.preset.throwSound or "Throw", v52.root)
+246: 	if p50.kind == "Bomb" then
+247: 		p50:StopLoop()
+248: 	end
+249: 	v_u_3.Recoil(p50.preset.recoil or (p50.kind == "Javelin" and 2 or 1), 0)
+250: 	if p50.preset.shake then
+251: 		v_u_3.Shake(p50.preset.shake, 0.16)
+252: 	end
+253: 	v_u_4.Kick(p50.preset.recoil and 7 or 4)
+254: 	if p50.maxCharges > 0 then
+255: 		local v61 = p50.charges - 1
+256: 		p50.charges = math.max(0, v61)
+257: 		v_u_4.SetPips(p50.charges, p50.maxCharges)
+258: 	end
+259: 	if p50.kind == "Bomb" then
+260: 		v_u_4.SetArc(v53.cooldown or 0.6, Color3.fromRGB(228, 232, 240))
+261: 	end
+   ...
+367: 		elseif os.clock() - p71.bufferedAt > 0.15 then
+368: 			p71.bufferedAt = nil
+369: 		elseif p71:Quick() ~= "cooldown" then
+370: 			p71.bufferedAt = nil
+371: 		end
+372: 	end
+373: 	if p71.winding then
+374: 		local v72 = p71:Charge()
+375: 		v_u_4.SetCharge(v72)
+376: 		local v73, v74, v75 = p71:Launch(v72)
+377: 		local v76 = p71.tuning
+378: 		local v77
+379: 		if v76.splash then
+380: 			v77 = v76.splash.radius * 2
+381: 		elseif v76.smoke then
+382: 			v77 = v76.smoke.radius * 1.2
+383: 		else
+384: 			v77 = not v76.caltrops and 3 or v76.caltrops.radius * 2
+385: 		end
+386: 		local v78
+387: 		if v76.smoke then
+388: 			v78 = p71.preset.arcSmoke
+389: 		else
+390: 			v78 = p71.preset.arc
+391: 		end
+392: 		v_u_5.Trajectory(v73, v74 * v75, v76.gravity or 60, v78, v77)
+393: 	elseif p71.preview and p71.kind == "Sling" then
+394: 		local v79, v80, v81 = p71:Launch(1)
+395: 		v_u_5.Trajectory(v79, v80 * v81, p71.tuning.gravity or 80, Color3.fromRGB(215, 195, 160), 2)
+396: 	end
+397: end
+398: function v_u_7.Interrupt(p82) -- name: Interrupt
+399: 	if p82.winding then
+400: 		p82:Cancel()
+401: 	end
+402: end
+403: return v_u_7
+
+===== Players.RansbloxScripts.PlayerScripts.Combat.Handlers.Use =====
+   ...
+100: 		["tool"] = v24.tool
+101: 	})
+102: 	v24.emit("Use", {
+103: 		["on"] = false
+104: 	})
+105: 	v_u_2.StopAnim(v24.animator, p23.preset.use, 0.1)
+106: 	v24.setSpeed("Use", nil)
+107: 	v_u_3.StopChannel()
+108: end
+109: function v_u_4.TrapSpot(p25) -- name: TrapSpot
+110: 	-- upvalues: (copy) v_u_2
+111: 	local v26 = p25.ctx.root
+112: 	local v27 = p25.tuning.placeRange or 7
+113: 	local v28 = v_u_2.AimPoint(60)
+114: 	local v29 = v28.X - v26.Position.X
+115: 	local v30 = v28.Z - v26.Position.Z
+116: 	local v31 = Vector3.new(v29, 0, v30)
+117: 	if v27 < v31.Magnitude then
+118: 		v31 = v31.Unit * v27
+119: 	elseif v31.Magnitude < 2.5 then
+120: 		local v32 = v26.CFrame.LookVector.X
+121: 		local v33 = v26.CFrame.LookVector.Z
+122: 		v31 = Vector3.new(v32, 0, v33).Unit * 3.5
+123: 	end
+124: 	local v34 = v26.Position + v31 + Vector3.new(0, 3, 0)
+125: 	local v35 = workspace:Raycast(v34, Vector3.new(0, -12, 0), v_u_2.WorldParams(v_u_2.Targets()))
+126: 	if v35 and v35.Normal.Y >= (p25.tuning.wall and 0.75 or 0.6) then
+127: 		if workspace:Raycast(v26.Position, v35.Position + Vector3.new(0, 0.5, 0) - v26.Position, v_u_2.WorldParams(v_u_2.Targets())) then
+128: 			return nil
+129: 		else
+130: 			return v35.Position
+131: 		end
+132: 	else
+133: 		return nil
+134: 	end
+135: end
+136: function v_u_4.Activate(p_u_36) -- name: Activate
+137: 	-- upvalues: (copy) v_u_2, (copy) v_u_3, (copy) v_u_5
+138: 	local v_u_37 = p_u_36.ctx
+139: 	local v38 = os.clock()
+140: 	if p_u_36.using or (v38 - p_u_36.lastUse < (p_u_36.tuning.useTime or 0.5) + 0.1 or not v_u_2.CanAct()) then
+141: 		return
+142: 	elseif p_u_36.charges < 1 then
+143: 		v_u_2.Sound("Denied", v_u_37.root)
+144: 		v_u_3.Toast(v_u_5.NoCharges, Color3.fromRGB(255, 120, 90))
+145: 		return
+146: 	elseif p_u_36.kind == "Herbs" or p_u_36.kind == "Horn" then
+147: 		local v_u_39 = p_u_36.kind == "Horn"
+148: 		local v40 = v_u_37.hum
+149: 		if v_u_39 or v40.Health < v40.MaxHealth - 0.5 then
+150: 			p_u_36.lastUse = v38
+151: 			p_u_36.using = true
+152: 			p_u_36.token = p_u_36.token + 1
+
+===== Players.RansbloxScripts.PlayerScripts.Core.RingOfFire =====
+   ...
+382: 	-- upvalues: (copy) v_u_6, (copy) v_u_30
+383: 	local v110 = v_u_6
+384: 	local v111 = p107.Y + 110
+385: 	local v112 = v110:Raycast(Vector3.new(p108, v111, p109), Vector3.new(0, -150, 0), v_u_30)
+386: 	if not v112 then
+387: 		return 0, false
+388: 	end
+389: 	local v113 = v112.Position.Y - p107.Y
+390: 	if v113 <= 6 then
+391: 		return math.max(v113, -12), false
+392: 	end
+393: 	local v114 = v112.Instance
+394: 	if v114:IsA("BasePart") and v112.Normal.Y > 0.8 then
+395: 		local v115 = v114.Size
+396: 		local v116 = { v115.X, v115.Y, v115.Z }
+397: 		table.sort(v116)
+398: 		if v116[2] >= 14 then
+399: 			return v113, false
+400: 		end
+401: 	end
+402: 	return v113, true
+403: end
+404: local function v_u_132(p118, p119, p120, p121) -- name: sampleAll
+405: 	-- upvalues: (copy) v_u_30, (copy) v_u_117, (copy) v_u_18, (copy) v_u_19
+406: 	local v122 = p118:FindFirstChild("Map")
+407: 	v_u_30.FilterDescendantsInstances = v122 and { v122 } or {}
+408: 	local v123 = table.create(p121, false)
+409: 	for v124 = 1, p121 do
+410: 		local v125 = (v124 - 1) / p121 * 2 * 3.141592653589793
+411: 		local v126, v127 = v_u_117(p119, p119.X + math.cos(v125) * p120, p119.Z + math.sin(v125) * p120)
+412: 		v_u_18[v124] = v126
+413: 		v123[v124] = v127
+414: 	end
+415: 	for v128 = 1, p121 do
+416: 		local v129 = (v128 - 0.5) / p121 * 2 * 3.141592653589793
+417: 		local _, v130 = v_u_117(p119, p119.X + math.cos(v129) * p120, p119.Z + math.sin(v129) * p120)
+418: 		local v131 = v128 % p121 + 1
+419: 		v_u_19[v128] = v130 or (v123[v128] or v123[v131])
+420: 	end
+421: end
+422: local function v_u_211(p133, p134, p135) -- name: layout
+423: 	-- upvalues: (ref) v_u_10, (copy) v_u_53, (copy) v_u_81, (copy) v_u_17, (ref) v_u_11, (ref) v_u_25, (ref) v_u_26, (copy) v_u_132, (copy) v_u_19, (copy) v_u_36, (copy) v_u_9, (copy) v_u_12, (copy) v_u_18, (copy) v_u_13, (copy) v_u_6, (ref) v_u_27, (copy) v_u_8, (copy) v_u_106
+424: 	local v136 = p133:GetAttribute("RingCenterX")
+425: 	local v137 = (type(v136) ~= "number" or v136 ~= v136) and 0 or v136
+426: 	local v138 = p133:GetAttribute("RingCenterY")
+427: 	local v139 = (type(v138) ~= "number" or v138 ~= v138) and 0 or v138
+428: 	local v140 = p133:GetAttribute("RingCenterZ")
+429: 	local v141 = (type(v140) ~= "number" or v140 ~= v140) and 0 or v140
+430: 	local v142 = Vector3.new(v137, v139, v141)
+431: 	if not (v_u_10 and v_u_10.Parent) then
+432: 		v_u_53()
+
+===== Players.RansbloxScripts.PlayerScripts.UI.Screens.Nameplates =====
+   ...
+1343: 							local v325 = false
+1344: 							local v326 = false
+1345: 							local v327 = v324.head
+1346: 							local v328 = v324.role == "enemy" and 200 or 450
+1347: 							if v327 and (v324.hum == nil or v324.hum.Health > 0) then
+1348: 								local v329 = v327.Position - v319
+1349: 								if v329.Magnitude <= v328 then
+1350: 									table.clear(v_u_313)
+1351: 									local v330 = v_u_313
+1352: 									table.insert(v330, v323)
+1353: 									if v_u_15.Character then
+1354: 										local v331 = v_u_313
+1355: 										local v332 = v_u_15.Character
+1356: 										table.insert(v331, v332)
+1357: 									end
+1358: 									local v333 = v_u_5:FindFirstChild("FX")
+1359: 									if v333 then
+1360: 										local v334 = v_u_313
+1361: 										table.insert(v334, v333)
+1362: 									end
+1363: 									local v335 = v_u_5:FindFirstChild("Projectiles")
+1364: 									if v335 then
+1365: 										local v336 = v_u_313
+1366: 										table.insert(v336, v335)
+1367: 									end
+1368: 									v_u_22.FilterDescendantsInstances = v_u_313
+1369: 									v325 = v_u_5:Raycast(v319, v329, v_u_22) == nil
+1370: 								end
+1371: 								if v324.role == "enemy" then
+1372: 									v326 = v_u_2.SmokeBlocks(v319, v327.Position)
+1373: 									if not v326 then
+1374: 										if v321 == nil then
+1375: 											v326 = false
+1376: 										else
+1377: 											v326 = v_u_2.SmokeBlocks(v321, v327.Position)
+1378: 										end
+1379: 									end
+1380: 									if v325 then
+1381: 										v325 = not v326
+1382: 									end
+1383: 								end
+1384: 							end
+1385: 							if v326 ~= v324.smoked then
+1386: 								v324.smoked = v326
+1387: 								v322 = true
+1388: 							end
+1389: 							if v324.role == "ally" and v324.flat then
+1390: 								v_u_117(v324.flat, not v325)
+1391: 							else
+1392: 								v322 = v325 ~= v324.visibleLOS and true or v322
+1393: 							end
+
+===== Players.RansbloxScripts.PlayerScripts.UI.Screens.Party =====
+   ...
+1465: 			-- upvalues: (copy) v_u_242
+1466: 			if not p272 then
+1467: 				local v273 = p271.UserInputType
+1468: 				if v273 == Enum.UserInputType.MouseButton1 or v273 == Enum.UserInputType.Touch then
+1469: 					v_u_242[p271] = {
+1470: 						["pos"] = Vector2.new(p271.Position.X, p271.Position.Y),
+1471: 						["t"] = os.clock()
+1472: 					}
+1473: 				end
+1474: 			end
+1475: 		end)
+1476: 		v_u_2.InputEnded:Connect(function(p274, p275)
+1477: 			-- upvalues: (copy) v_u_242, (copy) v_u_270, (ref) v_u_3, (copy) v_u_10, (ref) v_u_1, (copy) p_u_4, (copy) v_u_268, (ref) v_u_73
+1478: 			local v276 = v_u_242[p274]
+1479: 			v_u_242[p274] = nil
+1480: 			if v276 and (not p275 and v_u_270()) then
+1481: 				local v277 = Vector2.new(p274.Position.X, p274.Position.Y)
+1482: 				if (v277 - v276.pos).Magnitude > 10 or os.clock() - v276.t > 0.45 then
+1483: 					return
+1484: 				else
+1485: 					local v278 = v_u_3.CurrentCamera
+1486: 					if v278 then
+1487: 						local v279 = v278:ScreenPointToRay(v277.X, v277.Y)
+1488: 						local v280 = RaycastParams.new()
+1489: 						v280.FilterType = Enum.RaycastFilterType.Exclude
+1490: 						v280.FilterDescendantsInstances = { v_u_10.Character }
+1491: 						local v281 = v_u_3:Raycast(v279.Origin, v279.Direction * 250, v280)
+1492: 						if v281 then
+1493: 							v281 = v281.Instance:FindFirstAncestorOfClass("Model")
+1494: 						end
+1495: 						while v281 and (not v281:FindFirstChildOfClass("Humanoid") and v281.Parent) do
+1496: 							v281 = v281.Parent:FindFirstAncestorOfClass("Model")
+1497: 						end
+1498: 						if v281 then
+1499: 							v281 = v_u_1:GetPlayerFromCharacter(v281)
+1500: 						end
+1501: 						if v281 and v281 ~= v_u_10 then
+1502: 							p_u_4.Sounds.Play("Click")
+1503: 							v_u_268(v281, v277)
+1504: 						elseif v_u_73 and (v_u_73.Name == "PlayerCard" and v_u_73) then
+1505: 							v_u_73:Destroy()
+1506: 							v_u_73 = nil
+1507: 							p_u_4.MenuManager.PopFocus("PartyPop")
+1508: 						end
+1509: 					else
+1510: 						return
+1511: 					end
+1512: 				end
+1513: 			else
+1514: 				return
+1515: 			end
+
+===== Players.RansbloxScripts.PlayerScripts.Replay.Director =====
+   ...
+6: 	["pitch"] = -0.13962634015954636,
+7: 	["fov"] = 70,
+8: 	["pivotY"] = 0,
+9: 	["aimW"] = 0,
+10: 	["aimFovW"] = 0,
+11: 	["punch"] = 0,
+12: 	["deadAt"] = nil,
+13: 	["orbit"] = 0,
+14: 	["duration"] = 10,
+15: 	["segments"] = nil,
+16: 	["seg"] = 1,
+17: 	["arm"] = 1,
+18: 	["offset"] = Vector3.new(2.9, 0, 10.5),
+19: 	["action"] = 0,
+20: 	["actionWant"] = 0,
+21: 	["aimed"] = false,
+22: 	["fpW"] = 0,
+23: 	["firstPerson"] = false,
+24: 	["segments"] = {}
+25: }
+26: local v_u_5 = RaycastParams.new()
+27: v_u_5.FilterType = Enum.RaycastFilterType.Include
+28: v_u_5.IgnoreWater = true
+29: function v2.SetWorld(p6) -- name: SetWorld
+30: 	-- upvalues: (copy) v_u_5
+31: 	v_u_5.FilterDescendantsInstances = p6
+32: end
+33: function v2.SetSegments(p7) -- name: SetSegments
+34: 	-- upvalues: (copy) v_u_4
+35: 	table.sort(p7, function(p8, p9)
+36: 		return p8.t0 < p9.t0
+37: 	end)
+38: 	v_u_4.segments = p7
+39: 	v_u_4.seg = 1
+40: end
+41: function v2.SetShoulderSide(p10) -- name: SetShoulderSide
+42: 	-- upvalues: (ref) v_u_3
+43: 	v_u_3 = p10 < 0 and -1 or 1
+44: end
+45: function v2.Begin(p11, p12) -- name: Begin
+46: 	-- upvalues: (copy) v_u_4
+47: 	local v13 = v_u_4
+48: 	local v14 = p11.LookVector
+49: 	local v15 = -v14.X
+50: 	local v16 = -v14.Z
+51: 	v13.yaw = math.atan2(v15, v16)
+52: 	v_u_4.pitch = -0.13962634015954636
+53: 	v_u_4.fov = 70
+54: 	v_u_4.pivotY = p11.Position.Y + 3.1
+55: 	v_u_4.aimW = 0
+56: 	v_u_4.aimFovW = 0
+
+===== Players.RansbloxScripts.PlayerScripts.Replay.Locomotion =====
+   ...
+89: 		v26.weights[v27] = 0
+90: 	end
+91: 	v26.legs = v_u_21(p24, v_u_4.SlideLegs, Enum.AnimationPriority.Action2, "SlideLegs") or v_u_21(p24, v_u_4.SlideFallback, Enum.AnimationPriority.Movement, "SlideFallback")
+92: 	v26.upper = v_u_21(p24, v_u_4.SlideUpper, Enum.AnimationPriority.Movement, "SlideUpper")
+93: 	return v26
+94: end
+95: function v_u_5.Stop(p29) -- name: Stop
+96: 	for v30, v31 in p29.tracks do
+97: 		v31:Stop(0.2)
+98: 		p29.weights[v30] = 0
+99: 	end
+100: 	if p29.legs then
+101: 		p29.legs:Stop(0.15)
+102: 	end
+103: 	if p29.upper then
+104: 		p29.upper:Stop(0.15)
+105: 	end
+106: 	p29.sliding = false
+107: 	p29.active = false
+108: end
+109: local v_u_32 = RaycastParams.new()
+110: v_u_32.FilterType = Enum.RaycastFilterType.Include
+111: v_u_32.IgnoreWater = true
+112: function v_u_5.SetGround(p33) -- name: SetGround
+113: 	-- upvalues: (copy) v_u_32
+114: 	v_u_32.FilterDescendantsInstances = p33
+115: end
+116: local function v_u_52(p34, p35) -- name: footstep
+117: 	-- upvalues: (ref) v_u_6, (ref) v_u_7, (copy) v_u_2, (copy) v_u_32
+118: 	if v_u_6 and v_u_7 then
+119: 		local v36 = p34.root
+120: 		local v37 = p34.hum
+121: 		local v38 = v_u_2.CurrentCamera
+122: 		if v38 and (v38.CFrame.Position - v36.Position).Magnitude > 90 then
+123: 			return
+124: 		else
+125: 			local v39 = v37.HipHeight + v36.Size.Y / 2 + 1.5
+126: 			local v40 = v_u_2
+127: 			local v41 = v36.Position
+128: 			local v42 = -v39
+129: 			local v_u_43 = v40:Raycast(v41, Vector3.new(0, v42, 0), v_u_32)
+130: 			if v_u_43 then
+131: 				local function v44()
+132: 					-- upvalues: (ref) v_u_6, (copy) v_u_43
+133: 					return v_u_6.StepSoundName(v_u_6.SurfaceFor(v_u_43.Material))
+134: 				end
+135: 				local v45, v46 = pcall(v44)
+136: 				if v45 and type(v46) == "string" then
+137: 					p34.leftFoot = not p34.leftFoot
+138: 					local v47 = v36.CFrame.RightVector * (p34.leftFoot and -0.5 or 0.5)
+139: 					local v48 = v_u_7.Play
+
+===== Players.RansbloxScripts.PlayerScripts.Replay.Player =====
+   ...
+189: 				local v85 = p74.fade
+190: 				local v86 = tonumber(v85)
+191: 				local v87 = p74.weight
+192: 				v82(v83, v84, v81, v86, (tonumber(v87)))
+193: 				return
+194: 			elseif p74.op == "Hold" then
+195: 				v78.PlayHold(v76.animator, p74.name, v81)
+196: 			elseif p74.op == "Stop" then
+197: 				local v88 = v78.StopAnim
+198: 				local v89 = v76.animator
+199: 				local v90 = p74.name
+200: 				local v91 = p74.fade
+201: 				v88(v89, v90, (tonumber(v91)))
+202: 			end
+203: 		end
+204: 	end
+205: end
+206: local v_u_93 = nil
+207: local function v_u_120(p94, p95, p96, p97, p98, p99, p100) -- name: logAction
+208: 	-- upvalues: (ref) v_u_93, (copy) v_u_7
+209: 	local v101 = v_u_93
+210: 	if v101 and p94.phase == "play" then
+211: 		if p95 == "Projectile" and p98 == p94.focus then
+212: 			local v102 = p96.origin
+213: 			if typeof(v102) == "Vector3" then
+214: 				local v103 = p96.velocity
+215: 				if typeof(v103) == "Vector3" and p96.velocity.Magnitude > 0.1 then
+216: 					local v104 = p96.key
+217: 					local v105 = tostring(v104)
+218: 					local v106 = p94.landed[v105] or p94.landed[v105 .. "/1"]
+219: 					local v107
+220: 					if v106 then
+221: 						local v108 = (v106 - p96.origin).Magnitude
+222: 						v107 = math.clamp(v108, 8, 400)
+223: 					else
+224: 						v107 = 80
+225: 					end
+226: 					local v109 = v101.pending
+227: 					local v110 = {
+228: 						["kind"] = "shot",
+229: 						["t"] = nil,
+230: 						["point"] = nil,
+231: 						["victim"] = nil,
+232: 						["weapon"] = nil,
+233: 						["t"] = p97,
+234: 						["point"] = p96.origin + p96.velocity.Unit * v107,
+235: 						["victim"] = p94.landedOn[v105] or p94.landedOn[v105 .. "/1"],
+236: 						["weapon"] = p96.weaponId
+237: 					}
+238: 					table.insert(v109, v110)
+239: 					return
+240: 				end
+241: 			end
+242: 		end
+243: 		if p95 == "Hit" and p99 == p94.focus then
+244: 			local v111 = p96.position
+245: 			if typeof(v111) == "Vector3" then
+246: 				local v112 = p96.weaponId
+247: 				if type(v112) == "string" and v_u_7.IsMelee(v_u_7.Kind(p96.weaponId)) then
+248: 					local v113 = v101.pending
+249: 					local v114 = {
+250: 						["kind"] = "melee",
+251: 						["t"] = nil,
+252: 						["point"] = nil,
+253: 						["victim"] = nil,
+254: 						["weapon"] = nil,
+255: 						["killed"] = nil,
+256: 						["t"] = p97,
+257: 						["point"] = p96.position
+258: 					}
+259: 					local v115 = p96.target
+   ...
+427: 				v175 = v174.fighter
+428: 			else
+429: 				v175 = nil
+430: 			end
+431: 		else
+432: 			v175 = nil
+433: 		end
+434: 		local v177 = v161.victim
+435: 		local v178
+436: 		if type(v177) == "table" then
+437: 			local v179 = v177.fighter
+438: 			if type(v179) == "number" then
+439: 				v178 = v177.fighter
+440: 			else
+441: 				v178 = nil
+442: 			end
+443: 		else
+444: 			v178 = nil
+445: 		end
+446: 		if v_u_93 then
+447: 			v_u_120(p158, v160, v161, p159.t, v169, v172, v178)
+448: 		end
+449: 		if v160 == "Projectile" and (v169 == p158.focus and p158.phase == "play") then
+450: 			local v180 = v161.origin
+451: 			if typeof(v180) == "Vector3" then
+452: 				local v181 = v161.velocity
+453: 				if typeof(v181) == "Vector3" and v161.velocity.Magnitude > 0.1 then
+454: 					local v182 = v161.key
+455: 					local v183 = tostring(v182)
+456: 					local v184 = p158.landed[v183] or p158.landed[v183 .. "/1"]
+457: 					local v185
+458: 					if v184 then
+459: 						local v186 = (v184 - v161.origin).Magnitude
+460: 						v185 = math.clamp(v186, 8, 400)
+461: 					else
+462: 						v185 = 80
+463: 					end
+464: 					p158.diagShot = v161.origin + v161.velocity.Unit * v185
+465: 				end
+466: 			end
+467: 		end
+468: 		v_u_72(p158, v161)
+469: 		if v160 == "Inv" then
+470: 			if v175 == p158.focus then
+471: 				v_u_16.OnFighterEvent("Inv", v161, p159.t)
+472: 			end
+473: 			return
+474: 		elseif v160 == "Damage" then
+475: 			local v187 = p158.clip.fighters
+476: 			if v172 == p158.focus and v178 ~= p158.focus then
+477: 				local v188 = v_u_16.HitConfirm
+478: 				local v189
+479: 				if v178 and v187[v178] then
+480: 					v189 = v187[v178].id
+481: 				else
+482: 					v189 = nil
+483: 				end
+484: 				v188(v161, v189)
+485: 				if v161.killed == true then
+486: 					v_u_12.OnKill()
+487: 					return
+488: 				end
+489: 			elseif v178 == p158.focus then
+490: 				local v190 = v_u_16.DamageTaken
+491: 				local v191
+492: 				if v172 and v187[v172] then
+493: 					v191 = v187[v172].id
+494: 				else
+495: 					v191 = nil
+496: 				end
+497: 				v190(v161, v191)
+498: 				if v161.damageType ~= "Burn" and v161.damageType ~= "World" then
+499: 					local v192 = v_u_17.Hurt
+500: 					local v193 = v161.amount
+501: 					v192(tonumber(v193) or 0, v161.blocked == true)
+502: 				end
+503: 			end
+504: 		else
+505: 			local v194
+506: 			if v160 == "Hit" then
+507: 				v194 = v161.target
+508: 			elseif v160 == "ProjectileHit" then
+509: 				v194 = v161.character
+510: 			else
+511: 				v194 = nil
+512: 			end
+513: 			if typeof(v194) == "Instance" then
+514: 				local v195 = v161.position
+515: 				if typeof(v195) == "Vector3" then
+516: 					local v196 = v194:FindFirstChild("HumanoidRootPart")
+517: 					if v196 and v196:IsA("BasePart") then
+518: 						local v197 = v161.position - v196.Position
+519: 						local v198 = v197.X
+520: 						local v199 = v197.Z
+521: 						local v200 = Vector3.new(v198, 0, v199).Magnitude - 1.5
+522: 						local v201 = math.max(0, v200)
+523: 						local v202 = p158.stats
+524: 						v202.hits = v202.hits + 1
+525: 						local v203 = p158.stats
+526: 						v203.hitErrSum = v203.hitErrSum + v201
+527: 						local v204 = p158.stats
+528: 						local v205 = p158.stats.hitErrMax
+529: 						v204.hitErrMax = math.max(v205, v201)
+530: 					end
+531: 				end
+532: 			end
+533: 			if v160 == "Projectile" or v160 == "ProjectileHit" then
+534: 				local v206 = v161.key
+535: 				v161.key = "R|" .. tostring(v206)
+536: 			end
+537: 			local v207
+538: 			if (v169 or v172) == p158.focus then
+539: 				v207 = true
+540: 			elseif v160 == "Heal" then
+541: 				v207 = v166 == p158.focus
+542: 			else
+543: 				v207 = false
+544: 			end
+545: 			local 
+
+===== Players.RansbloxScripts.PlayerScripts.Replay.ReplayClient =====
+   ...
+154: 			v_u_3:BindToRenderStep("TribesReplaySideCam", Enum.RenderPriority.Camera.Value + 10, function()
+155: 				-- upvalues: (ref) v_u_5, (copy) p_u_20, (ref) v_u_6, (ref) v_u_1, (copy) v_u_34, (copy) v_u_32, (ref) v_u_33
+156: 				local v35 = v_u_5.DebugPuppet(p_u_20) or v_u_6.FindLive(p_u_20)
+157: 				local v36
+158: 				if v35 then
+159: 					v36 = v35:FindFirstChild("HumanoidRootPart")
+160: 				else
+161: 					v36 = v35
+162: 				end
+163: 				if v36 and v36:IsA("BasePart") then
+164: 					local v37 = { v35 }
+165: 					for _, v38 in { "Replay", "FX", "Projectiles" } do
+166: 						local v39 = workspace:FindFirstChild(v38)
+167: 						if not v39 then
+168: 							continue
+169: 						end
+170: 						table.insert(v37, v39)
+171: 					end
+172: 					for _, v40 in v_u_1:GetPlayers() do
+173: 						if not v40.Character then
+174: 							continue
+175: 						end
+176: 						local v41 = v40.Character
+177: 						table.insert(v37, v41)
+178: 					end
+179: 					v_u_34.FilterDescendantsInstances = v37
+180: 					local v42 = select(2, v36.CFrame:ToEulerAnglesYXZ())
+181: 					local v43 = v36.Position + Vector3.new(0, 1.2, 0)
+182: 					local v44 = workspace
+183: 					local v45 = v_u_33
+184: 					local v46 = CFrame.fromEulerAnglesYXZ
+185: 					local v47 = v_u_32[v45]
+186: 					if v44:Spherecast(v43, 0.5, v43 + v46(0, v42 + math.rad(v47), 0):VectorToWorldSpace(Vector3.new(0, 0.8, -8)) - v43, v_u_34) then
+187: 						for v48 = 1, #v_u_32 do
+188: 							local v49 = workspace
+189: 							local v50 = CFrame.fromEulerAnglesYXZ
+190: 							local v51 = v_u_32[v48]
+191: 							if v49:Spherecast(v43, 0.5, v43 + v50(0, v42 + math.rad(v51), 0):VectorToWorldSpace(Vector3.new(0, 0.8, -8)) - v43, v_u_34) then
+192: 								continue
+193: 							end
+194: 							v_u_33 = v48
+195: 						end
+196: 					end
+197: 					local v52 = workspace.CurrentCamera
+198: 					v52.CameraType = Enum.CameraType.Scriptable
+199: 					local v53 = CFrame.lookAt
+200: 					local v54 = v_u_33
+201: 					local v55 = CFrame.fromEulerAnglesYXZ
+202: 					local v56 = v_u_32[v54]
+203: 					v52.CFrame = v53(v43 + v55(0, v42 + math.rad(v56), 0):VectorToWorldSpace(Vector3.new(0, 0.8, -8)), v36.Position + Vector3.new(0, 0.6, 0))
+204: 					v52.FieldOfView = 60
+
+===== ReplicatedStorage.Shared.Camera =====
+   ...
+342: 	local v188 = v187.X
+343: 	local v189 = v187.Y
+344: 	local v190 = math.min(v188, v189)
+345: 	local v191 = v187.X
+346: 	local v192 = v187.Y
+347: 	local v193 = math.max(v191, v192)
+348: 	local v194 = v187.Z
+349: 	local v195 = math.min(v193, v194)
+350: 	if math.max(v190, v195) >= 6 then
+351: 		return false
+352: 	end
+353: 	local v196 = p186:FindFirstAncestorWhichIsA("Model")
+354: 	while v196 do
+355: 		if v196:FindFirstChildOfClass("Humanoid") or v196:HasTag("BearTrap") then
+356: 			return false
+357: 		end
+358: 		v196 = v196:FindFirstAncestorWhichIsA("Model")
+359: 	end
+360: 	return true
+361: end
+362: local v_u_198 = RaycastParams.new()
+363: v_u_198.FilterType = Enum.RaycastFilterType.Exclude
+364: local function v_u_210(p_u_199, p200, p201) -- name: updatePropFade
+365: 	-- upvalues: (ref) v_u_101, (copy) v_u_171, (copy) v_u_170, (copy) v_u_6, (copy) v_u_197, (copy) v_u_185, (copy) v_u_166, (copy) v_u_198, (copy) v_u_14
+366: 	if v_u_101 then
+367: 		v_u_171.FilterDescendantsInstances = p201
+368: 		v_u_101 = false
+369: 	end
+370: 	table.clear(v_u_170)
+371: 	local function v202()
+372: 		-- upvalues: (ref) v_u_6, (copy) p_u_199, (ref) v_u_171
+373: 		return v_u_6:GetPartBoundsInRadius(p_u_199, 4.2, v_u_171)
+374: 	end
+375: 	local v203, v204 = pcall(v202)
+376: 	if v203 then
+377: 		for _, v205 in v204 do
+378: 			if v205.Position.Y + v205.Size.Y / 2 <= p_u_199.Y - 1 or not v_u_197(v205) or v_u_185(v205, p_u_199) > (v_u_166[v205] and 0.7 or 0) + 3.5 then
+379: 				continue
+380: 			end
+381: 			v_u_170[v205] = true
+382: 			if v_u_166[v205] then
+383: 				continue
+384: 			end
+385: 			v_u_166[v205] = true
+386: 			v205.LocalTransparencyModifier = 0.7
+387: 		end
+388: 	end
+389: 	if p200 then
+390: 		v_u_198.FilterDescendantsInstances = p201
+391: 		for _ = 1, 4 do
+392: 			local v206 = p200 - p_u_199
+393: 			local v207 = v206.Magnitude >= 0.05 and v_u_6:Raycast(p_u_199, v206, v_u_198)
+394: 			if not v207 then
+395: 				break
+396: 			end
+397: 			local v208 = v207.Instance
+398: 			if v208:IsA("BasePart") and (v_u_14.Classify(v208) == 2 and v_u_197(v208)) then
+399: 				v_u_170[v208] = true
+400: 				if not v_u_166[v208] then
+401: 					v_u_166[v208] = true
+402: 					v208.LocalTransparencyModifier = 0.7
+403: 				end
+404: 			end
+405: 			v_u_198:AddToFilter(v208)
+406: 			p_u_199 = v207.Position
+407: 		end
+408: 	end
+409: 	for v209 in v_u_166 do
+410: 		if v_u_170[v209] then
+411: 			continue
+412: 		end
+413: 		v_u_166[v209] = nil
+414: 		if not v209.Parent then
+415: 			continue
+   ...
+645: local v_u_305 = nil
+646: local v_u_306 = nil
+647: local v_u_307 = 0
+648: local function v_u_321(p308, p309, p310) -- name: pickDeathSpot
+649: 	-- upvalues: (ref) v_u_306, (copy) v_u_14, (copy) v_u_304, (copy) v_u_6
+650: 	local v311 = v_u_306
+651: 	if v311 and v_u_14.Cast(v311, p309, p310) >= (p309 - v311).Magnitude - 0.5 then
+652: 		return v311
+653: 	end
+654: 	local v312 = p308.X - p309.X
+655: 	local v313 = p308.Z - p309.Z
+656: 	local v314 = Vector3.new(v312, 0, v313)
+657: 	local v315 = v314.Magnitude <= 0.1 and Vector3.new(0, 0, 1) or v314.Unit
+658: 	for v316, v_u_317 in {
+659: 		p308,
+660: 		p308 + Vector3.new(0, 7, 0),
+661: 		p308 + Vector3.new(0, 14, 0),
+662: 		p309 + v315 * 16 + Vector3.new(0, 8, 0),
+663: 		p309 + v315 * 11 + Vector3.new(0, 4, 0),
+664: 		p309 + v315 * 14 + Vector3.new(0, 18, 0)
+665: 	} do
+666: 		if v_u_14.Cast(v_u_317, p309, p310) < (p309 - v_u_317).Magnitude - 0.5 then
+667: 			continue
+668: 		end
+669: 		if v316 ~= 1 then
+670: 			v_u_304.FilterDescendantsInstances = p310
+671: 			local function v318()
+672: 				-- upvalues: (ref) v_u_6, (copy) v_u_317, (ref) v_u_304
+673: 				return v_u_6:GetPartBoundsInRadius(v_u_317, 0.6, v_u_304)
+674: 			end
+675: 			local v319, v320 = pcall(v318)
+676: 			if v319 then
+677: 				v319 = #v320 == 0
+678: 			end
+679: 			if not v319 then
+680: 				continue
+681: 			end
+682: 		end
+683: 		return v_u_317
+684: 	end
+685: 	return p308 + Vector3.new(0, 10, 0)
+686: end
+687: local function v_u_344(p322) -- name: deathView
+688: 	-- upvalues: (copy) v_u_8, (ref) v_u_78, (copy) v_u_303, (ref) v_u_29, (ref) v_u_306, (ref) v_u_307, (copy) v_u_321, (copy) v_u_115, (copy) v_u_24, (ref) v_u_305, (ref) v_u_80, (ref) v_u_79
+689: 	local v323 = v_u_8.DeathElapsed() / 0.35
+690: 	local v324 = math.clamp(v323, 0, 1)
+691: 	local v325 = v324 * v324 * (3 - v324 * 2)
+692: 	local v326 = v_u_78
+693: 	local v327 = v_u_8.GetKiller()
+694: 	local v328
+695: 	if v327 and v327.Parent then
+   ...
+1886: 		local v628 = (v627.Position - v625):Dot(v622.Direction)
+1887: 		if v628 > 0 then
+1888: 			local v629 = v622.Direction
+1889: 			local v630 = v628 - 1.5
+1890: 			v625 = v625 + v629 * math.max(0, v630)
+1891: 		end
+1892: 	end
+1893: 	local v631 = {}
+1894: 	if v624 then
+1895: 		table.insert(v631, v624)
+1896: 	end
+1897: 	for _, v632 in v_u_102 do
+1898: 		local v633 = v_u_6:FindFirstChild(v632)
+1899: 		if not v633 then
+1900: 			continue
+1901: 		end
+1902: 		table.insert(v631, v633)
+1903: 	end
+1904: 	if p621 then
+1905: 		for _, v634 in p621 do
+1906: 			table.insert(v631, v634)
+1907: 		end
+1908: 	end
+1909: 	local v635 = RaycastParams.new()
+1910: 	v635.FilterType = Enum.RaycastFilterType.Exclude
+1911: 	v635.FilterDescendantsInstances = v631
+1912: 	v635.IgnoreWater = true
+1913: 	local v636 = v623 - (v625 - v622.Origin).Magnitude
+1914: 	local v637 = v_u_6:Raycast(v625, v622.Direction * v636, v635)
+1915: 	if v637 then
+1916: 		return v637.Position, v637
+1917: 	else
+1918: 		return v625 + v622.Direction * v636, nil
+1919: 	end
+1920: end
+1921: function v_u_22.FovKick(p638, p639, p640) -- name: FovKick
+1922: 	-- upvalues: (copy) v_u_87
+1923: 	if typeof(p638) == "number" and p638 == p638 then
+1924: 		v_u_87.amount = math.clamp(p638, -20, 20)
+1925: 		v_u_87.t0 = os.clock()
+1926: 		v_u_87.rise = math.max(p639 or 0.05, 0.01)
+1927: 		v_u_87.fall = math.max(p640 or 0.2, 0.01)
+1928: 	end
+1929: end
+1930: function v_u_22.Shake(p641, p642) -- name: Shake
+1931: 	-- upvalues: (copy) v_u_39
+1932: 	if typeof(p641) == "number" and typeof(p642) == "number" then
+
+
+===== ReplicatedStorage.Shared.Camera.Spring =====
+1: local v_u_1 = {}
+2: v_u_1.__index = v_u_1
+3: function v_u_1.new(p2, p3, p4) -- name: new
+4: 	-- upvalues: (copy) v_u_1
+5: 	local v5 = {
+6: 		["value"] = p2,
+7: 		["velocity"] = p2 * 0,
+8: 		["target"] = p2,
+9: 		["frequency"] = p3,
+10: 		["damping"] = p4 or 1
+11: 	}
+12: 	local v6 = v_u_1
+13: 	return setmetatable(v5, v6)
+14: end
+15: function v_u_1.Update(p7, p8) -- name: Update
+16: 	local v9 = p7.frequency * 2 * 3.141592653589793
+17: 	local v10 = p7.damping
+18: 	local v11 = math.min(p8, 0.13333333333333333)
+19: 	local v12 = p7.value
+20: 	local v13 = p7.velocity
+21: 	local v14 = p7.target
+22: 	while v11 > 1e-6 do
+23: 		local v15 = math.min(0.004166666666666667, v11)
+24: 		v11 = v11 - v15
+25: 		v13 = v13 + ((v14 - v12) * (v9 * v9) - v13 * (v10 * 2 * v9)) * v15
+26: 		v12 = v12 + v13 * v15
+27: 	end
+28: 	p7.value = v12
+29: 	p7.velocity = v13
+30: 	return v12
+31: end
+32: function v_u_1.Impulse(p16, p17) -- name: Impulse
+33: 	p16.velocity = p16.velocity + p17
+34: end
+35: function v_u_1.Snap(p18, p19) -- name: Snap
+36: 	p18.value = p19
+37: 	p18.target = p19
+38: 	p18.velocity = p19 * 0
+39: end
+40: return v_u_1
+
+===== ReplicatedStorage.Shared.Camera.AimAssist =====
+   ...
+350: 					local v122 = v_u_107[v118 - 1].s
+351: 					v119.m = v121
+352: 					v120.s = v122
+353: 					v118 = v118 - 1
+354: 				end
+355: 				local v123 = v_u_107[v118]
+356: 				local v124 = v_u_107[v118]
+357: 				v123.m = p116
+358: 				v124.s = v117
+359: 			end
+360: 		else
+361: 			return
+362: 		end
+363: 	end
+364: 	for _, v126 in v_u_6.List() do
+365: 		v125(v126)
+366: 	end
+367: 	if v_u_10:GetAttribute("State") ~= "Match" then
+368: 		for _, v127 in v_u_1:GetTagged("TrainingDummy") do
+369: 			if not v127:IsA("Model") then
+370: 				continue
+371: 			end
+372: 			v125(v127)
+373: 		end
+374: 	end
+375: 	v_u_35.FilterDescendantsInstances = p111
+376: 	for v128 = 1, v_u_115 do
+377: 		local v129 = v_u_107[v128].m
+378: 		if not v_u_98(v129, p_u_108, p_u_109, p_u_110, p_u_113) then
+379: 			continue
+380: 		end
+381: 		if v_u_106(p_u_108, v_u_74.point, v129) then
+382: 			return v129, true
+383: 		end
+384: 		local v130 = v129:FindFirstChild("Head")
+385: 		if not (v130 and v130:IsA("BasePart")) then
+386: 			v130 = nil
+387: 		end
+388: 		if not (v130 and v_u_106(p_u_108, v130.Position, v129)) then
+389: 			continue
+390: 		end
+391: 		return v129, false
+392: 	end
+393: 	return nil, false
+394: end
+395: function v_u_7.Apply(p132, p133, p134, p135, p136, p137, p138, p139, p140, p141) -- name: Apply
+396: 	-- upvalues: (ref) v_u_30, (ref) v_u_31, (ref) v_u_23, (ref) v_u_24, (ref) v_u_22, (ref) v_u_19, (ref) v_u_28, (ref) v_u_29, (copy) v_u_34, (ref) v_u_13, (copy) v_u_4, (copy) v_u_10, (copy) v_u_5, (ref) v_u_12, (ref) v_u_21, (ref) v_u_27, (ref) v_u_25, (copy) v_u_51, (ref) v_u_26, (copy) v_u_7, (ref) v_u_20, (copy) v_u_131, (copy) v_u_98, (copy) v_u_74, (copy) v_u_73
+397: 	local v142 = os.clock()
+398: 	local v143
+399: 	if v_u_30 == 0 then
+400: 		v143 = p133
+
+===== ReplicatedStorage.Shared.Camera.Occlusion =====
+   ...
+30: 	local v13 = math.min(v10, v11)
+31: 	local v14 = math.max(v10, v11)
+32: 	local v15 = math.min(v14, v12)
+33: 	return math.max(v13, v15) < 1.6 and 2 or 1
+34: end
+35: function v_u_2.IgnoreChanged() -- name: IgnoreChanged
+36: 	-- upvalues: (ref) v_u_6
+37: 	v_u_6 = true
+38: end
+39: local function v_u_28(p16, p17, p18, p19) -- name: sweep
+40: 	-- upvalues: (ref) v_u_5, (ref) v_u_6, (copy) v_u_4, (copy) v_u_7, (copy) v_u_1, (copy) v_u_2
+41: 	local v20 = p17 - p16
+42: 	local v21 = v20.Magnitude
+43: 	if v21 < 0.001 then
+44: 		return 0, nil
+45: 	end
+46: 	if v21 ~= v21 or v21 == (1 / 0) then
+47: 		return 0, nil
+48: 	end
+49: 	local v22 = math.min(v21, 1000)
+50: 	if p18 ~= v_u_5 then
+51: 		v_u_5 = p18
+52: 		v_u_6 = true
+53: 	end
+54: 	if v_u_6 then
+55: 		v_u_4.FilterDescendantsInstances = p18
+56: 		v_u_6 = false
+57: 	end
+58: 	local v23 = v20 / v21
+59: 	for _ = 1, 6 do
+60: 		local v24 = v_u_7
+61: 		v24.casts = v24.casts + 1
+62: 		local v25 = v_u_1:Spherecast(p16, p19, v23 * v22, v_u_4)
+63: 		if not v25 then
+64: 			return v21, nil
+65: 		end
+66: 		local v26 = v25.Instance
+67: 		if not v26:IsA("BasePart") or v_u_2.Classify(v26) == 1 then
+68: 			local v27 = v25.Distance
+69: 			return math.max(0, v27), v25.Position
+70: 		end
+71: 		v_u_4:AddToFilter(v26)
+72: 		v_u_6 = true
+73: 	end
+74: 	return v21, nil
+75: end
+76: function v_u_2.Cast(p29, p30, p31, p32) -- name: Cast
+77: 	-- upvalues: (copy) v_u_28
+78: 	return v_u_28(p29, p30, p31, p32 or 0.35)
+79: end
+80: local function v_u_51(p33, p34, p35, p36) -- name: softOf
+   ...
+518: 			v139,
+519: 			v189,
+520: 			v_u_91 and 1 or 0,
+521: 			v215 * v212,
+522: 			v188
+523: 		}
+524: 		table.insert(v226, v227)
+525: 	end
+526: 	return v225, v225 + p132 * (p134 * v224), p130
+527: end
+528: function v_u_2.Debug(p228) -- name: Debug
+529: 	-- upvalues: (ref) v_u_98, (copy) v_u_7
+530: 	if p228 == "start" then
+531: 		v_u_98 = {}
+532: 		return true
+533: 	end
+534: 	if p228 ~= "stop" then
+535: 		return table.clone(v_u_7)
+536: 	end
+537: 	local v229 = v_u_98
+538: 	v_u_98 = nil
+539: 	return v229
+540: end
+541: local v_u_230 = RaycastParams.new()
+542: v_u_230.FilterType = Enum.RaycastFilterType.Include
+543: v_u_230.FilterDescendantsInstances = { v_u_1.Terrain }
+544: v_u_230.IgnoreWater = false
+545: local v_u_231 = 0
+546: local v_u_232 = game:GetService("RunService"):IsStudio()
+547: if v_u_232 then
+548: 	v_u_232 = v_u_1:GetAttribute("WaterSimOff") == true
+549: end
+550: function v_u_2.AboveWater(p233) -- name: AboveWater
+551: 	-- upvalues: (copy) v_u_232, (copy) v_u_1, (copy) v_u_230, (ref) v_u_231
+552: 	if v_u_232 then
+553: 		return p233
+554: 	end
+555: 	local v234 = p233.Position
+556: 	local v235 = v_u_1:Raycast(v234 + Vector3.new(0, 12, 0), Vector3.new(0, -12.4, 0), v_u_230)
+557: 	if v235 and v235.Material == Enum.Material.Water then
+558: 		local v236 = v235.Position.Y + 0.4 - v234.Y
+559: 		if v236 > 0 then
+560: 			v_u_231 = v_u_231 + 1
+561: 			return p233 + Vector3.new(0, v236, 0)
+562: 		end
+563: 	end
+564: 	return p233
+565: end
+566: function v_u_2.WaterLifts() -- name: WaterLifts
+567: 	-- upvalues: (ref) v_u_231
+568: 	return v_u_231
+
+===== ReplicatedStorage.Shared.Camera.Finite =====
+   ...
+8: 			v2 = false
+9: 		end
+10: 		return v2
+11: 	end,
+12: 	["Vector"] = function(p3) -- name: Vector
+13: 		-- upvalues: (copy) v_u_5
+14: 		local v4 = v_u_5.Number(p3.X) and v_u_5.Number(p3.Y)
+15: 		if v4 then
+16: 			v4 = v_u_5.Number(p3.Z)
+17: 		end
+18: 		return v4
+19: 	end
+20: }
+21: local v_u_6 = {}
+22: function v_u_5.Say(p7) -- name: Say
+23: 	-- upvalues: (copy) v_u_6, (copy) v_u_5
+24: 	if not v_u_6[p7] then
+25: 		v_u_6[p7] = true
+26: 		warn((("[CameraNaN] %* auth=%*"):format(p7, v_u_5.Authority)))
+27: 	end
+28: 	return false
+29: end
+30: function v_u_5.HealSpring(p8, p9, p10) -- name: HealSpring
+31: 	-- upvalues: (copy) v_u_5
+32: 	local v11 = p8.value
+33: 	local v12 = p8.velocity
+34: 	local v13
+35: 	if typeof(v11) == "Vector3" then
+36: 		v13 = v_u_5.Vector(v11)
+37: 		if v13 then
+38: 			v13 = v_u_5.Vector(v12)
+39: 		end
+40: 	else
+41: 		v13 = v_u_5.Number(v11)
+42: 		if v13 then
+43: 			v13 = v_u_5.Number(v12)
+44: 		end
+45: 	end
+46: 	if not v13 then
+47: 		v_u_5.Say("spring " .. p10)
+48: 		local v14 = p8.target
+49: 		local v15
+50: 		if typeof(v14) == "Vector3" then
+51: 			v15 = v_u_5.Vector(v14)
+52: 		elseif type(v14) == "number" then
+53: 			v15 = v_u_5.Number(v14)
+54: 		else
+55: 			v15 = false
+56: 		end
+57: 		if v15 then
+58: 			p9 = v14
+
+===== ReplicatedStorage.Shared.Combat.Ballistics =====
+1: local v_u_22 = {
+2: 	["MAX_LIFETIME"] = 5,
+3: 	["MAX_DISTANCE"] = 1200,
+4: 	["new"] = function(p1, p2, p3, p4) -- name: new
+5: 		return {
+6: 			["pos"] = nil,
+7: 			["vel"] = nil,
+8: 			["gravity"] = nil,
+9: 			["radius"] = nil,
+10: 			["age"] = 0,
+11: 			["traveled"] = 0,
+12: 			["pos"] = p1,
+13: 			["vel"] = p2,
+14: 			["gravity"] = p3,
+15: 			["radius"] = p4 or 0
+16: 		}
+17: 	end,
+18: 	["Advance"] = function(p5, p6) -- name: Advance
+19: 		local v7 = -p5.gravity
+20: 		local v8 = Vector3.new(0, v7, 0)
+21: 		local v9 = p5.vel * p6 + v8 * (p6 * 0.5 * p6)
+22: 		local v10 = p5.pos
+23: 		p5.pos = v10 + v9
+24: 		p5.vel = p5.vel + v8 * p6
+25: 		p5.age = p5.age + p6
+26: 		p5.traveled = p5.traveled + v9.Magnitude
+27: 		return v10, v9
+28: 	end,
+29: 	["Expired"] = function(p11) -- name: Expired
+30: 		-- upvalues: (copy) v_u_22
+31: 		return p11.age > v_u_22.MAX_LIFETIME and true or p11.traveled > v_u_22.MAX_DISTANCE
+32: 	end,
+33: 	["Cast"] = function(p12, p13, p14, p15) -- name: Cast
+34: 		if p13.Magnitude < 0.0001 then
+35: 			return nil
+36: 		end
+37: 		if p14 > 0 then
+38: 			local v16 = workspace.Spherecast
+39: 			local v17 = workspace
+40: 			local v18, v19 = pcall(v16, v17, p12, p14, p13, p15)
+41: 			if v18 then
+42: 				return v19
+43: 			end
+44: 		end
+
+===== ReplicatedStorage.Shared.Weapons =====
+   ...
+174: 		["slot"] = "primary",
+175: 		["kind"] = "Bow",
+176: 		["role"] = "Skirmisher",
+177: 		["description"] = "A quick-drawing bow. Hold to draw, release to shoot; arrows drop over distance. Uses arrows.",
+178: 		["unlock"] = false,
+179: 		["stats"] = nil,
+180: 		["details"] = nil,
+181: 		["tuning"] = nil,
+182: 		["stats"] = {
+183: 			["damage"] = 4.5,
+184: 			["rate"] = 8,
+185: 			["range"] = 6.5
+186: 		},
+187: 		["details"] = {
+188: 			{ "Damage", "40 (70 head)" },
+189: 			{ "Draw", "0.5 s" },
+190: 			{ "Ammo", "arrows" }
+191: 		},
+192: 		["tuning"] = {
+193: 			["ammo"] = "arrows",
+194: 			["damage"] = 40,
+195: 			["damageMin"] = 8,
+196: 			["drawTime"] = 0.5,
+197: 			["speedMin"] = 120,
+198: 			["speedMax"] = 250,
+199: 			["gravity"] = 55,
+200: 			["radius"] = 0.3,
+201: 			["cooldown"] = 0.15,
+202: 			["tapCooldown"] = 0.35,
+203: 			["headshotMult"] = 1.75,
+204: 			["aimFov"] = 55,
+205: 			["drawSpeedMult"] = 0.8,
+206: 			["speedMult"] = 1,
+207: 			["projectile"] = "Arrow",
+208: 			["range"] = 400
+209: 		}
+210: 	},
+211: 	{
+212: 		["id"] = "longbow",
+213: 		["name"] = "Headhunter",
+214: 		["category"] = "bow",
+215: 		["points"] = 5,
+216: 		["hotbar"] = true,
+217: 		["slot"] = "primary",
+218: 		["kind"] = "Bow",
+219: 		["role"] = "Sniper",
+220: 		["description"] = "A long-range bow with a heavy draw. A fully drawn headshot kills. Aim to zoom. Uses arrows.",
+221: 		["unlock"] = false,
+222: 		["stats"] = nil,
+223: 		["details"] = nil,
+224: 		["tuning"] = nil,
+225: 		["stats"] = {
+226: 			["damage"] = 8.5,
+227: 			["rate"] = 3,
+228: 			["range"] = 10
+229: 		},
+230: 		["details"] = {
+231: 			{ "Damage", "72 (144 head)" },
+232: 			{ "Draw", "1.1 s" },
+233: 			{ "Ammo", "arrows" }
+234: 		},
+235: 		["tuning"] = {
+236: 			["ammo"] = "arrows",
+237: 			["damage"] = 72,
+238: 			["damageMin"] = 10,
+239: 			["drawTime"] = 1.1,
+240: 			["speedMin"] = 160,
+241: 			["speedMax"] = 380,
+242: 			["gravity"] = 32,
+243: 			["radius"] = 0.28,
+244: 			["cooldown"] = 0.3,
+245: 			["tapCooldown"] = 0.6,
+246: 			["headshotMult"] = 2,
+247: 			["aimFov"] = 32,
+248: 			["drawSpeedMult"] = 0.55,
+249: 			["speedMult"] = 0.95,
+250: 			["projectile"] = "Arrow",
+251: 			["range"] = 600
+252: 		}
+253: 	},
+254: 	{
+255: 		["id"] = "crossbow",
+256: 		["name"] = "Crossbow",
+257: 		["category"] = "bow",
+258: 		["points"] = 4,
+259: 		["hotbar"] = true,
+260: 		["slot"] = "primary",
+261: 		["kind"] = "Crossbow",
+262: 		["role"] = "Marksman",
+263: 		["description"] = "Fires a heavy bolt instantly, even while moving. Reloads after every shot. Uses arrows.",
+264: 		["unlock"] = false,
+265: 		["stats"] = nil,
+266: 		["details"] = nil,
+267: 		["tuning"] = nil,
+268: 		["stats"] = {
+269: 			["damage"] = 6.5,
+270: 			["rate"] = 3.5,
+271: 			["range"] = 8
+272: 		},
+273: 		["details"] = {
+274: 			{ "Damage", "50 (90 head)" },
+275: 			{ "Reload", "1.5 s" },
+276: 			{ "Ammo", "arrows" }
+277: 		},
+278: 		["tuning"] = {
+279: 			["ammo"] = "arrows",
+280: 			["damage"] = 50,
+281: 			["magazine"] = 1,
+282: 			["reloadTime"] = 1.5,
+283: 			["fireInterval"] = 0.2,
+284: 			["speed"] = 320,
+285: 			["gravity"] = 28,
+286: 			["radius"] = 0.28,
+287: 			["headshotMult"] = 1.8,
+288: 			["aimFov"] = 48,
+289: 			["speedMult"] = 0.95,
+290: 			["aimSpeedMult"] = 0.85,
+291: 			["projectile"] = "Bolt",
+292: 			["range"] = 500
+293: 		}
+294: 	},
+295: 	{
+296: 		["id"] = "musket",
+297: 		["name"] = "Musket",
+298: 		["category"] = "gun",
+299: 		["points"] = 5,
+300: 		["hotbar"] = true,
+301: 		["slot"] = "primary",
+302: 		["kind"] = "Musket",
+303: 		["role"] = "Heavy",
+304: 		["description"] = "One fast, heavy shot that crosses the map. Aim to steady it. Slow reload. Uses shot.",
+305: 		["unlock"] = false,
+306: 		["stats"] = nil,
+307: 		["details"] = nil,
+308: 		["tuning"] = nil,
+309: 		["stats"] = {
+310: 			["damage"] = 9.5,
+311: 			["rate"] = 1.5,
+312: 			["range"] = 9.5
+313: 		},
+314: 		["details"] = {
+315: 			{ "Damage", "85 (136 head)" },
+316: 			{ "Reload", "2.4 s" },
+317: 			{ "Ammo", "shot" }
+318: 		},
+319: 		["tuning"] = {
+320: 			["ammo"] = "shot",
+321: 			["damage"] = 85,
+322: 			["magazine"] = 1,
+323: 			["reloadTime"] = 2.4,
+324: 			["fireInterval"] = 0.3,
+325: 			["speed"] = 900,
+326: 			["gravity"] = 12,
+327: 			["radius"] = 0.22,
+328: 			["headshotMult"] = 1.6,
+329: 			["spreadHip"] = 3.2,
+330: 			["spreadAim"] = 0.25,
+331: 			["falloff"] = nil,
+332: 			["aimFov"] = 40,
+333: 			["speedMult"] = 0.92,
+334: 			["aimSpeedMult"] = 0.6,
+335: 			["reloadSpeedMult"] = 0.75,
+336: 			["kick"] = 11,
+337: 			["climb"] = 3.25,
+338: 			["shake"] = 0.5,
+339: 			["projectile"] = "Ball",
+340: 			["range"] = 600,
+341: 			["falloff"] = {
+342: 				["start"] = 140,
+343: 				["finish"] = 320,
+344: 				["minMult"] = 0.7
+345: 			}
+346: 		}
+347: 	},
+348: 	{
+349: 		["id"] = "blunderbuss",
+350: 		["name"] = "Blunderbuss",
+351: 		["category"] = "gun",
+   ...
+357: 		["description"] = "A wide cone of pellets: lethal point-blank, weak at range. Uses shot.",
+358: 		["unlock"] = false,
+359: 		["stats"] = nil,
+360: 		["details"] = nil,
+361: 		["tuning"] = nil,
+362: 		["stats"] = {
+363: 			["damage"] = 9,
+364: 			["rate"] = 3,
+365: 			["range"] = 2.5
+366: 		},
+367: 		["details"] = {
+368: 			{ "Damage", "8 \195\151 13" },
+369: 			{ "Reload", "1.5 s" },
+370: 			{ "Ammo", "shot" }
+371: 		},
+372: 		["tuning"] = {
+373: 			["ammo"] = "shot",
+374: 			["damage"] = 13,
+375: 			["pellets"] = 8,
+376: 			["spread"] = 6.5,
+377: 			["spreadAim"] = 4.5,
+378: 			["magazine"] = 1,
+379: 			["reloadTime"] = 1.5,
+380: 			["fireInterval"] = 0.3,
+381: 			["speed"] = 420,
+382: 			["gravity"] = 20,
+383: 			["radius"] = 0.3,
+384: 			["headshotMult"] = 1.5,
+385: 			["falloff"] = nil,
+386: 			["aimFov"] = 60,
+387: 			["speedMult"] = 1,
+388: 			["aimSpeedMult"] = 0.8,
+389: 			["kick"] = 13,
+390: 			["climb"] = 3.9,
+391: 			["shake"] = 0.6,
+392: 			["knockback"] = 18,
+393: 			["projectile"] = "Pellet",
+394: 			["range"] = 90,
+395: 			["falloff"] = {
+396: 				["start"] = 14,
+397: 				["finish"] = 45,
+398: 
+
+===== ReplicatedStorage.Shared.Simulation =====
+   ...
+283: 				p78.holdBad = 0
+284: 			else
+285: 				p78.holdBad = p78.holdBad + 1
+286: 				if v_u_77 < p78.holdBad then
+287: 					v82 = v79
+288: 				end
+289: 			end
+290: 		end
+291: 	else
+292: 		v82 = v79
+293: 	end
+294: 	local v86
+295: 	if v82 then
+296: 		v86 = v82:GetAttribute("WeaponId")
+297: 	else
+298: 		v86 = nil
+299: 	end
+300: 	if type(v86) == "string" then
+301: 		return v86
+302: 	else
+303: 		return nil
+304: 	end
+305: end
+306: local v_u_88 = RaycastParams.new()
+307: v_u_88.FilterType = Enum.RaycastFilterType.Include
+308: v_u_88.FilterDescendantsInstances = { v_u_3.Terrain }
+309: v_u_88.IgnoreWater = false
+310: local function v_u_113(p89, p90) -- name: probeWater
+311: 	-- upvalues: (copy) v_u_31, (copy) v_u_3, (copy) v_u_88
+312: 	if v_u_31 then
+313: 		return 0, nil, nil, nil
+314: 	end
+315: 	local v91 = p89.root
+316: 	local v92 = v91.Position
+317: 	local v93 = v91.Size.Y * 0.5
+318: 	local v94 = v_u_3
+319: 	local v95 = v92.X
+320: 	local v96 = v92.Y + 16
+321: 	local v97 = v92.Z
+322: 	local v98 = Vector3.new(v95, v96, v97)
+323: 	local v99 = -(p90 + 16 + v93 + 0.5)
+324: 	local v100 = v94:Raycast(v98, Vector3.new(0, v99, 0), v_u_88)
+325: 	if not v100 or v100.Material ~= Enum.Material.Water then
+326: 		return 0, nil, nil, nil
+327: 	end
+328: 	local v101 = v100.Position.Y
+329: 	local v102 = v_u_3:Raycast(v92, Vector3.new(0, -40, 0), p89.ray)
+330: 	if not v102 then
+331: 		return 1, nil, nil, nil
+332: 	end
+333: 	local v103 = v102.Position.Y
+   ...
+707: 		local v259 = v250:GetAttribute("NKbSeq")
+708: 		v250:SetAttribute("NKb", v256.kb)
+709: 		v250:SetAttribute("NKbDur", v256.kbDur)
+710: 		v250:SetAttribute("NKbSeq", (type(v259) ~= "number" and 0 or v259) + 1)
+711: 	end
+712: 	v256.kb = nil
+713: 	v256.kbDur = nil
+714: end
+715: local function v_u_521(p261, p262) -- name: stepChar
+716: 	-- upvalues: (copy) v_u_43, (copy) v_u_210, (copy) v_u_211, (copy) v_u_28, (copy) v_u_23, (copy) v_u_9, (copy) v_u_52, (copy) v_u_221, (copy) v_u_29, (copy) v_u_247, (copy) v_u_31, (copy) v_u_54, (copy) v_u_53, (copy) v_u_32, (copy) v_u_69, (copy) v_u_87, (copy) v_u_7, (copy) v_u_113, (copy) v_u_132, (copy) v_u_16, (copy) v_u_19, (copy) v_u_20, (copy) v_u_21, (copy) v_u_12, (copy) v_u_14, (copy) v_u_149, (copy) v_u_13, (copy) v_u_11, (copy) v_u_181, (copy) v_u_15, (copy) v_u_10, (copy) v_u_18, (copy) v_u_3, (copy) v_u_195
+717: 	local v263 = p261.humanoid
+718: 	local v264 = p261.root
+719: 	local v265 = p261.s
+720: 	v_u_43(p261)
+721: 	local v266 = v264.CFrame
+722: 	if not v_u_210(v266) then
+723: 		local v267 = p261.goodCF and "root" or "root (no last place)"
+724: 		if not v_u_211[v267] then
+725: 			v_u_211[v267] = true
+726: 			warn((("[SimNaN] %* auth=%* side=%*"):format(v267, v_u_28 and "Client" or "Server", v_u_23 and "server" or "client")))
+727: 		end
+728: 		local v268 = p261.root
+729: 		local v269 = p261.s
+730: 		local v270 = p261.push
+731: 		local v271 = p261.align
+732: 		local v272 = p261.gravity
+733: 		if v270 then
+734: 			v270.PlaneVelocity = Vector2.zero
+735: 			v270.Enabled = false
+736: 		end
+737: 		if v271 then
+738: 			v271.Enabled = false
+739: 			v271.CFrame = CFrame.identity
+740: 		end
+741: 		if v272 then
+742: 			v272.Force = Vector3.new(0, 0, 0)
+743: 			v272.Enabled = false
+744: 		end
+745: 		local v273 = p261.goodCF
+746: 		if v273 then
+747: 			v268.CFrame = v273
+748: 		end
+749: 		v268.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+750: 		v268.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+751: 		v269.SSlide = nil
+752: 		v269.SSlideDir = nil
+753: 		v269.SSlideBuf = nil
+754: 		v269.SSlope = nil
+755: 		v269.SLift = nil
+756: 		v269.SKb = nil
+757: 		v269.SKbF = nil
+   ...
+857: 	end
+858: 	if v263:GetStateEnabled(Enum.HumanoidStateType.Swimming) ~= v_u_31 then
+859: 		v263:SetStateEnabled(Enum.HumanoidStateType.Swimming, v_u_31)
+860: 	end
+861: 	if not v275 then
+862: 		v265.SSlide = nil
+863: 		v265.SSlideDir = nil
+864: 		v265.SSlideBuf = nil
+865: 		v265.SSlope = nil
+866: 		v265.SLift = nil
+867: 		v265.SKb = nil
+868: 		v265.SKbF = nil
+869: 		v265.SKbN = nil
+870: 		v265.SDashV = nil
+871: 		v265.SDashF = nil
+872: 		v265.SDashB = nil
+873: 		v265.SBoost = nil
+874: 		v265.SJumpBuf = nil
+875: 		v265.SSpeed = v_u_9
+876: 		if p261.push and p261.push.Enabled then
+877: 			p261.push.Enabled = false
+878: 		end
+879: 		if p261.align and p261.align.Enabled then
+880: 			p261.align.Enabled = false
+881: 		end
+882: 		if p261.gravity and p261.gravity.Enabled then
+883: 			p261.gravity.Enabled = false
+884: 		end
+885: 		v_u_52(p261)
+886: 		return
+887: 	end
+888: 	local v287 = v265.SFrozen == true
+889: 	local v288 = v265.SSlow
+890: 	local v289 = type(v288) ~= "number" and 1 or v265.SSlow
+891: 	local v290 = v265.SNoJump == true and true or v289 <= 0.001
+892: 	local v291 = v265.SSpeed
+893: 	local v292
+894: 	if type(v291) == "number" then
+895: 		v292 = v265.SSpeed
+896: 	else
+897: 		v292 = v_u_9
+898: 	end
+899: 	local v293
+900: 	if v_u_28 and (not v_u_23 and v_u_54.Slide) then
+901: 		v293 = v_u_53.Slide
+902: 	else
+903: 		local v294 = p261.actions.Slide
+904: 		if v294 then
+905: 			v293 = v294:GetState()
+906: 		else
+907: 			v293 = nil
+908: 		end
+   ...
+1571: 		end
+1572: 		if v462 then
+1573: 			v463 = v_u_10 * (1 - v332 * 0.45) / 0.01 + 0.5
+1574: 			v464 = math.floor(v463) * 0.01
+1575: 		else
+1576: 			v464 = 0
+1577: 		end
+1578: 		if v263.JumpHeight ~= v464 then
+1579: 			v263.JumpHeight = v464
+1580: 		end
+1581: 		v465 = false
+1582: 		if v462 then
+1583: 			if v340 then
+1584: 				v465 = v298 or v366 > 0
+1585: 			elseif v265.SJumped ~= true and (v353 <= v_u_18 and (v341.Y <= 1 and v366 > 0)) then
+1586: 				v265.SJumped = true
+1587: 				v263:ChangeState(Enum.HumanoidStateType.Jumping)
+1588: 				v366 = 0
+1589: 			end
+1590: 		end
+1591: 		v263.Jump = v465
+1592: 		if v366 <= 0 then
+1593: 			v366 = nil
+1594: 		end
+1595: 		v265.SJumpBuf = v366
+1596: 		v466 = p261.gravity
+1597: 		v467 = not v340
+1598: 		if v467 then
+1599: 			if v341.Y < 0 then
+1600: 				v467 = v274 ~= Enum.HumanoidStateType.Climbing
+1601: 			else
+1602: 				v467 = false
+1603: 			end
+1604: 		en
+
+===== ReplicatedStorage.Shared.Simulation.WriteGuard =====
+1: local v_u_1 = game:GetService("RunService")
+2: local v2 = {}
+3: local v_u_3 = {
+4: 	["checks"] = 0,
+5: 	["violations"] = 0,
+6: 	["cframe"] = 0,
+7: 	["velocity"] = 0,
+8: 	["attributes"] = 0,
+9: 	["atRenderStart"] = 0,
+10: 	["atRenderEnd"] = 0,
+11: 	["atPreAnimation"] = 0,
+12: 	["atPreSimulation"] = 0,
+13: 	["rollbacks"] = 0
+14: }
+15: local v_u_4 = {}
+16: local v_u_5 = false
+17: function v2.Start(p_u_6) -- name: Start
+18: 	-- upvalues: (ref) v_u_5, (copy) v_u_1, (copy) v_u_3, (copy) v_u_4
+19: 	if not v_u_5 and (v_u_1:IsStudio() and v_u_1:IsClient()) then
+20: 		v_u_5 = true
+21: 		local v_u_7 = nil
+22: 		local v_u_8 = nil
+23: 		local v_u_9 = nil
+24: 		local v_u_10 = nil
+25: 		local v_u_11 = {}
+26: 		local function v16() -- name: record
+27: 			-- upvalues: (copy) p_u_6, (ref) v_u_7, (ref) v_u_8, (ref) v_u_9, (ref) v_u_10, (copy) v_u_11
+28: 			local v12 = p_u_6.Character
+29: 			if v12 then
+30: 				v12 = v12:FindFirstChild("HumanoidRootPart")
+31: 			end
+32: 			if v12 and v12:IsA("BasePart") then
+   ...
+64: 				end
+65: 			end
+66: 		end
+67: 		local function v_u_45(p28) -- name: check
+68: 			-- upvalues: (ref) v_u_7, (ref) v_u_8, (ref) v_u_9, (ref) v_u_10, (copy) v_u_11, (copy) p_u_6, (ref) v_u_3, (copy) v_u_27
+69: 			local v29 = v_u_7
+70: 			local v30 = v_u_8
+71: 			local v31 = v_u_9
+72: 			local v32 = v_u_10
+73: 			if v29 and (v30 and (v31 and (v32 and not v_u_11[p28]))) then
+74: 				local v33 = p_u_6.Character
+75: 				if v33 and v29.Parent == v33 then
+76: 					local v34 = v_u_3
+77: 					v34.checks = v34.checks + 1
+78: 					local v35 = v29.CFrame
+79: 					local v36
+80: 					if (v35.Position - v30.Position).Magnitude > 0.0001 or (v35.XVector - v30.XVector).Magnitude > 0.0001 then
+81: 						v36 = false
+82: 					else
+83: 						v36 = (v35.YVector - v30.YVector).Magnitude <= 0.0001
+84: 					end
+85: 					if v36 then
+86: 						local v37 = v29.AssemblyLinearVelocity
+87: 						if (v37 - v31).Magnitude > 0.0001 then
+88: 							v_u_11[p28] = true
+89: 							v_u_27(p28, "velocity", string.format("dv %.4f", (v37 - v31).Magnitude))
+90: 						else
+91: 							local v38 = v29:GetAttributes()
+92: 							for v39, v40 in v38 do
+93: 								if v32[v39] == v40 then
+94: 									continue
+95: 								end
+96: 								v_u_11[p28] = true
+97: 								local v41 = v_u_27
+98: 								local v42 = string.format
+99: 								local v43 = v32[v39]
+100: 								v41(p28, "attributes", v42("@%s %s>%s", v39, tostring(v43), (tostring(v40))))
+101: 								return
+102: 							end
+103: 							for v44 in v32 do
+104: 								if v38[v44] ~= nil then
+105: 									continue
+106: 								end
+107: 								v_u_11[p28] = true
+108: 								v_u_27(p28, "attributes", string.format("@%s removed", v44))
+109: 								return
+110: 							end
+111: 						end
+112: 					else
+113: 						v_u_11[p28] = true
+114: 						v_u_27(p28, "cframe", string.format("moved %.4f", (v35.Position - v30.Position).Magnitude))
+
+===== StarterPlayer.PlayerModule.CameraModule.ZoomController.Popper =====
+   ...
+176: 	end)
+177: else
+178: 	v_u_10:GetPropertyChangedSignal("CameraSubject"):Connect(function()
+179: 		-- upvalues: (ref) v_u_10, (ref) v_u_67
+180: 		local v69 = v_u_10.CameraSubject
+181: 		if v69:IsA("Humanoid") then
+182: 			v_u_67 = v69.RootPart
+183: 			return
+184: 		elseif v69:IsA("BasePart") then
+185: 			v_u_67 = v69
+186: 		else
+187: 			v_u_67 = nil
+188: 		end
+189: 	end)
+190: end
+191: local v_u_70 = {
+192: 	Vector2.new(0.4, 0),
+193: 	Vector2.new(-0.4, 0),
+194: 	Vector2.new(0, -0.4),
+195: 	Vector2.new(0, 0.4),
+196: 	Vector2.new(0, 0.2)
+197: }
+198: local function v_u_81(p71, p72) -- name: getCollisionPoint
+199: 	-- upvalues: (copy) v_u_6, (copy) v_u_15, (ref) v_u_64, (copy) v_u_14
+200: 	if v_u_6 then
+201: 		v_u_15.FilterDescendantsInstances = v_u_64
+202: 		local v73 = workspace:Raycast(p71, p72, v_u_15)
+203: 		if v73 then
+204: 			return v73.Position, true
+205: 		end
+206: 	else
+207: 		local v74 = #v_u_64
+208: 		local v75, v76 = workspace:FindPartOnRayWithIgnoreList(v_u_14(p71, p72), v_u_64, false, true)
+209: 		if v75 then
+210: 			if v75.CanCollide then
+211: 				local v77 = v_u_64
+212: 				for v78 = #v77, v74 + 1, -1 do
+213: 					v77[v78] = nil
+214: 				end
+215: 				return v76, true
+216: 			end
+217: 			v_u_64[#v_u_64 + 1] = v75
+218: 		end
+219: 		if v75 then
+220: 			continue
+221: 		end
+222: 		local v79 = v_u_64
+223: 		for v80 = #v79, v74 + 1, -1 do
+224: 			v79[v80] = nil
+225: 		end
+226: 	end
+227: 	return p71 + p72, false
+228: end
+229: local function v_u_109(p82, p83, p84, p85) -- name: queryPoint
+230: 	-- upvalues: (ref) v_u_64, (ref) v_u_22, (copy) v_u_6, (copy) v_u_15, (ref) v_u_66, (copy) v_u_16, (copy) v_u_14
+231: 	debug.profilebegin("queryPoint")
+232: 	local v86 = #v_u_64
+233: 	local v87 = p84 + v_u_22
+234: 	local v88 = p82 + p83 * v87
+235: 	local v89 = (1 / 0)
+236: 	local v90 = (1 / 0)
+237: 	local v91 = 0
+238: 	local v92
+239: 	if v_u_6 then
+240: 		v_u_15.FilterDescendantsInstances = v_u_64
+241: 		local v93 = p82
+242: 		while true do
+243: 			local v94 = workspace:Raycast(p82, v88 - p82, v_u_15)
+244: 			if not v94 then
+245: 				v92 = v89
+246: 				break
+247: 			end
+248: 			v91 = v91 + 1
+249: 			local v95 = v94.Instance
+250: 			local v96 = v94.Position
+251: 			v92 = (v96 - v93).Magnitude
+252: 			if v91 >= 64 then
+253: 				v90 = v92
+254: 				v92 = v89
+255: 			else
+256: 				local v97 = 1 - (1 - v95.Transparency) * (1 - v95.LocalTransparencyModifier) < 0.25 and (v_u_6 or v95.CanCollide)
+257: 				if v97 then
+258: 					if v_u_66 == (v95:GetRootPart() or v95) then
+259: 						v97 = false
+260: 					else
+261: 						v97 = not v95:IsA("TrussPart")
+262: 					end
+263: 				end
+264: 				if v97 then
+265: 					v_u_16.FilterDescendantsInstances = { v95 }
+266: 					if workspace:Raycast(v88, v96 - v88, v_u_16) then
+267: 						local v98
+268: 						if p85 then
+269: 							v98 = workspace:Raycast(p85, v88 - p85, v_u_16) or workspace:Raycast(v88, p85 - v88, v_u_16)
+270: 						else
+271: 							v98 = false
+272: 						end
+273: 						if v98 then
+274: 							v90 = v92
+275: 							v92 = v89
+276: 						elseif v87 >= v89 then
+277: 							v92 = v89
+278: 						end
+279: 					else
+280: 						v90 = v92
+281: 						v92 = v89
+282: 					end
+283: 				else
+284: 					v92 = v89
+285: 				end
+286: 			end
+287: 			v_u_15:AddToFilter(v95)
+288: 			p82 = v96 - p83 * 0.001
+289: 			if v90 < (1 / 0) or not v95 then
+290: 				break
+
+===== StarterPlayer.PlayerModule.ControlModule.ClickToMoveController =====
+   ...
+606: 				end
+607: 			end
+608: 		else
+609: 			v_u_129.PathFailed:Fire()
+610: 			return
+611: 		end
+612: 	end
+613: 	local v185 = v_u_129.TargetPoint + v_u_129.TargetSurfaceNormal * 1.5
+614: 	if v_u_14 then
+615: 		local v186 = v_u_29
+616: 		local v187
+617: 		if v_u_46 then
+618: 			v187 = v_u_46
+619: 		else
+620: 			v_u_46 = {}
+621: 			local v188 = v_u_46
+622: 			assert(v188, "")
+623: 			local v189 = v_u_46
+624: 			local v190 = v_u_27
+625: 			if v190 then
+626: 				v190 = v_u_27.Character
+627: 			end
+628: 			table.insert(v189, v190)
+629: 			v187 = v_u_46
+630: 		end
+631: 		v186.FilterDescendantsInstances = v187
+632: 		local v191 = v_u_10:Raycast(v185, Vector3.new(-0, -50, -0), v_u_29)
+633: 		if v191 then
+634: 			v_u_129.TargetPoint = v191.Position
+635: 		end
+636: 	else
+637: 		local v192 = Ray.new(v185, Vector3.new(0, -50, 0))
+638: 		local v193 = v_u_10
+639: 		local v194
+640: 		if v_u_46 then
+641: 			v194 = v_u_46
+642: 		else
+643: 			v_u_46 = {}
+644: 			local v195 = v_u_46
+645: 			assert(v195, "")
+646: 			local v196 = v_u_46
+647: 			local v197 = v_u_27
+648: 			if v197 then
+649: 				v197 = v_u_27.Character
+650: 			end
+651: 			table.insert(v196, v197)
+652: 			v194 = v_u_46
+653: 		end
+654: 		local v198, v199 = v193:FindPartOnRayWithIgnoreList(v192, v194)
+655: 		if v198 then
+656: 			v_u_129.TargetPoint = v199
+   ...
+813: 	if v238 then
+814: 		if #p231 == 1 or p232 then
+815: 			if v233 then
+816: 				local v239 = v233:ScreenPointToRay(p231[1].X, p231[1].Y)
+817: 				if v_u_14 then
+818: 					local v240 = nil
+819: 					local v241
+820: 					if v_u_46 then
+821: 						v241 = v_u_46
+822: 					else
+823: 						v_u_46 = {}
+824: 						local v242 = v_u_46
+825: 						assert(v242, "")
+826: 						local v243 = v_u_46
+827: 						local v244 = v_u_27
+828: 						if v244 then
+829: 							v244 = v_u_27.Character
+830: 						end
+831: 						table.insert(v243, v244)
+832: 						v241 = v_u_46
+833: 					end
+834: 					if not v241 then
+835: 						v241 = {}
+836: 					end
+837: 					local v245 = true
+838: 					v_u_29.FilterDescendantsInstances = v241
+839: 					local v246 = v_u_10:Raycast(v239.Origin, v239.Direction * 1000, v_u_29)
+840: 					if v246 then
+841: 						local v247 = v246.Instance
+842: 						if not v247.CanCollide then
+843: 							while true do
+844: 								local v248 = v247:FindFirstChildOfClass("Humanoid")
+845: 								local v249 = v247.Parent
+846: 								if v248 or not v249 then
+847: 									break
+848: 								end
+849: 								v247 = v249
+850: 							end
+851: 							if v248 or not v249 then
+852: 								v240 = v247
+853: 							else
+854: 								table.insert(v241, v249)
+855: 								v245 = false
+856: 								v240 = nil
+857: 							end
+858: 						end
+859: 					end
+860: 					if not v245 then
+861: 						continue
+862: 					end
+863: 					if v246 and v234 then
+
+===== StarterPlayer.PlayerModule.ControlModule.ClickToMoveDisplay =====
+   ...
+77: 	local v27 = Instance.new("BillboardGui")
+78: 	v27.Name = "FailureWaypointBillboard"
+79: 	v27.Size = v_u_5
+80: 	v27.LightInfluence = 0
+81: 	v27.SizeOffset = v_u_8
+82: 	v27.AlwaysOnTop = true
+83: 	v27.Adornee = v25
+84: 	v27.Parent = v25
+85: 	local v28 = Instance.new("Frame")
+86: 	v28.BackgroundTransparency = 1
+87: 	v28.Size = UDim2.new(0, 0, 0, 0)
+88: 	v28.Position = UDim2.new(0.5, 0, 1, 0)
+89: 	v28.Parent = v27
+90: 	local v29 = Instance.new("ImageLabel")
+91: 	v29.Image = v_u_3
+92: 	v29.BackgroundTransparency = 1
+93: 	v29.Position = UDim2.new(0, -v_u_5.X.Offset / 2, 0, -v_u_5.Y.Offset)
+94: 	v29.Size = v_u_5
+95: 	v29.Parent = v28
+96: 	return v19, v21, v25
+97: end
+98: local v_u_31, v_u_32, v_u_33 = v_u_30()
+99: local function v_u_44(p34, p35) -- name: placePathWaypoint
+100: 	-- upvalues: (copy) v_u_17, (copy) v_u_12, (copy) v_u_16, (copy) v_u_18
+101: 	if v_u_17 then
+102: 		v_u_12.FilterDescendantsInstances = { v_u_16.CurrentCamera, v_u_18.Character }
+103: 		local v36 = v_u_16:Raycast(p35 + Vector3.new(0, 2.5, 0), Vector3.new(-0, -10, -0), v_u_12)
+104: 		if v36 then
+105: 			p34.CFrame = CFrame.lookAlong(v36.Position, v36.Normal)
+106: 			local v37 = v_u_16.CurrentCamera
+107: 			local v38 = v37:FindFirstChild("ClickToMoveDisplay")
+108: 			if not v38 then
+109: 				v38 = Instance.new("Model")
+110: 				v38.Name = "ClickToMoveDisplay"
+111: 				v38.Parent = v37
+112: 			end
+113: 			p34.Parent = v38
+114: 			return
+115: 		end
+116: 	else
+117: 		local v39, v40, v41 = v_u_16:FindPartOnRayWithIgnoreList(Ray.new(p35 + Vector3.new(0, 2.5, 0), Vector3.new(0, -10, 0)), { v_u_16.CurrentCamera, v_u_18.Character })
+118: 		if v39 then
+119: 			p34.CFrame = CFrame.new(v40, v40 + v41)
+120: 			local v42 = v_u_16.CurrentCamera
+121: 			local v43 = v42:FindFirstChild("ClickToMoveDisplay")
+122: 			if not v43 then
+123: 				v43 = Instance.new("Model")
+124: 				v43.Name = "ClickToMoveDisplay"
+125: 				v43.Parent = v42
+126: 			end
+127: 			p34.Parent = v43
+   ...
+195: 			-- upvalues: (copy) v_u_72
+196: 			v_u_72.Tween.Completed:Wait()
+197: 			if not v_u_72.Destroyed then
+198: 				v_u_72.Tween = v_u_72:CreateTween()
+199: 			end
+200: 		end)()
+201: 	else
+202: 		v_u_72.Tween = v_u_72:CreateTween()
+203: 	end
+204: 	v_u_72.ClosestWayPoint = p69
+205: 	return v_u_72
+206: end
+207: local v_u_73 = {}
+208: v_u_73.__index = v_u_73
+209: function v_u_73.Hide(p74) -- name: Hide
+210: 	p74.DisplayModel.Parent = nil
+211: end
+212: function v_u_73.Destroy(p75) -- name: Destroy
+213: 	p75.DisplayModel:Destroy()
+214: end
+215: function v_u_73.NewDisplayModel(_, p76) -- name: NewDisplayModel
+216: 	-- upvalues: (ref) v_u_33, (copy) v_u_44, (copy) v_u_17, (copy) v_u_12, (copy) v_u_16, (copy) v_u_18
+217: 	local v77 = v_u_33:Clone()
+218: 	v_u_44(v77, p76)
+219: 	if v_u_17 then
+220: 		v_u_12.FilterDescendantsInstances = { v_u_16.CurrentCamera, v_u_18.Character }
+221: 		local v78 = v_u_16:Raycast(p76 + Vector3.new(0, 2.5, 0), Vector3.new(-0, -10, -0), v_u_12)
+222: 		if v78 then
+223: 			v77.CFrame = CFrame.lookAlong(v78.Position, v78.Normal)
+224: 			local v79 = v_u_16.CurrentCamera
+225: 			local v80 = v79:FindFirstChild("ClickToMoveDisplay")
+226: 			if not v80 then
+227: 				v80 = Instance.new("Model")
+228: 				v80.Name = "ClickToMoveDisplay"
+229: 				v80.Parent = v79
+230: 			end
+231: 			v77.Parent = v80
+232: 			return v77
+233: 		end
+234: 	else
+235: 		local v81, v82, v83 = v_u_16:FindPartOnRayWithIgnoreList(Ray.new(p76 + Vector3.new(0, 2.5, 0), Vector3.new(0, -10, 0)), { v_u_16.CurrentCamera, v_u_18.Character })
+236: 		if v81 then
+237: 			v77.CFrame = CFrame.new(v82, v82 + v83)
+238: 			local v84 = v_u_16.CurrentCamera
+239: 			local v85 = v84:FindFirstChild("ClickToMoveDisplay")
+240: 			if not v85 then
+241: 				v85 = Instance.new("Model")
+242: 				v85.Name = "ClickToMoveDisplay"
+243: 				v85.Parent = v84
+244: 			end
+245: 			v77.Parent = v85
+
+===== StarterPlayer.PlayerModule.CameraModule.VRVehicleCamera =====
+   ...
+17: 	local v17 = p14.X
+18: 	local v18 = p14.Z
+19: 	local v19 = math.atan2(v17, v18)
+20: 	local v20 = CFrame.new(p13.Position + p14 * p15) * CFrame.Angles(0, v19, 0)
+21: 	local v21 = workspace.CurrentCamera
+22: 	if not v21 then
+23: 		return v20
+24: 	end
+25: 	local v22 = p13.Position
+26: 	local v23 = (v20.Position - v22) * Vector3.new(1, 0, 1)
+27: 	local v24 = v23.Magnitude
+28: 	if v24 < 0.5 then
+29: 		return v20
+30: 	end
+31: 	local v25 = { v21 }
+32: 	if p16 then
+33: 		table.insert(v25, p16)
+34: 	end
+35: 	local v26 = v_u_9
+36: 	if v26 then
+37: 		v26 = v_u_9.Character
+38: 	end
+39: 	if v26 then
+40: 		table.insert(v25, v26)
+41: 	end
+42: 	v_u_12.FilterDescendantsInstances = v25
+43: 	local v27 = v23.Unit
+44: 	local v28 = workspace:Raycast(v22, v23, v_u_12)
+45: 	if v28 and v28.Normal:Dot(v27) < 0 then
+46: 		local v29 = (v28.Position - v22).Magnitude - 0.5
+47: 		if v29 < v24 then
+48: 			local v30 = math.max(v29, 0.5)
+49: 			return CFrame.new(p13.Position + v27 * v30) * v20.Rotation
+50: 		end
+51: 	end
+52: 	return v20
+53: end
+54: local v_u_32 = OverlapParams.new()
+55: v_u_32.FilterType = Enum.RaycastFilterType.Exclude
+56: local function v_u_59(p33, p34, p35, p36) -- name: findObstructions
+57: 	-- upvalues: (copy) v_u_7, (copy) v_u_9, (copy) v_u_12, (copy) v_u_32
+58: 	local v37 = workspace.CurrentCamera
+59: 	if not v37 then
+60: 		return 0, {}
+61: 	end
+62: 	local v38 = p34.Position
+63: 	local v39 = v_u_7:GetUserCFrame(Enum.UserCFrame.Head)
+64: 	local v40 = v37.HeadScale
+65: 	local v41 = p33 * (CFrame.new(v39.Position * v40) * v39.Rotation)
+66: 	local v42 = v41.Position - v38
+67: 	local v43 = v42.Magnitude
+68: 	if v43 < 0.5 then
+69: 		return 0, {}
+70: 	end
+71: 	local v44 = { v37 }
+72: 	if p36 then
+73: 		table.insert(v44, p36)
+74: 	end
+75: 	local v45 = v_u_9
+76: 	if v45 then
+77: 		v45 = v_u_9.Character
+78: 	end
+79: 	if v45 then
+80: 		table.insert(v44, v45)
+81: 	end
+82: 	v_u_12.FilterDescendantsInstances = v44
+83: 	local v46 = workspace:Raycast(v38, v42, v_u_12)
+84: 	if v46 then
+85: 		local v47 = (v46.Position - v38).Magnitude
+86: 		if v47 < v43 then
+87: 			local v48 = v41.LookVector
+88: 			local v49 = (1 - -v42.Unit:Dot(v48)) / 0.1339745962155613
+89: 			local v50 = math.clamp(v49, 0, 1)
+90: 			local v51 = 1 - v47 / p35
+91: 			local v52 = math.max(v50, v51, 0.15)
+92: 			local v53 = v46.Position
+93: 			local v54 = v41.Position
+94: 			local v55 = (v53 + v54) / 2
+95: 			local v56 = (v54 - v53).Magnitude
+96: 			local v57 = Vector3.new(2, 2, v56)
+97: 			local v58 = CFrame.lookAt(v55, v54)
+98: 			v_u_32.FilterDescendantsInstances = v44
+99: 			return v52, workspace:GetPartBoundsInBox(v58, v57, v_u_32)
+100: 		end
+101: 	end
+102: 	return 0, {}
+103: end
+104: local v_u_60 = 0.016666666666666666
+105: local v_u_61 = setmetatable({}, v_u_2)
+106: v_u_61.__index = v_u_61
+107: function v_u_61.new() -- name: new
+108: 	-- upvalues: (copy) v_u_2, (copy) v_u_61, (copy) v_u_6, (ref) v_u_60
+109: 	local v62 = v_u_2.new()
+110: 	local v63 = v_u_61
+111: 	local v64 = setmetatable(v62, v63)
+112: 	v64.skipOcclusion = true
+113: 	v64:Reset()
+114: 	if v64.thirdPersonOptionChanged then
+115: 		v64.thirdPersonOptionChanged:Disconnect()
+116: 		v64.thirdPersonOptionChanged = nil
+117: 	end
+118: 	v_u_6.Stepped:Connect(function(_, p65)
+119: 		-- upvalues: (ref) v_u_60
+120: 		v_u_60 = p65
+121: 	end)
+122: 	return v64
+123: end
+
+===== StarterPlayer.PlayerModule.CameraModule.Invisicam =====
+   ...
+179: 	p90[#p90 + 1] = p89.torsoPart.CFrame.Position + v92
+180: 	p90[#p90 + 1] = p89.torsoPart.CFrame.Position - v92
+181: 	if p89.headPart then
+182: 		p90[#p90 + 1] = p89.headPart.CFrame.Position
+183: 	end
+184: 	local v93 = CFrame.new
+185: 	local v94 = p89.camera.CoordinateFrame.lookVector.X
+186: 	local v95 = p89.camera.CoordinateFrame.lookVector.Z
+187: 	local v96 = v93(Vector3.new(0, 0, 0), (Vector3.new(v94, 0, v95)))
+188: 	local v97 = p89.torsoPart and p89.torsoPart.Position or p89.humanoidRootPart.Position
+189: 	local v98 = { p89.torsoPart }
+190: 	if p89.headPart then
+191: 		v98[#v98 + 1] = p89.headPart
+192: 	end
+193: 	for v99 = 1, 24 do
+194: 		local v100 = 6.283185307179586 * v99 / 24
+195: 		local v101 = math.cos(v100)
+196: 		local v102 = math.sin(v100)
+197: 		local v103 = v96 * (Vector3.new(v101, v102, 0) * 3)
+198: 		local v104 = v103.X
+199: 		local v105 = v103.Y
+200: 		local v106 = math.max(v105, -2.25)
+201: 		local v107 = v103.Z
+202: 		local v108 = Vector3.new(v104, v106, v107)
+203: 		if v_u_2 then
+204: 			v_u_7.FilterDescendantsInstances = v98
+205: 			local v109 = game.Workspace:Raycast(v97 + v108, -3 * v108, v_u_7)
+206: 			if not v109 then
+207: 				continue
+208: 			end
+209: 			local v110 = v109.Position
+210: 			p90[#p90 + 1] = v110 + 0.2 * (v97 - v110).unit
+211: 		else
+212: 			local v111 = Ray.new(v97 + v108, -3 * v108)
+213: 			local v112, v113 = game.Workspace:FindPartOnRayWithWhitelist(v111, v98, false)
+214: 			if not v112 then
+215: 				continue
+216: 			end
+217: 			p90[#p90 + 1] = v113 + 0.2 * (v97 - v113).unit
+218: 		end
+219: 	end
+220: end
+221: function v_u_53.SmartCircleBehavior(p114, p115) -- name: SmartCircleBehavior
+222: 	-- upvalues: (copy) v_u_2, (copy) v_u_6, (copy) v_u_51
+223: 	local v116 = p114.torsoPart.CFrame.upVector.unit
+224: 	local v117 = p114.torsoPart.CFrame.rightVector.unit
+225: 	p115[#p115 + 1] = p114.torsoPart.CFrame.Position
+226: 	p115[#p115 + 1] = p114.torsoPart.CFrame.Position + v116
+227: 	p115[#p115 + 1] = p114.torsoPart.CFrame.Position - v116
+228: 	p115[#p115 + 1] = p114.torsoPart.CFrame.Position + v117
+229: 	p115[#p115 + 1] = p114.torsoPart.CFrame.Position - v117
+230: 	if p114.headPart then
+231: 		p115[#p115 + 1] = p114.headPart.CFrame.Position
+232: 	end
+233: 	local v118 = p114.camera.CFrame - p114.camera.CFrame.Position
+234: 	local v119 = Vector3.new(0, 0.5, 0) + (p114.torsoPart and p114.torsoPart.Position or p114.humanoidRootPart.Position)
+235: 	for v120 = 1, 24 do
+236: 		local v121 = 0.2617993877991494 * v120 - 1.5707963267948966
+237: 		local v122 = math.cos(v121)
+238: 		local v123 = math.sin(v121)
+239: 		local v124 = v119 + v118 * (Vector3.new(v122, v123, 0) * 2.5)
+240: 		local v125 = v124 - p114.camera.CFrame.Position
+241: 		if v_u_2 then
+242: 			v_u_6.FilterDescendantsInstances = { p114.char }
+243: 			local v126 = game.Workspace:Raycast(v119, v124 - v119, v_u_6)
+244: 			if v126 then
+245: 				local v127 = v126.Position
+246: 				local v128 = v126.Normal
+247: 				local v129 = v127 + 0.1 * v128.unit
+248: 				local v130 = v129 - v119
+249: 				local v131 = v130:Cross(v125).unit:Cross(v128).unit
+250: 				local v132 = (v129 - p114.camera.CFrame.Position).unit
+251: 				if v130.unit:Dot(-v131) < v130.unit:Dot(v132) then
+252: 					v124 = v_u_51(v129, v131, v124, v125)
+253: 					if v124.Magnitude > 0 then
+254: 						local v133 = game.Workspace:Raycast(v129, v124 - v129, v_u_6)
+255: 						if v133 then
+256: 							v124 = v133.Position + 0.1 * v133.Normal.Unit
+257: 						end
+258: 					else
+259: 						v124 = v129
+260: 					end
+261: 				else
+262: 					v124 = v129
+263: 				end
+264: 				local v134 = game.Workspace:Raycast(v119, v124 - v119, v_u_6)
+265: 				if v134 then
+266: 					v124 = v134.Position - 0.1 * (v124 - v119).unit
+267: 				end
