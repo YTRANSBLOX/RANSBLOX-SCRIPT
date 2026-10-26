@@ -1,240 +1,179 @@
-===== CONTROLLER FULL (first 5000 chars) =====
-   ...
-45: 	["Pistol"] = "Gun",
-46: 	["Blunderbuss"] = "Gun",
-47: 	["Knives"] = "Throw",
-48: 	["Javelin"] = "Throw",
-49: 	["Sling"] = "Throw",
-50: 	["Bomb"] = "Throw",
-51: 	["Herbs"] = "Use",
-52: 	["Trap"] = "Use",
-53: 	["Horn"] = "Use"
-54: }
-55: local v_u_24 = {}
-56: local v_u_25 = v_u_1.LocalPlayer
-57: local v_u_26 = nil
-58: local v_u_27 = {
-59: 	["char"] = nil,
-60: 	["hum"] = nil,
-61: 	["root"] = nil,
-62: 	["animator"] = nil,
-63: 	["handler"] = nil,
-64: 	["tool"] = nil,
-65: 	["kind"] = nil,
-66: 	["pressed"] = nil,
-67: 	["speed"] = nil,
-68: 	["baseSpeed"] = 1,
-69: 	["conns"] = nil,
-70: 	["shotId"] = 0,
-71: 	["lastSpeed"] = -1,
-72: 	["killStreak"] = 0,
-73: 	["lastKillAt"] = 0,
-74: 	["pressed"] = {},
-75: 	["speed"] = {},
-76: 	["conns"] = {}
-77: }
-78: local function v_u_29() -- name: alive
-79: 	-- upvalues: (copy) v_u_27
-80: 	local v28
-81: 	if v_u_27.hum == nil or (v_u_27.hum.Health <= 0 or v_u_27.char == nil) then
-82: 		v28 = false
-83: 	else
-84: 		v28 = v_u_27.char.Parent ~= nil
-85: 	end
-86: 	return v28
-87: end
-88: local v_u_30 = nil
-89: local v_u_31 = 0
-90: local v_u_32 = 0
-91: local v_u_33 = 0
-92: local v_u_34 = setmetatable({}, {
-93: 	["__mode"] = "k"
-94: })
-95: local v_u_35 = {
-96: 	["requests"] = 0,
-97: 	["stale"] = 0,
-98: 	["adopted"] = 0,
-99: 	["resent"] = 0,
-100: 	["reasked"] = 0,
-101: 	["denied"] = 0
-102: }
-103: local v_u_36 = (-1 / 0)
-104: local function v_u_40(p37, p38) -- name: send
-105: 	-- upvalues: (copy) v_u_34, (ref) v_u_26
-106: 	local v39 = p38.tool
-107: 	if v39 and v_u_34[v39] then
-108: 		p38.eq = v_u_34[v39]
-109: 	end
-110: 	p38.ct = os.clock()
-111: 	v_u_26:FireServer(p37, p38)
-112: end
-113: local function v_u_42() -- name: nextId
-114: 	-- upvalues: (copy) v_u_27
-115: 	local v41 = v_u_27
-116: 	v41.shotId = v41.shotId + 1
-117: 	return v_u_27.shotId
-118: end
-119: local v_u_43 = {
-120: 	["Aim"] = "Aim",
-121: 	["Draw"] = "Charge",
-122: 	["Throw"] = "Charge",
-123: 	["Charge"] = "Charge",
-124: 	["Block"] = "Block",
-125: 	["Reload"] = "Reload",
-126: 	["Use"] = "Use"
-127: }
-128: local function v_u_49() -- name: applySpeed
-129: 	-- upvalues: (copy) v_u_27, (copy) v_u_43, (copy) v_u_6
-130: 	local v44 = {
-131: 		["Aim"] = false,
-132: 		["Charge"] = false,
-133: 		["Block"] = false,
-134: 		["Reload"] = false,
-135: 		["Use"] = false
-136: 	}
-137: 	for v45 in v_u_27.speed do
-138: 		local v46 = v_u_43[v45]
-139: 		if not v46 then
-140: 			continue
-141: 		end
-142: 		v44[v46] = true
-   ...
-414: 				v_u_102()
-415: 			elseif v_u_30 and os.clock() - v_u_36 > 2 then
-416: 				v_u_36 = os.clock()
-417: 				local v111 = v_u_35
-418: 				v111.reasked = v111.reasked + 1
-419: 				local v112 = v_u_30
-420: 				v_u_30 = v112
-421: 				v_u_31 = v_u_31 + 1
-422: 				v_u_34[v112] = v_u_31
-423: 				v_u_32 = os.clock()
-424: 				local v113 = v_u_35
-425: 				v113.requests = v113.requests + 1
-426: 				v_u_102()
-427: 				local v114 = v_u_30
-428: 				if v114 and v_u_26 then
-429: 					v_u_33 = os.clock()
-430: 					local v115 = {
-431: 						["tool"] = v114,
-432: 						["seq"] = v_u_31
-433: 					}
-434: 					local v116 = v115.tool
-435: 					if v116 and v_u_34[v116] then
-436: 						v115.eq = v_u_34[v116]
-437: 					end
-438: 					v115.ct = os.clock()
-439: 					v_u_26:FireServer("Equip", v115)
-440: 				end
-441: 			end
-442: 		end
-443: 	else
-444: 		return
-445: 	end
-446: end
-447: local v_u_118 = false
-448: local function v_u_119() -- name: queueReconcile
-449: 	-- upvalues: (ref) v_u_118, (copy) v_u_117, (copy) v_u_85
-450: 	if not v_u_118 then
-451: 		v_u_118 = true
-452: 		task.defer(function()
-453: 			-- upvalues: (ref) v_u_118, (ref) v_u_117, (ref) v_u_85
-454: 			v_u_118 = false
-455: 			v_u_117()
-456: 			v_u_85()
-457: 		end)
-458: 	end
-459: end
-460: function v_u_24.Equip(p120) -- name: Equip
-461: 	-- upvalues: (copy) v_u_27, (copy) v_u_90, (ref) v_u_30, (ref) v_u_31, (copy) v_u_34, (ref) v_u_32, (copy) v_u_35, (copy) v_u_102, (ref) v_u_26, (ref) v_u_33, (copy) v_u_85
-462: 	local v121 = v_u_27.char
-463: 	local v122 = v_u_27.hum
-464: 	if p120 and (v121 and (v122 and v122.Health > 0)) then
-   ...
-471: 			if p120.Parent ~= v121 and p120.Parent ~= v124 then
-472: 				return false
-473: 			end
-474: 			if p120 == v_u_30 and p120.Parent == v121 then
-475: 				return true
-476: 			end
-477: 			v_u_30 = p120
-478: 			v_u_31 = v_u_31 + 1
-479: 			v_u_34[p120] = v_u_31
-480: 			v_u_32 = os.clock()
-481: 			local v125 = v_u_35
-482: 			v125.requests = v125.requests + 1
-483: 			v_u_102()
-484: 			local v126 = v_u_30
-485: 			if v126 and v_u_26 then
-486: 				v_u_33 = os.clock()
-487: 				local v127 = {
-488: 					["tool"] = v126,
-489: 					["seq"] = v_u_31
-490: 				}
-491: 				local v128 = v127.tool
-492: 				if v128 and v_u_34[v128] then
-493: 					v127.eq = v_u_34[v128]
-494: 				end
-495: 				v127.ct = os.clock()
-496: 				v_u_26:FireServer("Equip", v127)
-497: 			end
-498: 			v_u_85()
-499: 			return true
-500: 		end
-501: 	end
-502: 	return false
-503: end
-504: function v_u_24.Wanted() -- name: Wanted
-505: 	-- upvalues: (ref) v_u_30
-506: 	return v_u_30
-507: end
-508: local function v_
+keys: Targets, cone, reach, MELEE_NUDGE, AssistActive, getSorted
+scripts scanned: 263
 
-===== ALL REMOTES in RS =====
-RemoteEvent  ReplicatedStorage.Remotes.MatchState
-RemoteFunction  ReplicatedStorage.Remotes.GetMatchState
-RemoteEvent  ReplicatedStorage.Remotes.MatchEvent
-RemoteFunction  ReplicatedStorage.Remotes.QueueAction
-RemoteFunction  ReplicatedStorage.Remotes.GetProfile
-RemoteEvent  ReplicatedStorage.Remotes.ProfileChanged
-RemoteFunction  ReplicatedStorage.Remotes.ProfileAction
-RemoteEvent  ReplicatedStorage.Remotes.Notify
-RemoteEvent  ReplicatedStorage.Remotes.Leaderboards
-RemoteEvent  ReplicatedStorage.Remotes.AnalyticsReport
-RemoteEvent  ReplicatedStorage.Remotes.EconomyEvent
-RemoteFunction  ReplicatedStorage.Remotes.StoreAction
-RemoteFunction  ReplicatedStorage.Remotes.PartyAction
-RemoteEvent  ReplicatedStorage.Remotes.PartyState
-RemoteEvent  ReplicatedStorage.Remotes.CheaterBanned
-RemoteFunction  ReplicatedStorage.Remotes.TribeAction
-RemoteEvent  ReplicatedStorage.Remotes.TribeEvent
-RemoteEvent  ReplicatedStorage.Remotes.ModEvent
-RemoteFunction  ReplicatedStorage.Remotes.ModAction
-RemoteFunction  ReplicatedStorage.Remotes.CustomHost
-RemoteEvent  ReplicatedStorage.Remotes.CustomState
-RemoteFunction  ReplicatedStorage.Remotes.CustomAction
-RemoteFunction  ReplicatedStorage.Remotes.LetterAction
-RemoteEvent  ReplicatedStorage.Remotes.NewsAction
-RemoteEvent  ReplicatedStorage.Remotes.WeaponAction
-RemoteEvent  ReplicatedStorage.Remotes.CombatFX
-UnreliableRemoteEvent  ReplicatedStorage.Remotes.CombatFXU
-RemoteEvent  ReplicatedStorage.Remotes.HitConfirm
-RemoteEvent  ReplicatedStorage.Remotes.DamageTaken
-RemoteEvent  ReplicatedStorage.Remotes.AnimRelay
-UnreliableRemoteEvent  ReplicatedStorage.Remotes.SfxPlay
-UnreliableRemoteEvent  ReplicatedStorage.Remotes.ReplayView
-RemoteEvent  ReplicatedStorage.Remotes.Ping
-RemoteEvent  ReplicatedStorage.DefaultChatSystemChatEvents.OnNewMessage
-RemoteEvent  ReplicatedStorage.DefaultChatSystemChatEvents.OnMessageDoneFiltering
-RemoteEvent  ReplicatedStorage.DefaultChatSystemChatEvents.OnNewSystemMessage
-RemoteEvent  ReplicatedStorage.DefaultChatSystemChatEvents.OnChannelJoined
-RemoteEvent  ReplicatedStorage.DefaultChatSystemChatEvents.OnChannelLeft
-RemoteEvent  ReplicatedStorage.DefaultChatSystemChatEvents.OnMuted
-RemoteEvent  ReplicatedStorage.DefaultChatSystemChatEvents.OnUnmuted
-RemoteEvent  ReplicatedStorage.DefaultChatSystemChatEvents.OnMainChannelSet
-RemoteEvent  ReplicatedStorage.DefaultChatSystemChatEvents.ChannelNameColorUpdated
-RemoteEvent  ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest
-RemoteEvent  ReplicatedStorage.DefaultChatSystemChatEvents.SetBlockedUserIdsRequest
-RemoteFunction  ReplicatedStorage.DefaultChatSystemChatEvents.GetInitDataRequest
-RemoteFunction  ReplicatedStorage.DefaultChatSystemChatEvents.MutePlayerRequest
-RemoteFunction  ReplicatedStorage.DefaultChatSystemChatEvents.UnMutePlayerRequest
+===== Players.RansbloxScripts.PlayerScripts.Combat.Util =====
+   ...
+374: 			v119 = v119:FindFirstChild(v117)
+375: 		end
+376: 		if v119 then
+377: 			v119 = v119:GetAttribute("Phase")
+378: 		end
+379: 		v118 = v119 == "Live" and true or v119 == "Overtime"
+380: 	end
+381: 	return v118
+382: end
+383: local function v_u_123() -- name: fxFolders
+384: 	local v120 = {}
+385: 	for _, v121 in { "FX", "Projectiles" } do
+386: 		local v122 = workspace:FindFirstChild(v121)
+387: 		if not v122 then
+388: 			continue
+389: 		end
+390: 		table.insert(v120, v122)
+391: 	end
+392: 	return v120
+393: end
+394: function v_u_8.Targets() -- name: Targets
+395: 	-- upvalues: (copy) v_u_9, (copy) v_u_2, (copy) v_u_1
+396: 	local v124 = v_u_9.Character
+397: 	local v125 = {}
+398: 	for _, v126 in v_u_2:GetPlayers() do
+399: 		local v127 = v126.Character
+400: 		if not v127 or (v127 == v124 or not v127:IsDescendantOf(workspace)) then
+401: 			continue
+402: 		end
+403: 		table.insert(v125, v127)
+404: 	end
+405: 	local v128 = {}
+406: 	for _, v129 in v125 do
+407: 		v128[v129] = true
+408: 	end
+409: 	for _, v130 in { "Combatant", "Bot", "TrainingDummy" } do
+410: 		for _, v131 in v_u_1:GetTagged(v130) do
+411: 			if not v131:IsA("Model") or (v131 == v124 or (v128[v131] or not v131:IsDescendantOf(workspace))) then
+412: 				continue
+413: 			end
+414: 			v128[v131] = true
+415: 			table.insert(v125, v131)
+416: 		end
+417: 	end
+418: 	return v125
+419: end
+420: function v_u_8.Teammates() -- name: Teammates
+421: 	-- upvalues: (copy) v_u_8
+422: 	local v132 = {}
+423: 	for _, v133 in v_u_8.Targets() do
+424: 		if not v_u_8.IsTeammate(v133) then
+425: 			continue
+426: 		end
+427: 		table.insert(v132, v133)
+428: 	end
+429: 	return v132
+430: end
+431: function v_u_8.WorldParams(p134) -- name: WorldParams
+432: 	-- upvalues: (copy) v_u_123, (copy) v_u_9
+433: 	local v135 = RaycastParams.new()
+434: 	v135.FilterType = Enum.RaycastFilterType.Exclude
+435: 	local v136 = v_u_123()
+436: 	local v137 = v_u_9.Character
+437: 	if v137 then
+438: 		table.insert(v136, v137)
+439: 	end
+440: 	if p134 then
+441: 		for _, v138 in p134 do
+442: 			table.insert(v136, v138)
+443: 		end
+   ...
+476: 	local v151 = v_u_8.GetAimRay()
+477: 	local v152 = v_u_8.AimPoint() - p150
+478: 	if v152.Magnitude < 2 or v152.Unit:Dot(v151.Direction.Unit) < 0.2 then
+479: 		return v151.Direction.Unit
+480: 	else
+481: 		return v152.Unit
+482: 	end
+483: end
+484: v_u_8.ASSIST_MAGNET = {
+485: 	["touch"] = {
+486: 		["ranged"] = 2.5,
+487: 		["aimed"] = 2.5,
+488: 		["scoped"] = 1.5
+489: 	},
+490: 	["gamepad"] = {
+491: 		["ranged"] = 1.5,
+492: 		["aimed"] = 1.5,
+493: 		["scoped"] = 1.5
+494: 	}
+495: }
+496: v_u_8.MELEE_NUDGE = {
+497: 	["touch"] = {
+498: 		["cone"] = 50,
+499: 		["max"] = 20,
+500: 		["reach"] = 1.5
+501: 	},
+502: 	["gamepad"] = {
+503: 		["cone"] = 40,
+504: 		["max"] = 12,
+505: 		["reach"] = 1
+506: 	}
+507: }
+508: local function v_u_157(p153, ...) -- name: camCall
+509: 	-- upvalues: (ref) v_u_13
+510: 	local v154 = v_u_13
+511: 	if v154 then
+512: 		v154 = v_u_13[p153]
+513: 	end
+514: 	if type(v154) == "function" then
+515: 		local v155, v156 = pcall(v154, ...)
+516: 		if v155 then
+517: 			return v156
+518: 		else
+519: 			return nil
+520: 		end
+521: 	else
+522: 		return nil
+523: 	end
+524: end
+525: function v_u_8.AssistActive() -- name: AssistActive
+526: 	-- upvalues: (ref) v_u_13, (copy) v_u_157
+527: 	if v_u_13 and v_u_157("GetAimAssistEnabled") ~= false then
+528: 		return v_u_157("IsAssistedInput") == true
+529: 	else
+530: 		return false
+531: 	end
+532: end
+533: local function v_u_186(p158, p159, p160, p161) -- name: rawHitsBody
+534: 	local v162 = p160:FindFirstChild("HumanoidRootPart") or (p160:FindFirstChild("UpperTorso") or p160:FindFirstChild("Torso"))
+535: 	local v163 = p160:FindFirstChild("Head")
+536: 	if not (v162 and v162:IsA("BasePart")) then
+537: 		return false
+538: 	end
+539: 	if p161 then
+540: 		local v164 = p159.X
+541: 		local v165 = p159.Z
+542: 		local v166 = Vector3.new(v164, 0, v165)
+543: 		if v166.Magnitude < 0.001 then
+544: 			return false
+545: 		end
+   ...
+571: 	local v180 = v178 - v179 * v179
+572: 	local v181
+573: 	if v180 > 1e-6 then
+574: 		local v182 = (v179 * v175:Dot(v177) - v176:Dot(v177)) / v180
+575: 		v181 = math.clamp(v182, 0, 1)
+576: 	else
+577: 		v181 = 0
+578: 	end
+579: 	local v183 = v173 + v176 * v181
+580: 	local v184 = (v183 - p158):Dot(v175)
+581: 	local v185
+582: 	if v184 > 0 then
+583: 		v185 = (v183 - p158 - v175 * v184).Magnitude <= 1.1
+584: 	else
+585: 		v185 = false
+586: 	end
+587: 	return v185
+588: end
+589: function v_u_8.AssistDirection(p187, p188, p189) -- name: AssistDirection
+590: 	-- upvalues: (copy) v_u_8, (copy) v_u_157, (copy) v_u_186, (copy) v_u_12, (copy) v_u_4, (copy) v_u_9
+591: 	if not v_u_8.AssistActive() then
+592: 		return p188
+593: 	end
+594: 	local v190 = v_u_157("GetAimAssistShot")
+595: 	if type(v190) == "table" and v190.torsoVisible then
+596: 		local v191 = v190.point
+597: 		if typeof(v191) == "Vector3" then
+598: 			local v192 = v190.model
+599: 			if typeof(v192) == "Instance" then
+600: 				local v193 = v190.model
+601: 				local v194 = v190.point
+602:
