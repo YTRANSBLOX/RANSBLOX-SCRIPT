@@ -1,0 +1,1587 @@
+keys: Melee, Attack, Swing, Hitbox, MeleeHit, DealDamage, CombatModule
+scripts scanned: 259
+
+===== Players.RansbloxScripts.PlayerScripts.Character.ViewModel =====
+   ...
+1381: 	return true
+1382: end
+1383: local function v_u_401(p268, p269) -- name: onEvent
+1384: 	-- upvalues: (copy) v_u_206, (copy) v_u_10, (copy) v_u_12, (copy) v_u_267, (copy) v_u_22, (copy) v_u_203, (copy) v_u_204, (copy) v_u_208, (copy) v_u_209, (copy) v_u_16
+1385: 	local v270 = p269 or {}
+1386: 	local v271 = v_u_206.shown
+1387: 	local v272
+1388: 	if v271 then
+1389: 		v272 = v271.kind
+1390: 	else
+1391: 		v272 = nil
+1392: 	end
+1393: 	if p268 == "Swing" then
+1394: 		local v273 = v270.step
+1395: 		local v274 = tonumber(v273) or 1
+1396: 		local v275 = v270.finisher == true
+1397: 		local v276
+1398: 		if v272 == "Sword" or v272 == "Dagger" then
+1399: 			v276 = v_u_10.Pick(v272, v274, v275)
+1400: 		elseif v272 then
+1401: 			v276 = v_u_12.Pick(v272, v274, v275, v270.oneHanded == true and true or v_u_206.leftOut)
+1402: 		else
+1403: 			v276 = nil
+1404: 		end
+1405: 		if v272 == "Shield" and v276 == "bash" then
+
+===== Players.RansbloxScripts.PlayerScripts.Combat.Controller =====
+   ...
+12: local v_u_11 = require(script.Parent.Util)
+13: local v_u_12 = require(script.Parent.Hud)
+14: local v_u_13 = require(script.Parent.Effects)
+15: local v_u_14 = require(script.Parent.Presentation)
+16: local v_u_15 = require(script.Parent.Guard)
+17: local v_u_16 = require(script.Parent.Poses)
+18: local v_u_17 = require(script.Parent.Metrics)
+19: local v_u_18 = require(script.Parent.Touch)
+20: local v_u_19 = require(script.Parent.Quality)
+21: local v_u_20 = require(script.Parent.World)
+22: local v_u_21 = require(script.Parent.RankFx)
+23: local v_u_22 = {
+24: 	["Melee"] = require(script.Parent.Handlers.Melee),
+25: 	["Bow"] = require(script.Parent.Handlers.Bow),
+26: 	["Gun"] = require(script.Parent.Handlers.Gun),
+27: 	["Throw"] = require(script.Parent.Handlers.Throw),
+28: 	["Use"] = require(script.Parent.Handlers.Use)
+29: }
+30: local v_u_23 = {
+31: 	["Fists"] = "Melee",
+32: 	["Sword"] = "Melee",
+33: 	["Axe"] = "Melee",
+34: 	["Spear"] = "Melee",
+35: 	["Dagger"] = "Melee",
+36: 	["Club"] = "Melee",
+37: 	["Shield"] = "Melee",
+38: 	["Gauntlets"] = "Melee",
+39: 	["Scythe"] = "Melee",
+40: 	["Katana"] = "Melee",
+41: 	["Hatchets"] = "Melee",
+42: 	["Bow"] = "Bow",
+43: 	["Crossbow"] = "Gun",
+44: 	["Musket"] = "Gun",
+45: 	["Pistol"] = "Gun",
+46: 	["Blunderbuss"] = "Gun",
+47: 	["Knives"] = "Throw",
+48: 	["Javelin"] = "Throw",
+49: 	["Sling"] = "Throw",
+50: 	["Bomb"] = "Throw",
+51: 	["Herbs"] = "Use",
+52: 	["Trap"] = "Use",
+53: 	["Horn"] = "Use"
+   ...
+735: 						local v179 = v_u_163(type(v167) ~= "number" and type(v167) ~= "string" and 1 or v167, v_u_164)
+736: 						if v179 then
+737: 							v_u_24.Equip(v179)
+738: 						end
+739: 					end
+740: 				end
+741: 				task.wait(0.1)
+742: 			end
+743: 		end)
+744: 	end
+745: end
+746: local v_u_181 = {
+747: 	["Attack"] = "Primary",
+748: 	["Aim"] = "Secondary",
+749: 	["Reload"] = "Reload"
+750: }
+751: local function v_u_187(p182) -- name: mapInput
+752: 	-- upvalues: (copy) v_u_9, (copy) v_u_181
+753: 	for _, v183 in v_u_9.PadActionsOf(p182) do
+754: 		local v184 = v_u_181[v183]
+755: 		if not v184 then
+756: 			continue
+757: 		end
+758: 		return v184
+759: 	end
+   ...
+870: 			local v220
+871: 			if p210.dot then
+872: 				v220 = nil
+873: 			else
+874: 				v220 = p210.headshot and "HEADSHOT" or (p210.crit and "BACKSTAB" or (p210.blocked and "BLOCKED" or (p210.armorBroken and "ARMOR BROKEN" or nil)))
+875: 			end
+876: 			v_u_12.DamageNumber(v212, v214, v219, v216, v220)
+877: 		end
+878: 		if not p210.dot then
+879: 			local v221 = v_u_13.ConsumePrediction(v216)
+880: 			local v222 = os.clock()
+881: 			local v223 = v_u_8.Kind(p210.weaponId)
+882: 			local v224 = v_u_8.IsMelee(v223)
+883: 			if p210.killed then
+884: 				v_u_12.Hitmarker("kill")
+885: 				v_u_11.Sound(p210.headshot and "Kill_Confirm_Headshot" or "Kill_Confirm")
+886: 				v_u_27.killStreak = v222 - v_u_27.lastKillAt > 4 and 1 or v_u_27.killStreak + 1
+887: 				v_u_27.lastKillAt = v222
+888: 				local v225 = v_u_66(v216)
+889: 				local v226
+890: 				if v225 then
+891: 					v226 = string.upper(v225)
+892: 				else
+893: 					v226 = nil
+894: 				end
+   ...
+923: 				elseif p210.crit then
+924: 					local v231 = v_u_11.Sound
+925: 					local v232 = p210.weaponId
+926: 					v231(v_u_14.For(v232, v223).critSound or "Hitmarker_Crit")
+927: 				elseif v222 - v_u_209 > 0.06 then
+928: 					v_u_209 = v222
+929: 					v_u_11.Sound(v224 and "Hitmarker" or "Hitmarker_Ranged")
+930: 				end
+931: 			end
+932: 			if v212 and (v224 and not v221) then
+933: 				local v233 = p210.weaponId
+934: 				local v234 = v_u_14.For(v233, v223)
+935: 				v_u_11.Sound(v234.hitSound or "Hit_Melee", v212)
+936: 			end
+937: 		end
+938: 	else
+939: 		return
+940: 	end
+941: end
+942: local function v_u_263(p236) -- name: onDamageTaken
+943: 	-- upvalues: (copy) v_u_12, (copy) v_u_21, (copy) v_u_11, (ref) v_u_208, (copy) v_u_27, (copy) v_u_59, (copy) v_u_15
+944: 	if type(p236) == "table" then
+945: 		local v237 = p236.amount
+946: 		local v238 = tonumber(v237) or 0
+947: 		local v239 = p236.fromPosition
+   ...
+1089: 				
+
+===== Players.RansbloxScripts.PlayerScripts.Combat.Effects =====
+   ...
+920: local v_u_306 = {
+921: 	["Arrow"] = true,
+922: 	["Bolt"] = true,
+923: 	["Javelin"] = true,
+924: 	["Knife"] = true,
+925: 	["Harpoon"] = true,
+926: 	["FireArrow"] = true,
+927: 	["FireBolt"] = true
+928: }
+929: local v_u_307 = {
+930: 	["Arrow"] = { "Arrow_Flesh", "Arrow_Thunk" },
+931: 	["Bolt"] = { "Arrow_Flesh", "Arrow_Thunk" },
+932: 	["Ball"] = { "Hit_Melee_Heavy", "Impact_Dirt" },
+933: 	["Pellet"] = { "Hit_Melee", "Impact_Dirt" },
+934: 	["Knife"] = { "Knife_Hit", "Knife_Thunk" },
+935: 	["Javelin"] = { "Spear_Hit", "Javelin_Hit" },
+936: 	["Stone"] = { "Stone_Hit", "Impact_Stone" },
+937: 	["FireArrow"] = { "Arrow_Flesh", "Arrow_Thunk" },
+938: 	["FireBolt"] = { "Arrow_Flesh", "Arrow_Thunk" },
+939: 	["Bolas"] = { "Stone_Hit", "Impact_Stone" },
+940: 	["Harpoon"] = { "Harpoon_Hit", "Harpoon_Thunk" },
+941: 	["Hatchet"] = { "Hatchet_Hit", "Hatchet_Thunk" }
+942: }
+943: local v_u_308 = {
+944: 	["Knife"] = 24,
+945: 	["Stone"] = 10,
+   ...
+2706: 			v_u_14.Puff(p776, v780, 5, 0.5, 6, 0.4)
+2707: 			return
+2708: 		else
+2709: 			local v781 = p778 / 2 - 0.3
+2710: 			local v782 = p776 - Vector3.new(0, v781, 0)
+2711: 			if p777 == "Place" then
+2712: 				v_u_10.Sound("Impact_Wood", p776)
+2713: 				v_u_10.Sound("Trap_Set", p776)
+2714: 				v_u_14.Puff(v782, Color3.fromRGB(170, 150, 120), 12, 1.1, 7, 0.6)
+2715: 			else
+2716: 				v_u_10.Sound("Impact_Wood", p776)
+2717: 				if p777 == "Break" then
+2718: 					v_u_10.Sound("Hit_Melee_Heavy", p776)
+2719: 				end
+2720: 				v_u_14.Puff(v782, Color3.fromRGB(170, 150, 120), 10, 1.2, 6, 0.7)
+2721: 				v_u_14.Puff(p776, v780, p777 == "Break" and 16 or 8, 0.6, 11, 0.7)
+2722: 			end
+2723: 		end
+2724: 	end
+2725: end
+2726: function v_u_14.HealPool(p783, p784, p_u_785) -- name: HealPool
+2727: 	-- upvalues: (copy) v_u_14, (copy) v_u_10, (ref) v_u_17, (copy) v_u_5, (copy) v_u_1, (copy) v_u_12
+2728: 	local v786 = workspace.CurrentCamera
+2729: 	local v787 = (not v786 and 0 or (v786.CFrame.Position - p783).Magnitude) > v_u_14.NEAR
+2730: 	local v788 = v_u_10.WorldParams(v_u_10.Targets())
+
+===== Players.RansbloxScripts.PlayerScripts.Combat.Hud =====
+   ...
+81: 	v53.Color = v_u_12
+82: 	v53.Transparency = 0.2
+83: 	v53.Parent = v52
+84: 	return v52
+85: end
+86: local v_u_55 = {}
+87: local v_u_56 = nil
+88: local v_u_57 = {}
+89: local v_u_58 = nil
+90: local v_u_59 = nil
+91: local function v_u_134() -- name: buildStyles
+92: 	-- upvalues: (copy) v_u_33, (ref) v_u_15, (copy) v_u_12, (copy) v_u_45, (copy) v_u_11, (copy) v_u_16, (copy) v_u_8, (copy) v_u_55, (ref) v_u_56, (ref) v_u_58, (ref) v_u_59
+93: 	local v60 = v_u_33(v_u_15, "Melee", UDim2.fromOffset(0, 0))
+94: 	v60.BackgroundTransparency = 1
+95: 	local v61 = v_u_33(v60, "Dot", UDim2.fromOffset(5, 5))
+96: 	local v62 = Instance.new("UICorner")
+97: 	v62.CornerRadius = UDim.new(1, 0)
+98: 	v62.Parent = v61
+99: 	local v63 = v_u_12
+100: 	local v64 = Instance.new("UIStroke")
+101: 	v64.Name = "Stroke"
+102: 	v64.Thickness = 1.2
+103: 	v64.Color = v63 or v_u_12
+104: 	v64.Transparency = 0.25
+105: 	v64.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+   ...
+115: 		local v67 = v_u_33(v65, v66[1], v66[2], v66[3], v_u_11)
+116: 		v67.BackgroundTransparency = 0.3
+117: 		if v66[1] == "Point" then
+118: 			v67.Rotation = 45
+119: 		end
+120: 		local v68 = Instance.new("UICorner")
+121: 		v68.CornerRadius = UDim.new(0, v66[1] == "Top" and 5 or 3)
+122: 		v68.Parent = v67
+123: 	end
+124: 	local v69 = Instance.new("UIScale")
+125: 	v69.Name = "Pulse"
+126: 	v69.Parent = v65
+127: 	v_u_16.Melee = v60
+128: 	local v70 = v_u_33(v_u_15, "Bow", UDim2.fromOffset(0, 0))
+129: 	v70.BackgroundTransparency = 1
+130: 	local v71 = v_u_33(v70, "Dot", UDim2.fromOffset(4, 4))
+131: 	local v72 = Instance.new("UICorner")
+132: 	v72.CornerRadius = UDim.new(1, 0)
+133: 	v72.Parent = v71
+134: 	local v73 = v_u_12
+135: 	local v74 = Instance.new("UIStroke")
+136: 	v74.Name = "Stroke"
+137: 	v74.Thickness = 1.2
+138: 	v74.Color = v73 or v_u_12
+139: 	v74.Transparency = 0.25
+   ...
+1247: 		v_u_25 = v_u_24 + p424
+1248: 		v_u_26 = p425 or v_u_8
+1249: 	else
+1250: 		v_u_25 = 0
+1251: 		for _, v427 in v_u_55 do
+1252: 			v427.Visible = false
+1253: 		end
+1254: 	end
+1255: end
+1256: function v_u_4.SetBlocking(p428) -- name: SetBlocking
+1257: 	-- upvalues: (ref) v_u_22, (copy) v_u_16, (copy) v_u_3
+1258: 	v_u_22 = p428
+1259: 	local v429 = v_u_16.Melee
+1260: 	if v429 then
+1261: 		v429 = v_u_16.Melee:FindFirstChild("Shield")
+1262: 	end
+1263: 	if v429 then
+1264: 		v429 = v429:FindFirstChild("Pulse")
+1265: 	end
+1266: 	if v429 and p428 then
+1267: 		v429.Scale = 0.6
+1268: 		v_u_3:Create(v429, TweenInfo.new(0.14, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+1269: 			["Scale"] = 1
+1270: 		}):Play()
+1271: 	end
+1272: end
+1273: function v_u_4.SetGuard(p430, p431) -- name: SetGuard
+   ...
+1285: 			else
+1286: 				v433 = v_u_11
+1287: 			end
+1288: 			v432.BackgroundColor3 = v433
+1289: 			v_u_59.BackgroundTransparency = p431 and 0.35 or 0
+1290: 		end
+1291: 	else
+1292: 		return
+1293: 	end
+1294: end
+1295: function v_u_4.BlockPulse() -- name: BlockPulse
+1296: 	-- upvalues: (copy) v_u_16, (copy) v_u_3, (copy) v_u_8, (copy) v_u_11
+1297: 	local v434 = v_u_16.Melee
+1298: 	if v434 then
+1299: 		v434 = v_u_16.Melee:FindFirstChild("Shield")
+1300: 	end
+1301: 	if v434 then
+1302: 		local v435 = v434:FindFirstChild("Pulse")
+1303: 		if v435 then
+1304: 			v435.Scale = 1.45
+1305: 			v_u_3:Create(v435, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+1306: 				["Scale"] = 1
+1307: 			}):Play()
+1308: 		end
+1309: 		for _, v436 in v434:GetChildren() do
+1310: 			if not v436:IsA("Frame") then
+1311: 				continue
+   ...
+1401: 		local v473 = math.rad(v469)
+1402: 		local v474 = math.tan(v473)
+1403: 		local v475 = v471 / 2
+1404: 		local v476 = math.rad(v475)
+1405: 		local v477 = v474 / math.tan(v476) * v472 / v_u_18
+1406: 		local v478 = math.max(10, v477) + v_u_20 * 0.6
+1407: 		v468.Size = UDim2.fromOffset(v478 * 2, v478 * 2)
+1408: 		for v479 = 0, 3 do
+1409: 			local v480 = v479 * 90
+1410: 			local v481 = math.rad(v480)
+1411: 			v444:FindFirstChild("Notch" .. v479).Position = UDim2.new(0.5, math.sin(v481) * v478, 0.5, -math.co
+
+===== Players.RansbloxScripts.PlayerScripts.Combat.Presentation =====
+1: local v1 = Color3.fromRGB(226, 160, 84)
+2: local v2 = Color3.fromRGB(150, 110, 200)
+3: local v3 = Color3.fromRGB(205, 180, 140)
+4: local v_u_4 = {
+5: 	["Fists"] = {
+6: 		["crosshair"] = "Melee",
+7: 		["swings"] = nil,
+8: 		["swingSound"] = "Swing_Punch",
+9: 		["hitSound"] = "Hit_Punch",
+10: 		["hitDelay"] = 0.08,
+11: 		["noSlash"] = true,
+12: 		["swings"] = { "Punch_R", "Punch_L" }
+13: 	},
+14: 	["Sword"] = {
+15: 		["crosshair"] = "Melee",
+16: 		["hold"] = "Hold_Sword",
+17: 		["block"] = "Sword_Guard",
+18: 		["swings"] = nil,
+19: 		["swingSound"] = "Sword_Swing",
+20: 		["hitSound"] = "Sword_Hit",
+21: 		["hitDelay"] = 0.09,
+22: 		["equip"] = "Equip_Sword",
+23: 		["trail"] = 0.28,
+24: 		["slashColor"] = nil,
+25: 		["swings"] = { "Sword_Swing1", "Sword_Swing2", "Sword_Swing3" },
+26: 		["slashColor"] = v1
+27: 	},
+28: 	["Shield"] = {
+29: 		["crosshair"] = "Melee",
+30: 		["hold"] = "Shield_Hold",
+31: 		["block"] = "Shield_Block",
+32: 		["swings"] = nil,
+33: 		["swingSound"] = "Swing_Heavy",
+34: 		["hitSound"] = "Hit_Melee_Heavy",
+35: 		["hitDelay"] = 0.09,
+36: 		["equip"] = "Equip_Heavy",
+37: 		["noSlash"] = true,
+38: 		["shake"] = 0.25,
+39: 		["swings"] = { "Shield_Bash" }
+40: 	},
+41: 	["Gauntlets"] = {
+42: 		["crosshair"] = "Melee",
+43: 		["hold"] = "Gauntlets_Hold",
+44: 		["swings"] = nil,
+45: 		["lunge"] = "Gauntlets_Dash",
+46: 		["lungeAnimSpeed"] = 1,
+47: 		["swingSound"] = "Gauntlet_Swing",
+48: 		["hitSound"] = "Gauntlet_Hit",
+49: 		["lungeSound"] = "Gauntlet_Dash",
+50: 		["hitDelay"] = 0.07,
+51: 		["equip"] = "Gauntlet_Equip",
+52: 		["noSlash"] = true,
+53: 		["shake"] = 0.14,
+54: 		["swings"] = {
+55: 			"Gauntlets_Jab",
+56: 			"Gauntlets_Cross",
+57: 			"Gauntlets_Hook",
+58: 			"Gauntlets_Upper"
+59: 		}
+60: 	},
+61: 	["Scythe"] = {
+62: 		["crosshair"] = "Melee",
+63: 		["hold"] = "Scythe_Hold",
+64: 		["swings"] = nil,
+65: 		["lunge"] = "Scythe_Dash",
+66: 		["lungeAnimSpeed"] = 1,
+67: 		["lungeSound"] = "Scythe_Reap",
+68: 		["lungeSlash"] = true,
+69: 		["lungeLines"] = true,
+70: 		["refreshSound"] = "Charge_Full",
+71: 		["swingSound"] = "Scythe_Swing",
+72: 		["hitSound"] = "Scythe_Hit",
+73: 		["hitDelay"] = 0.2,
+74: 		["equip"] = "Equip_Heavy",
+75: 		["trail"] = 0.4,
+76: 		["slashColor"] = nil,
+77: 		["shake"] = 0.3,
+78: 		["slam"] = false,
+79: 		["swings"] = { "Scythe_Sweep1", "Scythe_Sweep2" },
+80: 		["slashColor"] = Color3.fromRGB(190, 200, 215)
+81: 	},
+82: 	["Katana"] = {
+83: 		["crosshair"] = "Melee",
+84: 		["hold"] = "Katana_Hold",
+85: 		["swings"] = nil,
+86: 		["parry"] = "Katana_Parry",
+87: 		["parryHold"] = "Katana_ParryHold",
+88: 		["swingSound"] = "Katana_Swing",
+89: 		["hitSound"] = "Katana_Hit",
+90: 		["parrySound"] = "Katana_Flick",
+91: 		["hitDelay"] = 0.08,
+92: 		["equip"] = "Katana_Draw",
+93: 		["trail"] = 0.24,
+94: 		["slashColor"] = nil,
+95: 		["shake"] = 0.16,
+96: 		["swings"] = {
+97: 			"Katana_Slash1",
+98: 			"Katana_Slash2",
+99: 			"Katana_Slash3",
+100: 			"Katana_Slash4"
+101: 		},
+102: 		["slashColor"] = Color3.fromRGB(150, 196, 236)
+103: 	},
+104: 	["Hatchets"] = {
+105: 		["crosshair"] = "Melee",
+106: 		["hold"] = "Hatchets_Hold",
+107: 		["swings"] = nil,
+108: 		["oneSwings"] = nil,
+109: 		["throw"] = "Hatchets_Throw",
+110: 		["swingSound"] = "Hatchet_Swing",
+111: 		["hitSound"] = "Hatchet_Hit",
+112: 		["throwSound"] = "Hatchet_Throw",
+113: 		["hitDelay"] = 0.08,
+114: 		["equip"] = "Hatchet_Catch",
+115: 		["trail"] = 0.2,
+116: 		["slashColor"] = nil,
+117: 		["shake"] = 0.16,
+118: 		["swings"] = {
+119: 			"Hatchets_ChopR",
+120: 			"Hatchets_ChopL",
+121: 			"Hatchets_ChopR",
+122: 			"Hatchets_Double"
+123: 		},
+124: 		["oneSwings"] = { "Hatchets_ChopR", "Hatchets_Backhand" },
+125: 		["slashColor"] = Color3.fromRGB(214, 170, 120)
+126: 	},
+127: 	["Axe"] = {
+128: 		["crosshair"] = "Melee",
+129: 		["hold"] = "Hold_Heavy",
+130: 		["swings"] = nil,
+131: 		["heavyCharge"] = "Axe_Charge",
+132: 		["heavySwing"] = "Axe_Heavy",
+133: 		["swingSound"] = "Axe_Swing",
+134: 		["heavySound"] = "Axe_Heavy",
+135: 		["chargeS
+
+===== Players.RansbloxScripts.PlayerScripts.Combat.Touch =====
+   ...
+246: 			local v80 = v78 + v79
+247: 			local v81 = v_u_75(v80)
+248: 			local v82 = v79.Y < 500
+249: 			local v83 = v82 and 92 or 100
+250: 			local v84 = v82 and 66 or 72
+251: 			local v85 = v82 and 58 or 62
+252: 			local v86 = v80.Y
+253: 			local v87 = math.min(v81, v86) - 12
+254: 			local v88 = v80.X - 22 - v83 / 2
+255: 			local v89 = v87 - v83 / 2
+256: 			local v90 = v78.Y + v83 / 2 + 70
+257: 			local v91 = math.max(v89, v90)
+258: 			local v92 = v_u_11.Attack
+259: 			v92.Size = UDim2.fromOffset(v83, v83)
+260: 			v92.Position = UDim2.fromOffset(v88 - v78.X, v91 - v78.Y)
+261: 			local v93 = v88 - v83 / 2 - 14 - v84 / 2
+262: 			local v94 = v_u_11.Secondary
+263: 			local v95 = v91 + (v83 - v84) / 2
+264: 			v94.Size = UDim2.fromOffset(v84, v84)
+265: 			v94.Position = UDim2.fromOffset(v93 - v78.X, v95 - v78.Y)
+266: 			local v96
+267: 			if v_u_11.Secondary.Visible then
+268: 				v96 = v93 - v84 / 2
+269: 			else
+270: 				v96 = v88 - v83 / 2
+   ...
+299: 		local v107
+300: 		if v106 == nil then
+301: 			v107 = false
+302: 		else
+303: 			v107 = v106.Health > 0
+304: 		end
+305: 		local v108 = v105:GetAttribute("EditPreview") == true
+306: 		if not v_u_16 and v105:GetAttribute("ForceVisible") ~= true or not (v_u_17 and v107) then
+307: 			v107 = v108
+308: 		end
+309: 		v105.Enabled = v107
+310: 		local v109 = v_u_26[v_u_13 or "Fists"] or "ATTACK"
+311: 		v_u_11.Attack.AutoLocalize = v109 ~= "DRAW"
+312: 		local v110 = v_u_11.Attack
+313: 		if v109 == "DRAW" then
+314: 			v109 = v_u_6.Pick("DRAW (bow)", "DRAW")
+315: 		end
+316: 		v110.Text = v109
+317: 		local v111 = v_u_30(v_u_13, v_u_14)
+318: 		v_u_11.Secondary.Visible = v111 ~= nil and true or v108
+319: 		v_u_11.Secondary.Text = v111 == "AIM" and v_u_15 and "AIM ON" or (v111 or (v108 and "ALT" or ""))
+320: 		local v112 = v_u_11.Reload
+321: 		local v113
+322: 		if v_u_13 == nil or v_u_27[v_u_13] ~= true then
+323: 			v113 = v108
+324: 		else
+   ...
+334: 		if type(v115) == "string" and not v108 then
+335: 			v116 = v_u_11[v115]
+336: 		else
+337: 			v116 = nil
+338: 		end
+339: 		local v117 = v_u_55
+340: 		if not v116 or (not v116.Visible or v116 == v_u_11.Secondary and v_u_19) then
+341: 			v116 = nil
+342: 		end
+343: 		v117(v116)
+344: 	end
+345: end
+346: local function v_u_135(p_u_119) -- name: bindAttack
+347: 	-- upvalues: (copy) v_u_5, (copy) v_u_11, (ref) v_u_19, (ref) v_u_20, (copy) v_u_23, (copy) v_u_21, (ref) v_u_12, (copy) v_u_4, (ref) v_u_18, (copy) v_u_22, (copy) v_u_24
+348: 	local v_u_120 = nil
+349: 	p_u_119.InputBegan:Connect(function(p121)
+350: 		-- upvalues: (ref) v_u_120, (ref) v_u_5, (copy) p_u_119, (ref) v_u_11, (ref) v_u_19, (ref) v_u_20, (ref) v_u_23, (ref) v_u_21, (ref) v_u_12
+351: 		if p121.UserInputType == Enum.UserInputType.Touch and (not v_u_120 and v_u_5.BeganOn(p_u_119, p121)) then
+352: 			v_u_120 = p121
+353: 			local v122 = p_u_119
+354: 			local v123 = v122 == v_u_11.Secondary and v_u_19
+355: 			if v123 then
+356: 				v123 = false
+357: 			end
+358: 			if v122 == v_u_11.Secondary then
+   ...
+589: 		v_u_168.IgnoreGuiInset = true
+590: 		v_u_168.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
+591: 		v_u_168.DisplayOrder = 5
+592: 		v_u_168.Enabled = false
+593: 		v_u_168.Parent = v_u_8:WaitForChild("PlayerGui")
+594: 		v_u_9 = v_u_168
+595: 		local v169 = Instance.new("Frame")
+596: 		v169.Name = "Root"
+597: 		v169.BackgroundTransparency = 1
+598: 		v169.Size = UDim2.fromScale(1, 1)
+599: 		v169.Parent = v_u_168
+600: 		v_u_10 = v169
+601: 		v_u_11.Attack = v_u_39(v169, "Attack", 96, "ATTACK", 16)
+602: 		v_u_11.Secondary = v_u_39(v169, "Secondary", 70, "BLOCK", 14)
+603: 		v_u_11.Reload = v_u_39(v169, "Reload", 60, "RELOAD", 12)
+604: 		v_u_135(v_u_11.Attack)
+605: 		v_u_151(v_u_11.Secondary)
+606: 		v_u_11.Reload.InputBegan:Connect(function(p170)
+607: 			-- upvalues: (ref) v_u_5, (ref) v_u_11, (ref) v_u_19, (ref) v_u_20, (ref) v_u_23, (ref) v_u_21, (ref) v_u_12, (ref) v_u_22, (ref) v_u_24
+608: 			if p170.UserInputType == Enum.UserInputType.Touch and v_u_5.BeganOn(v_u_11.Reload, p170) then
+609: 	
+
+===== Players.RansbloxScripts.PlayerScripts.Combat.Util =====
+   ...
+640: 				end
+641: 				local v213 = v211 / v210
+642: 				local v214 = math.sin(v210)
+643: 				local v215 = (1 - v213) * v210
+644: 				local v216 = v207 * (math.sin(v215) / v214)
+645: 				local v217 = v213 * v210
+646: 				return (v216 + v197 * (math.sin(v217) / v214)).Unit
+647: 			end
+648: 		end
+649: 	end
+650: 	return p188
+651: end
+652: function v_u_8.MeleeAssist(p218, p219) -- name: MeleeAssist
+653: 	-- upvalues: (copy) v_u_8, (copy) v_u_157, (copy) v_u_9, (copy) v_u_12, (copy) v_u_4
+654: 	if not v_u_8.AssistActive() then
+655: 		return 0
+656: 	end
+657: 	local v220 = v_u_157("GetAimAssistInput")
+658: 	local v221 = v_u_8.MELEE_NUDGE[v220]
+659: 	local v222 = v_u_9.Character
+660: 	local v223
+661: 	if v222 then
+662: 		v223 = v222:FindFirstChild("HumanoidRootPart")
+663: 	else
+664: 		v223 = v222
+   ...
+737: 	local v256 = -v230.Z
+738: 	local v257 = (v254 - math.atan2(v255, v256) + 3.141592653589793) % 6.283185307179586 - 3.141592653589793
+739: 	if math.abs(v257) < 0.05235987755982989 then
+740: 		return 0
+741: 	end
+742: 	local v258 = v221.max
+743: 	local v259 = -math.rad(v258)
+744: 	local v260 = v221.max
+745: 	local v261 = math.rad(v260)
+746: 	local v262 = math.clamp(v257, v259, v261)
+747: 	v_u_157("Nudge", v262, p219 and 0 or 0.08)
+748: 	if v_u_4:IsStudio() then
+749: 		local v263 = v_u_9:GetAttribute("QA_AssistMelee")
+750: 		v_u_9:SetAttribute("QA_AssistMelee", (type(v263) ~= "number" and 0 or v263) + 1)
+751: 	end
+752: 	return math.deg(v262)
+753: end
+754: v_u_8.AMMO_NOUN = {
+755: 	["arrows"] = "ARROWS",
+756: 	["shot"] = "BULLETS",
+757: 	["fire_arrows"] = "FIRE ARROWS"
+758: }
+759: v_u_8.AMMO_OUT = {
+760: 	["arrows"] = "OUT OF ARROWS",
+761: 	["shot"] = "OUT OF BULLETS"
+762: }
+
+===== Players.RansbloxScripts.PlayerScripts.Combat.Handlers.Melee =====
+   ...
+6: local v_u_6 = require(v1.Guard)
+7: local v_u_7 = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Combat"))
+8: local v_u_8 = require(v1.Touch)
+9: local v_u_9 = {}
+10: v_u_9.__index = v_u_9
+11: function v_u_9.new(p10) -- name: new
+12: 	-- upvalues: (copy) v_u_9
+13: 	local v11 = v_u_9
+14: 	local v12 = setmetatable({}, v11)
+15: 	v12.ctx = p10
+16: 	v12.tuning = p10.tuning
+17: 	v12.preset = p10.preset
+18: 	v12.lastSwing = 0
+19: 	v12.combo = 0
+20: 	v12.holding = false
+21: 	v12.busyUntil = 0
+22: 	v12.blocking = false
+23: 	v12.blockHeld = false
+24: 	v12.guardFirst = false
+25: 	v12.strikes = 0
+26: 	v12.charging = nil
+27: 	v12.chargeStart = 0
+28: 	v12.lastSpecial = (-1 / 0)
+29: 	v12.bufferedAt = nil
+30: 	v12.fullPlayed = false
+   ...
+43: 	if type(v14) ~= "table" then
+44: 		return false
+45: 	end
+46: 	local v15 = p13.ctx.tool
+47: 	return v15 ~= nil and v15:GetAttribute("Thrown") == true and true or os.clock() < p13.thrownLocalUntil
+48: end
+49: function v_u_9.Cooldown(p16) -- name: Cooldown
+50: 	return p16:OneHanded() and (p16.tuning.oneHanded.cooldown or 0.45) or (p16.tuning.cooldown or 0.5)
+51: end
+52: function v_u_9.Equip(p_u_17) -- name: Equip
+53: 	-- upvalues: (copy) v_u_4, (copy) v_u_3, (copy) v_u_8, (copy) v_u_7
+54: 	local v_u_18 = p_u_17.ctx
+55: 	v_u_4.SetStyle("Melee")
+56: 	if p_u_17.preset.hold then
+57: 		v_u_3.PlayAnim(v_u_18.animator, p_u_17.preset.hold, 1, 0.2)
+58: 	end
+59: 	if p_u_17.preset.equip and v_u_18.tool then
+60: 		v_u_3.Sound(p_u_17.preset.equip, v_u_18.root)
+61: 	end
+62: 	local v_u_19 = v_u_18.tool
+63: 	local v20 = p_u_17.tuning.lunge
+64: 	if v_u_19 and (type(v20) == "table" and v20.refreshOnKill) then
+65: 		local v21 = p_u_17.conns
+66: 		local v22 = v_u_19:GetAttributeChangedSignal("Refreshed")
+67: 		local function v23()
+   ...
+253: 			end
+254: 		else
+255: 			v84 = p76
+256: 		end
+257: 		v_u_5.CharacterImpact(v81.Position, nil, false)
+258: 		v_u_5.PredictHit(v80, p75, v81.Position + Vector3.new(0, 1, 0), false, v84, v82)
+259: 	end
+260: end
+261: function v_u_9.Ready(p91) -- name: Ready
+262: 	local v92 = os.clock()
+263: 	local v93
+264: 	if p91.busyUntil <= v92 then
+265: 		v93 = v92 - p91.lastSwing >= p91:Cooldown()
+266: 	else
+267: 		v93 = false
+268: 	end
+269: 	return v93
+270: end
+271: function v_u_9.Swing(p_u_94) -- name: Swing
+272: 	-- upvalues: (copy) v_u_3, (copy) v_u_5, (copy) v_u_90
+273: 	local v_u_95 = p_u_94.ctx
+274: 	local v_u_96 = p_u_94.tuning
+275: 	local v_u_97 = p_u_94.preset
+276: 	local v_u_98 = os.clock()
+277: 	if not p_u_94:Ready() or (not v_u_3.CanAct() or v_u_3.GuardRecovery(p_u_94.ctx.tool) > 0) then
+278: 		return false
+279: 	end
+280: 	p_u_94.bufferedAt = nil
+281: 	local v99 = p_u_94:OneHanded()
+282: 	local v_u_100
+283: 	if v99 then
+284: 		v_u_100 = v_u_96.oneHanded.combo or { 1 }
+285: 	else
+286: 		v_u_100 = v_u_96.combo or { 1 }
+287: 	end
+288: 	if v_u_98 - p_u_94.lastSwing <= (v_u_96.comboWindow or 1) then
+289: 		p_u_94.combo = p_u_94.combo % #v_u_100 + 1
+290: 	else
+291: 		p_u_94.combo = 1
+292: 	end
+293: 	p_u_94.lastSwing = v_u_98
+294: 	local v_u_101 = p_u_94.combo
+295: 	local v_u_102
+296: 	if #v_u_100 > 2 then
+297: 		v_u_102 = v_u_101 == #v_u_100
+298: 	else
+299: 		v_u_102 = false
+300: 	end
+301: 	v_u_3.MeleeAssist(v_u_96.range or 8)
+302: 	v_u_3.FaceCamera()
+303: 	local v103
+304: 	if v99 then
+305: 		v103 = v_u_97.oneSwings
+306: 	else
+307: 		v103 = nil
+308: 	end
+309: 	local v104 = v103 or (v_u_97.swings or {})
+310: 	local v105 = v_u_101 - 1
+311: 	local v106 = #v104
+312: 	local v107 = v104[v105 % math.max(1, v106) + 1]
+313: 	v_u_3.PlayAnim(v_u_95.animator, v107, (v_u_97.swingSpeed or 1) * (v_u_102 and 0.95 or 1), 0.05)
+314: 	v_u_95.emit("Swing", {
+315: 		["step"] = v_u_101,
+316: 		["finisher"] = v_u_102,
+317: 		["hitDelay"] = v_u_97.hitDelay or 0.1,
+318: 		["oneHanded"] = v99
+319: 	})
+320: 	local v108 = v_u_97.hitDelay or 0.1
+321: 	local v109
+322: 	if v108 >= 0.15 then
+323: 		v109 = v108 - 0.04
+324: 	else
+325: 		local v110 = v108 - 0.1
+326: 		v109 = math.max(0
+
+===== Players.RansbloxScripts.PlayerScripts.UI.Screens.ActionHints =====
+   ...
+14: 	["pad"] = nil,
+15: 	["label"] = "throw",
+16: 	["pad"] = Enum.KeyCode.ButtonL2,
+17: 	["hatchet"] = true
+18: }
+19: local v_u_5 = {}
+20: local v6 = {
+21: 	["bit"] = 0,
+22: 	["acts"] = nil,
+23: 	["acts"] = {
+24: 		{
+25: 			["key"] = "M1",
+26: 			["action"] = "Attack",
+27: 			["pad"] = nil,
+28: 			["label"] = "draw",
+29: 			["pad"] = Enum.KeyCode.ButtonR2
+30: 		},
+31: 		{
+32: 			["key"] = "M2",
+33: 			["action"] = "Aim",
+34: 			["pad"] = nil,
+35: 			["label"] = "zoom",
+36: 			["pad"] = Enum.KeyCode.ButtonL2
+37: 		}
+38: 	}
+39: }
+40: v_u_5.Bow = v6
+41: local v7 = {
+42: 	["bit"] = 1,
+43: 	["acts"] = nil,
+44: 	["acts"] = {
+45: 		{
+46: 			["key"] = "M1",
+47: 			["action"] = "Attack",
+48: 			["pad"] = nil,
+49: 			["label"] = "fire",
+50: 			["pad"] = Enum.KeyCode.ButtonR2
+51: 		},
+52: 		{
+53: 			["key"] = "M2",
+54: 			["action"] = "Aim",
+55: 			["pad"] = nil,
+56: 			["label"] = "aim",
+57: 			["pad"] = Enum.KeyCode.ButtonL2
+58: 		}
+59: 	}
+60: }
+61: v_u_5.Crossbow = v7
+62: local v8 = {
+63: 	["bit"] = 2,
+64: 	["acts"] = nil,
+65: 	["acts"] = {
+66: 		{
+67: 			["key"] = "M1",
+68: 			["action"] = "Attack",
+69: 			["pad"] = nil,
+70: 			["label"] = "fire",
+71: 			["pad"] = Enum.KeyCode.ButtonR2
+72: 		},
+73: 		{
+74: 			["key"] = "M2",
+75: 			["action"] = "Aim",
+76: 			["pad"] = nil,
+77: 			["label"] = "aim",
+78: 			["pad"] = Enum.KeyCode.ButtonL2
+79: 		}
+80: 	}
+81: }
+82: v_u_5.Musket = v8
+83: local v9 = {
+84: 	["bit"] = 3,
+85: 	["acts"] = nil,
+86: 	["acts"] = {
+87: 		{
+88: 			["key"] = "M1",
+89: 			["action"] = "Attack",
+90: 			["pad"] = nil,
+91: 			["label"] = "fire",
+92: 			["pad"] = Enum.KeyCode.ButtonR2
+93: 		},
+94: 		{
+95: 			["key"] = "M2",
+96: 			["action"] = "Aim",
+97: 			["pad"] = nil,
+98: 			["label"] = "aim",
+99: 			["pad"] = Enum.KeyCode.ButtonL2
+100: 		}
+101: 	}
+102: }
+103: v_u_5.Pistol = v9
+104: local v10 = {
+105: 	["bit"] = 4,
+106: 	["acts"] = nil,
+107: 	["acts"] = {
+108: 		{
+109: 			["key"] = "M1",
+110: 			["action"] = "Attack",
+111: 			["pad"] = nil,
+112: 			["label"] = "fire",
+113: 			["pad"] = Enum.KeyCode.ButtonR2
+114: 		}
+115: 	}
+116: }
+117: v_u_5.Blunderbuss = v10
+118: local v11 = {
+119: 	["bit"] = 5,
+120: 	["acts"] = nil,
+121: 	["acts"] = {
+122: 		{
+123: 			["key"] = "M1",
+124: 			["action"] = "Attack",
+125: 			["pad"] = nil,
+126: 			["label"] = "throw",
+127: 			["pad"] = Enum.KeyCode.ButtonR2
+128: 		}
+129: 	}
+130: }
+131: v_u_5.Knives = v11
+132: local v12 = {
+133: 	["bit"] = 6,
+134: 	["acts"] = nil,
+135: 	["acts"] = {
+136: 		{
+137: 			["key"] = "M1",
+138: 			["action"] = "Attack",
+139: 			["pad"] = nil,
+140: 			["label"] = "throw",
+141: 			["pad"] = Enum.KeyCode.ButtonR2
+142: 		},
+143: 		{
+144: 			["key"] = "M2",
+145: 			["action"] = "Aim",
+146: 			["pad"] = nil,
+147: 			["label"] = "cancel",
+148: 			["pad"] = Enum.KeyCode.ButtonL2
+149: 		}
+150: 	}
+151: }
+152: v_u_5.Javelin = v12
+153: local v13 = {
+154: 	["bit"] = 7,
+155: 	["acts"] = nil,
+156: 	["acts"] = {
+157: 		{
+158: 			["key"] = "M1",
+159: 			["action"] = "Attack",
+160: 			["pad"] = nil,
+161: 			["label"] = "sling",
+162: 			["pad"] = Enum.KeyCode.ButtonR2
+163: 		}
+164: 	}
+165: }
+166: v_u_5.Sling = v13
+167: local v14 = {
+168: 	["bit"] = 8,
+169: 	["acts"] = nil,
+170: 	["acts"] = {
+171: 		{
+172: 			["key"] = "M1",
+173: 			["action"] = "Attack",
+174: 			["pad"] = nil,
+175: 			["label"] = "attack",
+176: 			["pad"] = Enum.KeyCode.ButtonR2
+177: 		},
+178: 		{
+179: 			["key"] = "M2",
+180: 			["action"] = "Aim",
+181: 			["pad"] = nil,
+182: 			["label"] = "block",
+183: 			["pad"] = Enum.KeyCode.ButtonL2
+184: 		}
+185: 	}
+186: }
+187: v_u_5.Sword = v14
+188: local v15 = {
+189: 	["bit"] = 9,
+190: 	["acts"] = nil,
+191: 	["acts"] = {
+192: 		{
+193: 			["key"] = "M1",
+194: 			["action"] = "Attack",
+195: 			["pad"] = nil,
+196: 			["label"] = "chop",
+197: 			["pad"] = Enum.KeyCode.ButtonR2
+198: 		},
+199: 		{
+200: 			["key"] = "M2",
+201: 			["action"] = "Aim",
+202: 			["pad"] = nil,
+203: 			["label"] = "heavy",
+204: 			["pad"] = Enum.KeyCode.ButtonL2
+205: 		}
+206: 	}
+207: }
+208: v_
+
+===== Players.RansbloxScripts.PlayerScripts.UI.Screens.TouchLayout =====
+1: local v_u_1 = game:GetService("GuiService")
+2: local v_u_2 = game:GetService("Players")
+3: local v_u_3 = game:GetService("RunService")
+4: local v_u_4 = game:GetService("StarterGui")
+5: local v_u_5 = game:GetService("TextChatService")
+6: local v_u_6 = game:GetService("UserInputService")
+7: local v7 = {}
+8: local v_u_8 = nil
+9: local v_u_9 = {
+10: 	{
+11: 		["name"] = "Attack",
+12: 		["gui"] = "CombatTouch",
+13: 		["root"] = "Root",
+14: 		["label"] = "ATTACK"
+15: 	},
+16: 	{
+17: 		["name"] = "Secondary",
+18: 		["gui"] = "CombatTouch",
+19: 		["root"] = "Root",
+20: 		["label"] = "ALT"
+21: 	},
+22: 	{
+23: 		["name"] = "Reload",
+
+===== Players.RansbloxScripts.PlayerScripts.Replay.Player =====
+   ...
+235: 						["victim"] = p94.landedOn[v105] or p94.landedOn[v105 .. "/1"],
+236: 						["weapon"] = p96.weaponId
+237: 					}
+238: 					table.insert(v109, v110)
+239: 					return
+240: 				end
+241: 			end
+242: 		end
+243: 		if p95 == "Hit" and p99 == p94.focus then
+244: 			local v111 = p96.position
+245: 			if typeof(v111) == "Vector3" then
+246: 				local v112 = p96.weaponId
+247: 				if type(v112) == "string" and v_u_7.IsMelee(v_u_7.Kind(p96.weaponId)) then
+248: 					local v113 = v101.pending
+249: 					local v114 = {
+250: 						["kind"] = "melee",
+251: 						["t"] = nil,
+252: 						["point"] = nil,
+253: 						["victim"] = nil,
+254: 						["weapon"] = nil,
+255: 						["killed"] = nil,
+256: 						["t"] = p97,
+257: 						["point"] = p96.position
+258: 					}
+259: 					local v115 = p96.target
+   ...
+534: 				local v206 = v161.key
+535: 				v161.key = "R|" .. tostring(v206)
+536: 			end
+537: 			local v207
+538: 			if (v169 or v172) == p158.focus then
+539: 				v207 = true
+540: 			elseif v160 == "Heal" then
+541: 				v207 = v166 == p158.focus
+542: 			else
+543: 				v207 = false
+544: 			end
+545: 			local v208 = v_u_22.Controller
+546: 			if v207 and (v160 == "Swing" and v_u_12.InFirstPerson()) then
+547: 				local v209 = v_u_22.Util
+548: 				local v210 = v_u_22.Presentation
+549: 				if v209 and v210 then
+550: 					local v211 = v210.For
+551: 					local v212 = v161.weaponId
+552: 					local v213 = v_u_7.Kind(v161.weaponId) or "Fists"
+553: 					local v214, v215 = pcall(v211, v212, v213)
+554: 					if v214 and type(v215) == "table" then
+555: 						local v216
+556: 						if v161.heavy == true then
+557: 							v216 = v215.heavySound or v215.swingSound
+558: 						elseif v161.lunge == true then
+559: 							v216 = v215.lungeSound or v215.swingSound
+560: 						else
+561: 							v216 = v215.swingSound
+562: 						end
+563: 						local v217 = v209.Sound
+564: 						pcall(v217, v216 or "Swing_Sword")
+565: 					end
+566: 				end
+567: 			elseif v208 then
+568: 				local v218 = v208.PlayFX
+569: 				if type(v218) == "function" then
+570: 					v208.PlayFX(v160, v161)
+571: 				end
+572: 			end
+573: 			if v207 and (v160 == "Charge" or (v160 == "Projectile" or (v160 == "Swing" or (v160 == "Reload" or (v160 == "Use" or v160 == "Heal"))))) then
+574: 				v_u_17.OnFighterEvent(v160, v161, v_u_16.ChargeAt(p159.t))
+575: 				v_u_16.OnFighterEvent(v160, v161, p159.t)
+576: 			end
+577: 		end
+578: 	end
+579: end
+580: local function v_u_278(p220) -- name: applyPreroll
+581: 	-- upvalues: (copy) v_u_16, (copy) v_u_219, (copy) v_u_22, (copy) v_u_8
+582: 	local v221 = p220.clip.events
+583: 	local v222 = {}
+584: 	for _, v223 in v221 do
+585: 		if v223.kind ~= "ProjectileHit" then
+   ...
+660: 						v230 = nil
+661: 					end
+662: 				else
+663: 					v230 = nil
+664: 				end
+665: 				if v230 == p220.focus then
+666: 					v_u_16.OnFighterEvent("Charge", v267, v266.t)
+667: 					v226 = v226 + 1
+668: 				else
+669: 					if v266.kind == "Projectile" then
+670: 						goto l9
+671: 					end
+672: 					if v266.kind ~= "Swing" then
+673: 						if v266.kind == "Smoke" then
+674: 							v231 = v267.duration
+675: 							v232 = (tonumber(v231) or 7) + v266.t
+676: 							if v232 > 0.4 then
+677: 								v267.duration = v232
+678: 								v_u_219(p220, v266)
+679: 							end
+680: 						elseif v266.kind == "Status" and v267.status == "Burn" then
+681: 							v233 = v267.duration
+682: 							v234 = (tonumber(v233) or 1) + v266.t
+683: 							if v234 > 0.2 then
+684: 								v267.duration = v234
+   ...
+823: 					end
+824: 				else
+825: 					v259 = nil
+826: 				end
+827: 				if v259 ~= p220.focus then
+828: 					goto l73
+829: 				end
+830: 				v_u_16.OnFighterEvent("Charge", {
+831: 					["on"] = false
+832: 				}, v266.t)
+833: 				v226 = v226 + 1
+834: 			else
+835: 				if v266.kind ~= "Swing" then
+836: 					if v266.kind == "Smoke" then
+837: 						v231 = v267.duration
+838: 						v232 = (tonumber(v231) or 7) + v266.t
+839: 						if v232 > 0.4 then
+840: 							v267.duration = v232
+841: 							v_u_219(p220, v266)
+842: 						end
+843: 					els
+
+===== Players.RansbloxScripts.PlayerScripts.Replay.Hud =====
+   ...
+621: 					v173.Kick(4)
+622: 					local v195 = p171.weaponId
+623: 					local v196 = v_u_5.Tuning
+624: 					local v197, v198 = pcall(v196, v195)
+625: 					local v199 = ((not v197 or type(v198) ~= "table") and {} or v198).cooldown
+626: 					if type(v199) == "number" and v199 >= 0.3 then
+627: 						v173.SetArc(v199, v_u_10)
+628: 					end
+629: 				end
+630: 				v_u_20.charge = nil
+631: 				v173.SetCharge(0)
+632: 				return
+633: 			elseif p170 == "Swing" then
+634: 				if p171.heavy == true or p171.lunge == true then
+635: 					local v200 = p171.weaponId
+636: 					local v201 = v_u_5.Tuning
+637: 					local v202, v203 = pcall(v201, v200)
+638: 					local v204 = (not v202 or type(v203) ~= "table") and {} or v203
+639: 					local v205
+640: 					if p171.heavy == true then
+641: 						v205 = v204.heavy
+642: 					else
+643: 						v205 = v204.lunge
+644: 					end
+645: 					v173.SetArc(type(v205) == "table" and (v205.cooldown or 1) or 1, v_u_10)
+
+===== Players.RansbloxScripts.PlayerScripts.Replay.View =====
+   ...
+140: 	if v_u_31.active then
+141: 		local v49 = p47.weaponId
+142: 		local v50
+143: 		if type(v49) == "string" then
+144: 			v50 = p47.weaponId
+145: 		else
+146: 			v50 = nil
+147: 		end
+148: 		local v51 = v_u_4.Kind(v50)
+149: 		local v52 = v_u_4.Tuning
+150: 		local v53, v54 = pcall(v52, v50)
+151: 		local v55 = (not v53 or type(v54) ~= "table") and {} or v54
+152: 		if p46 == "Swing" then
+153: 			if p47.heavy == true then
+154: 				local v56 = {}
+155: 				local v57 = v_u_30()
+156: 				if v57 and v_u_31.active then
+157: 					local v58 = v57.ExternalEvent
+158: 					pcall(v58, "Heavy", v56)
+159: 					return
+160: 				end
+161: 			elseif p47.lunge == true then
+162: 				local v59 = v55.lunge
+163: 				local v60
+164: 				if type(v59) == "table" then
+   ...
+182: 					return
+183: 				end
+184: 			else
+185: 				local v66 = p47.step
+186: 				local v67 = tonumber(v66) or 1
+187: 				local v68 = {
+188: 					["step"] = v67,
+189: 					["finisher"] = v67 >= 3
+190: 				}
+191: 				local v69 = v_u_30()
+192: 				if v69 and v_u_31.active then
+193: 					local v70 = v69.ExternalEvent
+194: 					pcall(v70, "Swing", v68)
+195: 					return
+196: 				end
+197: 			end
+198: 		elseif p46 == "Charge" then
+199: 			local v71 = p47.kind
+200: 			local v72 = tostring(v71)
+201: 			local v73 = p47.on == true
+202: 			if v72 == "Draw" then
+203: 				local v74 = {
+204: 					["on"] = v73,
+205: 					["time"] = v55.drawTime or 1
+206: 				}
+
+===== ReplicatedStorage.Shared.Combat =====
+   ...
+63: 			return v_u_2.FISTS
+64: 		end
+65: 	end
+66: end
+67: function v_u_2.Kind(p9) -- name: Kind
+68: 	-- upvalues: (copy) v_u_2, (copy) v_u_1
+69: 	if p9 == nil or p9 == v_u_2.FISTS_ID then
+70: 		return "Fists"
+71: 	end
+72: 	local v10 = v_u_1.Get(p9)
+73: 	return v10 and v10.kind or nil
+74: end
+75: function v_u_2.IsMelee(p11) -- name: IsMelee
+76: 	-- upvalues: (copy) v_u_3
+77: 	local v12
+78: 	if p11 == nil then
+79: 		v12 = false
+80: 	else
+81: 		v12 = v_u_3[p11] == true
+82: 	end
+83: 	return v12
+84: end
+85: function v_u_2.UsesAmmo(p13) -- name: UsesAmmo
+86: 	-- upvalues: (copy) v_u_4
+87: 	local v14
+   ...
+108: 	if p17 == nil then
+109: 		v18 = false
+110: 	else
+111: 		v18 = v_u_6[p17] == true
+112: 	end
+113: 	return v18
+114: end
+115: function v_u_2.UsesCharges(p19) -- name: UsesCharges
+116: 	local v20 = p19.charges
+117: 	return type(v20) == "number"
+118: end
+119: local v_u_21 = {
+120: 	["Fists"] = "Melee",
+121: 	["Sword"] = "Melee",
+122: 	["Axe"] = "Melee",
+123: 	["Spear"] = "Melee",
+124: 	["Dagger"] = "Melee",
+125: 	["Club"] = "Melee",
+126: 	["Shield"] = "Melee",
+127: 	["Gauntlets"] = "Melee",
+128: 	["Scythe"] = "Melee",
+129: 	["Katana"] = "Melee",
+130: 	["Hatchets"] = "Melee",
+131: 	["Bow"] = "Bow",
+132: 	["Crossbow"] = "Gun",
+133: 	["Musket"] = "Gun",
+134: 	["Pistol"] = "Gun",
+135: 	["Blunderbuss"] = "Gun",
+136: 	["Knives"] = "Throw",
+137: 	["Javelin"] = "Throw",
+138: 	["Sling"] = "Throw",
+139: 	["Bomb"] = "Throw",
+140: 	["Herbs"] = "Use",
+141: 	["Trap"] = "Use",
+142: 	["Horn"] = "Use"
+   ...
+224: 	if p53 then
+225: 		p53 = p53:GetAttribute("GuardBroken")
+226: 	end
+227: 	if type(p53) ~= "number" then
+228: 		return 0
+229: 	end
+230: 	local v55 = p53 - p54
+231: 	return math.max(0, v55)
+232: end
+233: function v_u_2.MoveSpeed(p56, p57, p58, p59, p60, p61) -- name: MoveSpeed
+234: 	-- upvalues: (copy) v_u_2, (copy) v_u_21
+235: 	local v62 = v_u_2.Tuning(p56)
+236: 	local v63 = v_u_21[v_u_2.Kind(p56) or "Fists"] or "Melee"
+237: 	local v64 = v62.speedMult
+238: 	local v65 = type(v64) ~= "number" and 1 or v62.speedMult
+239: 	if v63 == "Bow" then
+240: 		if p58 then
+241: 			v65 = v65 * (v62.drawSpeedMult or 0.7)
+242: 		end
+243: 		if p57 then
+244: 			v65 = v65 * 0.8
+245: 		end
+246: 	elseif v63 == "Throw" then
+247: 		if p58 then
+248: 			v65 = v65 * (v62.drawSpeedMult or 0.8)
+   ...
+270: 		end
+271: 		if p58 then
+272: 			local v67 = v62.heavy or v62.lunge
+273: 			v65 = v65 * (type(v67) == "table" and (v67.speedMult or 0.55) or 0.55)
+274: 		end
+275: 	end
+276: 	return math.clamp(v65, 0, 2), p58 or (p59 or (p60 or p61))
+277: end
+278: function v_u_2.RunSpeed(p68) -- name: RunSpeed
+279: 	-- upvalues: (copy) v_u_2, (copy) v_u_21
+280: 	local v69 = v_u_2.Tuning(p68)
+281: 	local v70 = v_u_2.Kind(p68) or "Fists"
+282: 	local v71 = v_u_21[v70] or "Melee"
+283: 	local v72 = {}
+284: 	if v71 == "Bow" then
+285: 		v72 = {
+286: 			{ "charge", "drawing" },
+287: 			{ "aim", "aiming" }
+288: 		}
+289: 	elseif v71 == "Throw" then
+290: 		v72 = v_u_2.IsDrawn(v70) and {
+291: 			{ "charge", "winding up" }
+292: 		} or {
+293: 			{ "aim", "aiming" }
+294: 		}
+
+===== ReplicatedStorage.Shared.Sounds =====
+   ...
+241: 		["src"] = "Out Alive (Creator Store)",
+242: 		["use"] = "combat: heal finished",
+243: 		["roll"] = v2.util
+244: 	},
+245: 	["Hit_Headshot"] = {
+246: 		["id"] = 118799613600209,
+247: 		["vol"] = 0.7,
+248: 		["roll"] = nil,
+249: 		["src"] = "Out Alive (Creator Store)",
+250: 		["use"] = "combat: headshot ding at the victim",
+251: 		["roll"] = v2.hit
+252: 	},
+253: 	["Hit_Melee"] = {
+254: 		["id"] = 104694053505293,
+255: 		["vol"] = 0.8,
+256: 		["roll"] = nil,
+257: 		["src"] = "Out Alive (Creator Store)",
+258: 		["use"] = "combat: generic melee hit",
+259: 		["roll"] = v2.hit
+260: 	},
+261: 	["Hit_Melee_Heavy"] = {
+262: 		["id"] = 101232234433592,
+263: 		["vol"] = 0.9,
+264: 		["roll"] = nil,
+265: 		["src"] = "Out Alive (Creator Store)",
+266: 		["use"] = "combat: heavy melee hit",
+267: 		["roll"] = v2.hit
+268: 	},
+269: 	["Hit_Punch"] = {
+270: 		["id"] = 132504023010884,
+271: 		["vol"] = 0.8,
+272: 		["roll"] = nil,
+273: 		["src"] = "Out Alive (Creator Store)",
+   ...
+383: 		["roll"] = nil,
+384: 		["src"] = "Out Alive (Creator Store)",
+385: 		["roll"] = v2.util
+386: 	},
+387: 	["Spear_Thrust"] = {
+388: 		["id"] = 5789211405,
+389: 		["vol"] = 0.6,
+390: 		["pitch"] = 0.9,
+391: 		["roll"] = nil,
+392: 		["src"] = "Out Alive (Creator Store)",
+393: 		["roll"] = v2.melee
+394: 	},
+395: 	["Swing_Heavy"] = {
+396: 		["id"] = 101266427032050,
+397: 		["vol"] = 0.8,
+398: 		["roll"] = nil,
+399: 		["src"] = "Out Alive (Creator Store)",
+400: 		["roll"] = v2.melee
+401: 	},
+402: 	["Swing_Light"] = {
+403: 		["id"] = 115208821337480,
+404: 		["vol"] = 0.6,
+405: 		["pitch"] = 1.15,
+406: 		["roll"] = nil,
+407: 		["src"] = "Out Alive (Creator Store)",
+408: 		["roll"] = v2.melee
+409: 	},
+410: 	["Swing_Punch"] = {
+411: 		["id"] = 74248579135630,
+412: 		["vol"] = 0.55,
+413: 		["pitch"] = 1.1,
+414: 		["roll"] = nil,
+415: 		["src"] = "Out Alive (Creator Store)",
+416: 		["roll"] = v2.melee
+417: 	},
+418: 	["Swing_Sword"] = {
+419: 		["id"] = 134671877618939,
+420: 		["vol"] = 0.7,
+421: 		["pitch"] = 1.05,
+422: 		["roll"] = nil,
+423: 		["src"] = "Out Alive (Creator Store)",
+424: 		["roll"] = v2.melee
+425: 	},
+426: 	["Throw"] = {
+427: 		["id"] = 138269694368715,
+428: 		["vol"] = 0.7,
+429: 		["roll"] = nil,
+430: 		["src"] = "Out Alive (Creator Store)",
+   ...
+1002: 		["use"] = "combat: sling release",
+1003: 		["roll"] = v2.bow
+1004: 	},
+1005: 	["Stone_Hit"] = {
+1006: 		["id"] = 132504023010884,
+1007: 		["vol"] = 0.8,
+1008: 		["pitch"] = 1.1,
+1009: 		["roll"] = nil,
+1010: 		["src"] = "Out Alive Hit_Punch (Creator Store)",
+1011: 		["use"] = "combat: sling stone into a body",
+1012: 		["roll"] = v2.hit
+1013: 	},
+1014: 	["Sword_Swing"] = {
+1015: 		["variants"] = nil,
+1016: 		["vol"] = 0.7,
+1017: 		["roll"] = nil,
+1018: 		["jitter"] = 0.06,
+1019: 		["src"] = "AB Weapons/Sword/b_Sword_Swing_Iron_01/02.wav",
+1020: 		["use"] = "combat: bronze_sword swing",
+1021: 		["variants"] = {
+1022: 			{ "Sword_Swing_1", 138006253867986 },
+1023: 			{ "Sword_Swing_2", 95793369699102 }
+1024: 		},
+1025: 		["roll"] = v2.melee
+1026: 	},
+1027: 	["Sword_Hit"] = {
+1028: 		["variants"] = nil,
+1029: 		["vol"] = 0.85,
+1030: 		["roll"] = nil,
+1031: 		["jitter"] = 0.05,
+1032: 		["src"] = "AB Weapons/Sword/b_Sword_Hit_01/02.wav",
+1033: 		["use"] = "combat: sword hits a body",
+1034: 		["variants"] = {
+1035: 			{ "Sword_Hit_1", 132627523631533 },
+1036: 			{ "Sword_Hit_2", 138796106344811 }
+1037: 		},
+1038: 		["roll"] = v2.hit
+1039: 	},
+1040: 	["Equip_Sword"] = {
+1041: 		["id"] = 124813359023958,
+1042: 		["vol"] = 0.5,
+1043: 		["roll"] = nil,
+1044: 		["src"] = "AB Weapons/Sword/b_Sword_Equip.wav",
+1045: 		["use"] = "combat: equip bronze_sword",
+1046: 		["roll"] = v2.melee
+1047: 	},
+1048: 	["Axe_Swing"] = {
+1049: 		["id"] = 92204765901636,
+1050: 		["vol"] = 0.75,
+1051: 		["pitch"] = 1.1,
+1052: 		["roll"] = nil,
+1053: 		["jitter"] = 0.05,
+1054: 		["src"] = "AB Weapons/Warhammer/b_Warhammer_Swing_Iron_01.wav",
+1055: 		["use"] = "combat: axe light swing",
+1056: 		["roll"] = v2.melee
+1057: 	},
+1058: 	["A
+
+===== ReplicatedStorage.Shared.Weapons =====
+   ...
+77: v_u_3.CATEGORIES = {
+78: 	"bow",
+79: 	"gun",
+80: 	"melee",
+81: 	"throwable",
+82: 	"utility",
+83: 	"healing",
+84: 	"armor"
+85: }
+86: v_u_3.CATEGORY_NAMES = {
+87: 	["bow"] = "Bows",
+88: 	["gun"] = "Powder guns",
+89: 	["melee"] = "Melee",
+90: 	["throwable"] = "Throwables",
+91: 	["utility"] = "Utility",
+92: 	["healing"] = "Healing",
+93: 	["armor"] = "Armor"
+94: }
+95: v_u_3.DEFAULT_LOADOUT = table.freeze({
+96: 	["items"] = nil,
+97: 	["armor"] = "hide_armor",
+98: 	["ammo"] = nil,
+99: 	["items"] = table.freeze({ "bronze_sword", "short_bow", "bandage" }),
+100: 	["ammo"] = table.freeze({
+101: 		["arrows"] = 3
+   ...
+107: 	"melee",
+108: 	"utility"
+109: }
+110: v_u_3.SLOT_INDEX = {
+111: 	["primary"] = 1,
+112: 	["secondary"] = 2,
+113: 	["melee"] = 3,
+114: 	["utility"] = 4
+115: }
+116: v_u_3.SLOT_NAMES = {
+117: 	["primary"] = "Primary",
+118: 	["secondary"] = "Secondary",
+119: 	["melee"] = "Melee",
+120: 	["utility"] = "Utility"
+121: }
+122: v_u_3.STARTER_LOADOUT = table.freeze({
+123: 	["primary"] = "short_bow",
+124: 	["secondary"] = "throwing_knives",
+125: 	["melee"] = "bronze_sword",
+126: 	["utility"] = "fire_bomb"
+127: })
+128: v_u_3.STAT_BARS = {
+129: 	{
+130: 		["key"] = "damage",
+131: 		["label"] = "Damage"
+
+===== ReplicatedStorage.Shared.Keybinds =====
+   ...
+17: 		["max"] = v_u_4.MAX
+18: 	},
+19: 	{
+20: 		["id"] = "Slide",
+21: 		["label"] = "SLIDE",
+22: 		["keys"] = nil,
+23: 		["max"] = nil,
+24: 		["group"] = "move",
+25: 		["keys"] = { "C", "LeftControl" },
+26: 		["max"] = v_u_4.MAX
+27: 	},
+28: 	{
+29: 		["id"] = "Attack",
+30: 		["label"] = "ATTACK",
+31: 		["keys"] = nil,
+32: 		["max"] = nil,
+33: 		["group"] = "combat",
+34: 		["keys"] = { "MouseButton1" },
+35: 		["max"] = v_u_4.MAX
+36: 	},
+37: 	{
+38: 		["id"] = "Aim",
+39: 		["label"] = "AIM / BLOCK",
+40: 		["keys"] = nil,
+41: 		["max"] = nil,
+   ...
+681: 		["id"] = p131,
+682: 		["label"] = p132,
+683: 		["desc"] = p133,
+684: 		["buttons"] = p134,
+685: 		["max"] = p137 or 1,
+686: 		["contexts"] = v138,
+687: 		["group"] = p136
+688: 	}
+689: end
+690: v_u_4.PAD_ACTIONS = {
+691: 	v140("Jump", "JUMP", "In the lobby and in matches", { "ButtonA" }, "lobby training match", "move"),
+692: 	v140("Slide", "SLIDE", "While running", { "ButtonB" }, "lobby training match", "move"),
+693: 	v140("Attack", "ATTACK", "Swing, fire, throw, use", { "ButtonR2" }, "training match", "combat"),
+694: 	v140("Aim", "AIM / BLOCK", "Aim, zoom, block, heavy attack, lunge", { "ButtonL2" }, "training match", "combat"),
+695: 	v140("Reload", "RELOAD", "Reload your weapon", { "ButtonX" }, "training match", "combat"),
+696: 	v140("Ping", "PING", "Mark a spot for your team", { "ButtonL3" }, "match spectate", "combat"),
+697: 	v140("NextItem", "NEXT ITEM", "The next hotbar slot", { "ButtonR1" }, "training match", "items"),
+698: 	v140("PrevItem", "PREVIOUS ITEM", "The previous hotbar slot", { "ButtonL1" }, "training match", "items"),
+699: 	v140("LastItem", "LAST ITEM", "Swap back to your last item", { "ButtonY" }, "training match", "items"),
+700: 	v140("NextLoadout", "NEXT LOADOUT", "During the round countdown", { "DPadRight" }, "match", "items"),
+701: 	v140("PrevLoadout", "PREVIOUS LOADOUT", "During the round countdown", { "DPadLeft" }, "match", "items"),
+702: 	v140("View", "FIRST / THIRD PERSON", "Switch the camera view", { "DPadUp" }, "training match", "camera"),
+703: 	v140("Shoulder", "SWITCH SHOULDER", "Look over the other shoulder", { "ButtonR3" }, "training match", "camera"),
+704: 	v140("Scoreboard", "SCOREBOARD (HOLD)", "In a match", { "DPadDown" }, "match spectate", "menus"),
+705: 	v140("SpectateNext", "SPECTATE NEXT", "While you\'re out of the round", { "ButtonR1", "ButtonA" }, "spectate", "spectate", 2),
+
+===== ReplicatedStorage.Shared.Loc.Strings =====
+   ...
+6479: 		"\224\185\131\224\184\153\224\184\165\224\185\135\224\184\173\224\184\154\224\184\154\224\184\181\224\185\137\224\185\129\224\184\165\224\184\176\224\185\131\224\184\153\224\185\129\224\184\161\224\184\149\224\184\138\224\185\140",
+6480: 		"Au lobby et en partie"
+6481: 	},
+6482: 	{
+6483: 		"While running",
+6484: 		"Mientras corres",
+6485: 		"Enquanto corre",
+6486: 		"\208\146\208\190 \208\178\209\128\208\181\208\188\209\143 \208\177\208\181\208\179\208\176",
+6487: 		"\224\184\130\224\184\147\224\184\176\224\184\167\224\184\180\224\185\136\224\184\135",
+6488: 		"En courant"
+6489: 	},
+6490: 	{
+6491: 		"Swing, fire, throw, use",
+6492: 		"Golpear, disparar, lanzar, usar",
+6493: 		"Golpear, atirar, arremessar, usar",
+6494: 		"\208\163\208\180\208\176\209\128, \208\178\209\139\209\129\209\130\209\128\208\181\208\187, \208\177\209\128\208\190\209\129\208\190\208\186, \208\184\209\129\208\191\208\190\208\187\209\140\208\183\208\190\208\178\208\176\208\189\208\184\208\181",
+6495: 		"\224\184\159\224\184\177\224\184\153 \224\184\162\224\184\180\224\184\135 \224\184\130\224\184\167\224\185\137\224\184\178\224\184\135 \224\185\131\224\184\138\224\185\137",
+6496: 		"Frapper, tirer, lancer, utiliser"
+6497: 	},
+6498: 	{
+6499: 		"Aim, zoom, block, heavy attack, lunge",
+6500: 		"Apuntar, zoom, bloquear, ataque fuerte, estocada",
+6501: 		"Mirar, zoom, bloquear, ataque forte, investida",
+6502: 		"\208\159\209\128\208\184\209\134\208\181\208\187, \208\183\209\131\208\188, \208\177\208\187\208\190\208\186, \208\188\208\190\209\137\208\189\209\139\208\185 \209\131\208\180\208\176\209\128, \208\178\209\139\208\191\208\176\208\180",
+6503: 		"\224\185\128\224\184\165\224\185\135\224\184\135 \224\184\139\224\184\185\224\184\161 \224\184\155\224\185\137\224\184\173\224\184\135\224\184\129\224\184\177\224\184\153 \224\185\130\224\184\136\224\184\161\224\184\149\224\184\181\224\184\171\224\184\153\224\184\177\224\184\129 \224\185\129\224\184\151\224\184\135\224\184\158\224\184\184\224\185\136\224\184\135",
+
+===== REMOTES =====
