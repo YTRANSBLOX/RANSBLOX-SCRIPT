@@ -1,0 +1,1616 @@
+keys: ProximityPrompt, ContextActionService, InputBegan, MouseButton1Down, Activated, began(, bindAction
+scripts scanned: 346
+
+===== Players.RansbloxScripts.PlayerScripts.ClientHandler.Core.Interactables =====
+   ...
+281: 		if #v_u_4.getOutbox() > 0 then
+282: 			v_u_3.toast("Pick up your packages at the Shipping Rack first", "info")
+283: 			return
+284: 		end
+285: 		v_u_3.toast("Nothing to ship yet. Pack an order first \240\159\147\166", "info")
+286: 	end
+287: end
+288: local function v_u_75(p_u_65, p66, p67) -- name: createEntry
+289: 	-- upvalues: (copy) v_u_3, (copy) v_u_37, (copy) v_u_2, (copy) v_u_4, (copy) v_u_42, (copy) v_u_49, (copy) v_u_53, (copy) v_u_59, (copy) v_u_63, (copy) v_u_64, (copy) v_u_10
+290: 	local v_u_68 = {
+291: 		["item"] = p_u_65,
+292: 		["model"] = p66,
+293: 		["main"] = v_u_3.create("ProximityPrompt", {
+294: 			["Name"] = "StationPrompt",
+295: 			["ObjectText"] = nil,
+296: 			["ActionText"] = "",
+297: 			["HoldDuration"] = 0,
+298: 			["RequiresLineOfSight"] = false,
+299: 			["MaxActivationDistance"] = 6,
+300: 			["Parent"] = nil,
+301: 			["ObjectText"] = p_u_65.name,
+302: 			["Parent"] = p67
+303: 		}),
+304: 		["connections"] = {}
+305: 	}
+
+===== Players.RansbloxScripts.PlayerScripts.ClientHandler.Core.StationSession =====
+1: local v_u_1 = require(game:GetService("ReplicatedStorage"):WaitForChild("OJFramework"))
+2: if not v_u_1.IsLoaded then
+3: 	v_u_1.Loaded:Wait()
+4: end
+5: local v_u_2 = require(v_u_1.Services.ReplicatedStorage.GetModule)
+6: local v_u_3 = require(script.Parent.Parent.UI.UIKit)
+7: local v_u_4 = require(script.Parent.StationView)
+8: local v_u_5 = require(script.Parent.WorldPointer)
+9: local v_u_6 = {}
+10: v_u_6.__index = v_u_6
+11: local v_u_7 = v_u_1.Services.RunService
+12: local v_u_8 = v_u_1.Services.TweenService
+13: local v_u_9 = v_u_1.Services.ContextActionService
+14: local v_u_10 = {}
+15: local v_u_11 = {}
+16: local v_u_12 = {}
+17: local function v_u_17(p_u_13) -- name: getPage
+18: 	-- upvalues: (copy) v_u_10, (copy) v_u_3, (copy) v_u_11
+19: 	local v14 = v_u_10[p_u_13]
+20: 	if v14 then
+21: 		return v14
+22: 	end
+23: 	local v15 = v_u_3.create("Frame", {
+24: 		["Name"] = nil,
+25: 		["BackgroundTransparency"] = 1,
+   ...
+107: 			v_u_5.setCursor(nil)
+108: 		end, true)
+109: 		local v_u_32 = ("%*Exit"):format(v_u_27.name)
+110: 		v_u_9:BindActionAtPriority(v_u_32, function(_, p33)
+111: 			-- upvalues: (copy) v_u_27
+112: 			if p33 == Enum.UserInputState.Begin then
+113: 				task.spawn(v_u_27.onBack)
+114: 			end
+115: 			return Enum.ContextActionResult.Sink
+116: 		end, false, Enum.ContextActionPriority.High.Value + 1, Enum.KeyCode.ButtonB)
+117: 		v28:Add(function()
+118: 			-- upvalues: (ref) v_u_9, (copy) v_u_32
+119: 			v_u_9:UnbindAction(v_u_32)
+120: 		end, true)
+121: 	end
+122: end
+123: function v_u_6.setLocked(p34, p35) -- name: setLocked
+124: 	if not p34.ended then
+125: 		p34.page:SetAttribute("locked", p35 and true or nil)
+126: 	end
+127: end
+128: function v_u_6.finish(p36, p37) -- name: finish
+129: 	-- upvalues: (copy) v_u_11, (copy) v_u_3
+130: 	if not p36.ended then
+131: 		p36.ended = true
+
+===== Players.RansbloxScripts.PlayerScripts.ClientHandler.Core.ConsoleInput =====
+   ...
+143: 		end
+144: 		v39 = v42.priority
+145: 		v40 = v42
+146: 	end
+147: 	if not v40 then
+148: 		return false
+149: 	end
+150: 	v_u_36(v40.button)
+151: 	return true
+152: end
+153: local function v_u_50() -- name: rebindDispatch
+154: 	-- upvalues: (copy) v_u_1, (copy) v_u_13, (copy) v_u_43
+155: 	v_u_1.Services.ContextActionService:UnbindAction("consoleHintDispatch")
+156: 	local v44 = {}
+157: 	local v45 = {}
+158: 	for _, v46 in v_u_13 do
+159: 		if not v46.dispatch or v44[v46.keyCode] then
+160: 			continue
+161: 		end
+162: 		v44[v46.keyCode] = true
+163: 		local v47 = v46.keyCode
+164: 		table.insert(v45, v47)
+165: 	end
+166: 	if #v45 ~= 0 then
+167: 		v_u_1.Services.ContextActionService:BindActionAtPriority("consoleHintDispatch", function(_, p48, p49)
+168: 			-- upvalues: (ref) v_u_43
+169: 			if p48 == Enum.UserInputState.Begin then
+170: 				if v_u_43(p49.KeyCode) then
+171: 					return Enum.ContextActionResult.Sink
+172: 				else
+173: 					return Enum.ContextActionResult.Pass
+174: 				end
+175: 			else
+176: 				return Enum.ContextActionResult.Pass
+177: 			end
+178: 		end, false, 2500, table.unpack(v45))
+179: 	end
+   ...
+412: 		if not v85.keybind then
+413: 			continue
+414: 		end
+415: 		local v87 = v85.keybind
+416: 		local v88 = not v86
+417: 		if v88 then
+418: 			v88 = not v_u_12
+419: 		end
+420: 		v87.Visible = v88
+421: 	end
+422: end)
+423: v_u_1.Services.GuiService.AutoSelectGuiEnabled = false
+424: v_u_1.Services.ContextActionService:BindActionAtPriority("consoleBack", v61, false, 2500, Enum.KeyCode.ButtonB)
+425: v_u_1.Services.RunService.Heartbeat:Connect(function()
+426: 	-- upvalues: (ref) v_u_16, (copy) v_u_10, (copy) v_u_9, (copy) v_u_1, (copy) v_u_58
+427: 	if not v_u_16 and v_u_10.GamepadCursorEnabled then
+428: 		local v89
+429: 		if v_u_9.Current == "Gamepad" then
+430: 			v89 = v_u_1.Services.UserInputService.GamepadEnabled
+431: 		else
+432: 			v89 = false
+433: 		end
+434: 		if not v89 then
+435: 			v_u_10:DisableGamepadCursor()
+436: 			return
+   ...
+440: 	if v90 == v_u_16 then
+441: 		return
+442: 	else
+443: 		v_u_16 = v90
+444: 		if v90 then
+445: 			v_u_10:EnableGamepadCursor(nil)
+446: 		else
+447: 			v_u_10:DisableGamepadCursor()
+448: 		end
+449: 	end
+450: end)
+451: v_u_10:GetPropertyChangedSignal("GamepadCursorEnabled"):Connect(v65)
+452: v_u_1.Services.ContextActionService:BindActionAtPriority("consoleFreeCursor", function(_, p91)
+453: 	-- upvalues: (copy) v_u_9, (ref) v_u_17
+454: 	if p91 ~= Enum.UserInputState.Begin or v_u_9.Current ~= "Gamepad" then
+455: 		return Enum.ContextActionResult.Pass
+456: 	end
+457: 	v_u_17 = not v_u_17
+458: 	return Enum.ContextActionResult.Sink
+459: end, false, 2500, v4)
+460: for v92, v93 in v6 do
+461: 	v_u_3.addButtonHint(v_u_1.UserInterface.HUD.Left.Buttons[v92], v93)
+462: end
+463: local v94 = {
+464: 	["dispatch"] = false,
+
+===== Players.RansbloxScripts.PlayerScripts.ClientHandler.Core.ClickEffects =====
+   ...
+74: 			v19 = nil
+75: 		end
+76: 		local v21 = p16.AbsoluteSize.X
+77: 		local v22 = p16.AbsoluteSize.Y
+78: 		local v23 = math.min(v21, v22) * 1.3
+79: 		local v24 = math.clamp(v23, 44, 110)
+80: 		v_u_2("Effects").uiSparkle(v20, v24, 3, v19)
+81: 	end
+82: end
+83: local v26 = v_u_1.LocalPlayer.PlayerGui
+84: local function v_u_29(p_u_27) -- name: hookButton
+85: 	-- upvalues: (copy) v_u_4, (copy) v_u_15, (copy) v_u_25
+86: 	if not (v_u_4[p_u_27] or (p_u_27:FindFirstAncestor("TouchGui") or p_u_27:FindFirstAncestor("ProximityPrompts"))) then
+87: 		v_u_4[p_u_27] = true
+88: 		p_u_27.MouseButton1Down:Connect(function()
+89: 			-- upvalues: (copy) p_u_27, (ref) v_u_15
+90: 			if not p_u_27:GetAttribute("noClickEffect") then
+91: 				v_u_15(p_u_27)
+92: 			end
+93: 		end)
+94: 		p_u_27.Activated:Connect(function(p28)
+95: 			-- upvalues: (copy) p_u_27, (ref) v_u_25
+96: 			if not p_u_27:GetAttribute("noClickEffect") then
+97: 				v_u_25(p_u_27, p28)
+98: 			end
+99: 		end)
+100: 	end
+101: end
+102: for _, v30 in v26:QueryDescendants("GuiButton") do
+103: 	v_u_29(v30)
+104: end
+105: v3._janitor:Add(v26.DescendantAdded:Connect(function(p31)
+106: 	-- upvalues: (copy) v_u_29
+
+===== Players.RansbloxScripts.PlayerScripts.ClientHandler.Core.WorldPointer =====
+   ...
+42: 			return nil
+43: 		else
+44: 			return v17.Origin + v17.Direction * v19
+45: 		end
+46: 	end
+47: end
+48: function v_u_2.listen(p_u_20) -- name: listen
+49: 	-- upvalues: (copy) v_u_1, (copy) v_u_5, (copy) v_u_2, (copy) v_u_4, (copy) v_u_8
+50: 	local v_u_21 = nil
+51: 	local v_u_22 = nil
+52: 	local v_u_23 = nil
+53: 	local v_u_24 = {}
+54: 	local v25 = v_u_4.InputBegan
+55: 	local function v32(p26, p27)
+56: 		-- upvalues: (ref) v_u_21, (ref) v_u_5, (ref) v_u_2, (ref) v_u_8, (ref) v_u_22, (ref) v_u_23, (ref) v_u_1, (copy) p_u_20
+57: 		if not v_u_21 then
+58: 			if p26.KeyCode == Enum.KeyCode.ButtonA and v_u_5.GamepadCursorEnabled then
+59: 				local v28 = v_u_2.getMousePosition()
+60: 				if not v_u_8(v28) then
+61: 					v_u_21 = p26
+62: 					v_u_22 = v28
+63: 					v_u_23 = v_u_1.Services.RunService.RenderStepped:Connect(function()
+64: 						-- upvalues: (ref) p_u_20, (ref) v_u_5, (ref) v_u_2, (ref) v_u_22
+65: 						if p_u_20.moved and v_u_5.GamepadCursorEnabled then
+66: 							local v29 = v_u_2.getMousePosition()
+67: 							if v29 and v29 ~= v_u_22 then
+68: 								v_u_22 = v29
+69: 								p_u_20.moved(v29)
+70: 							end
+71: 						end
+72: 					end)
+73: 					if p_u_20.began then
+74: 						p_u_20.began(v28)
+75: 						return
+76: 					end
+77: 				end
+78: 			elseif not p27 and (p26.UserInputType == Enum.UserInputType.MouseButton1 or p26.UserInputType == Enum.UserInputType.Touch) then
+79: 				local v30 = Vector2.new(p26.Position.X, p26.Position.Y)
+80: 				v_u_21 = p26
+81: 				v_u_22 = v30
+82: 				v_u_23 = v_u_1.Services.RunService.RenderStepped:Connect(function()
+83: 					-- upvalues: (ref) p_u_20, (ref) v_u_5, (ref) v_u_2, (ref) v_u_22
+84: 					if p_u_20.moved and v_u_5.GamepadCursorEnabled then
+85: 						local v31 = v_u_2.getMousePosition()
+86: 						if v31 and v31 ~= v_u_22 then
+87: 							v_u_22 = v31
+88: 							p_u_20.moved(v31)
+89: 						end
+90: 					end
+91: 				end)
+92: 				if p_u_20.began then
+93: 					p_u_20.began(v30)
+94: 				end
+95: 			end
+96: 		end
+97: 	end
+98: 	table.insert(v_u_24, v25:Connect(v32))
+99: 	local v33 = v_u_4.InputChanged
+100: 	local function v37(p34)
+101: 		-- upvalues: (ref) v_u_21, (copy) p_u_20, (ref) v_u_22
+102: 		if v_u_21 and p_u_20.moved then
+103: 			local v35
+104: 			if p34.UserInputType == Enum.UserInputType.MouseMovement then
+105: 				v35 = v_u_21.UserInputType == Enum.UserInputType.MouseButton1
+
+===== Players.RansbloxScripts.PlayerScripts.ClientHandler.Core.LikeReward =====
+1: local v_u_1 = require(game:GetService("ReplicatedStorage"):WaitForChild("OJFramework"))
+2: if not v_u_1.IsLoaded then
+3: 	v_u_1.Loaded:Wait()
+4: end
+5: local v_u_2 = require(v_u_1.Services.ReplicatedStorage.GetModule)
+6: local v_u_3 = workspace:WaitForChild("Plots")
+7: local function v_u_6(p4) -- name: hideLocally
+8: 	for _, v5 in p4:GetDescendants() do
+9: 		if v5:IsA("BasePart") then
+10: 			v5.LocalTransparencyModifier = 1
+11: 			v5.CanCollide = false
+12: 		else
+13: 			if not (v5:IsA("ProximityPrompt") or (v5:IsA("BillboardGui") or v5:IsA("Beam"))) then
+14: 				continue
+15: 			end
+16: 			v5.Enabled = false
+17: 		end
+18: 	end
+19: end
+20: local function v_u_12() -- name: refresh
+21: 	-- upvalues: (copy) v_u_2, (copy) v_u_3, (copy) v_u_1, (copy) v_u_6
+22: 	local v7 = v_u_2("ClientData").get({ "playerStates", "claimedLikeReward" }) == true
+23: 	for _, v8 in v_u_3:GetChildren() do
+24: 		local v9 = v8:FindFirstChild("LikeReward")
+25: 		if not v9 then
+26: 			continue
+27: 		end
+28: 		local v10 = v8:GetAttribute("ownerId") == v_u_1.LocalPlayer.UserId
+29: 		if v10 and v7 then
+30: 			v_u_6(v9)
+31: 		else
+32: 			local v11 = v9:FindFirstChild("ClaimPrompt", true)
+33: 			if not (v11 and v11:IsA("ProximityPrompt")) then
+34: 				continue
+35: 			end
+36: 			v11.Enabled = v10
+37: 		end
+38: 	end
+39: end
+40: local function v15(p13) -- name: watchPlot
+41: 	-- upvalues: (copy) v_u_12
+42: 	p13:GetAttributeChangedSignal("ownerId"):Connect(v_u_12)
+43: 	p13.DescendantAdded:Connect(function(p14)
+44: 		-- upvalues: (ref) v_u_12
+45: 		if p14.Name == "ClaimPrompt" then
+
+===== Players.RansbloxScripts.PlayerScripts.ClientHandler.UI.ConfirmPage =====
+   ...
+233: 		end
+234: 		v65.answered = true
+235: 		v65.choice = "No"
+236: 		v65.done:Fire()
+237: 	end
+238: end)
+239: v_u_4:GetPropertyChangedSignal("Visible"):Connect(function()
+240: 	-- upvalues: (copy) v_u_4
+241: 	if not v_u_4.Visible then
+242: 		v_u_4.Body.Text = ""
+243: 	end
+244: end)
+245: v_u_1.Services.UserInputService.InputBegan:Connect(function(p66)
+246: 	-- upvalues: (ref) v_u_54, (copy) v_u_60, (copy) v_u_4, (copy) v_u_1
+247: 	if v_u_54 then
+248: 		if p66.UserInputType == Enum.UserInputType.MouseButton1 or p66.UserInputType == Enum.UserInputType.Touch then
+249: 			if v_u_60(p66) then
+250: 				local v67 = v_u_4.PopScale
+251: 				v_u_1.spr.stop(v67)
+252: 				v67.Scale = 1.05
+253: 				v_u_1.spr.target(v67, 0.5, 6, {
+254: 					["Scale"] = 1
+255: 				})
+256: 			end
+257: 		else
+
+===== Players.RansbloxScripts.PlayerScripts.ClientHandler.UI.SpecialDelivery =====
+   ...
+67: end
+68: local function v24(p_u_19) -- name: bindDelivery
+69: 	-- upvalues: (copy) v_u_1, (copy) v_u_2, (copy) v_u_14
+70: 	if p_u_19:IsA("Model") and p_u_19:GetAttribute("ownerUserId") == v_u_1.LocalPlayer.UserId then
+71: 		local function v23() -- name: addPrompt
+72: 			-- upvalues: (copy) p_u_19, (ref) v_u_2, (ref) v_u_14
+73: 			local v20 = p_u_19:FindFirstChild("Box")
+74: 			local v21 = v20 and v20:IsA("Model")
+75: 			if v21 then
+76: 				v21 = v20.PrimaryPart
+77: 			end
+78: 			if v21 and not v21:FindFirstChild("OpenPrompt") then
+79: 				local v_u_22 = Instance.new("ProximityPrompt")
+80: 				v_u_22.Name = "OpenPrompt"
+81: 				v_u_22.ActionText = "Open Box"
+82: 				v_u_22.ObjectText = "Special Delivery"
+83: 				v_u_22.HoldDuration = 0.5
+84: 				v_u_22.MaxActivationDistance = 6
+85: 				v_u_22.RequiresLineOfSight = false
+86: 				v_u_22.Triggered:Connect(function()
+87: 					-- upvalues: (copy) v_u_22, (ref) v_u_2
+88: 					v_u_22.Enabled = false
+89: 					task.spawn(function()
+90: 						-- upvalues: (ref) v_u_2, (ref) v_u_22
+91: 						if not v_u_2("Actions").request("OpenSpecialDelivery").ok and v_u_22.Parent then
+   ...
+150: 			v47:ScaleTo((math.max(v48, 0.01)))
+151: 		end)
+152: 		v_u_28:PivotTo(CFrame.new(p_u_26))
+153: 		v_u_28.Parent = workspace
+154: 		v_u_1.Services.TweenService:Create(v36, TweenInfo.new(1.1, Enum.EasingStyle.Linear), {
+155: 			["Value"] = 1
+156: 		}):Play()
+157: 		v_u_1.UsefulFunctions.CleanupAfter(1.2000000000000002, v_u_28)
+158: 		v_u_1.UsefulFunctions.CleanupAfter(1.2000000000000002, v36)
+159: 	end
+160: end
+161: v_u_5.Visible = false
+162: v_u_1.Services.UserInputService.InputBegan:Connect(function()
+163: 	-- upvalues: (ref) v_u_9
+164: 	v_u_9 = os.clock()
+165: end)
+166: v_u_1.Services.UserInputService.WindowFocused:Connect(function()
+167: 	-- upvalues: (ref) v_u_10
+168: 	v_u_10 = os.clock()
+169: end)
+170: v_u_1.Services.GuiService.MenuOpened:Connect(function()
+171: 	-- upvalues: (copy) v_u_18
+172: 	task.spawn(v_u_18)
+173: end)
+174: v_u_1.Services.CollectionService:GetInstanceAddedSignal("specialDelivery"):Connect(v24)
+
+===== Players.RansbloxScripts.PlayerScripts.ClientHandler.UI.CurrencyCounters =====
+   ...
+228: for _, v74 in { v_u_8.More, v_u_9.More } do
+229: 	v74.Active = true
+230: 	v74.Selectable = true
+231: end
+232: v_u_1.Classes.UIElement:Get(v_u_8.More, "ClickyButton").Clicked:Connect(function()
+233: 	-- upvalues: (copy) v_u_2
+234: 	v_u_2("HUD").openShop("Coins")
+235: end)
+236: v_u_1.Classes.UIElement:Get(v_u_9.More, "ClickyButton").Clicked:Connect(function()
+237: 	-- upvalues: (copy) v_u_2
+238: 	v_u_2("HUD").open("Brand")
+239: end)
+240: v_u_9.Activated:Connect(function()
+241: 	-- upvalues: (copy) v_u_21, (copy) v_u_9, (copy) v_u_2
+242: 	v_u_21(v_u_9, 0.06)
+243: 	v_u_2("HUD").open("Brand")
+244: end)
+245: local v_u_75 = {
+246: 	["burstKind"] = "coins",
+247: 	["show"] = nil,
+248: 	["afterRoll"] = nil,
+249: 	["shown"] = 0,
+250: 	["target"] = 0,
+251: 	["tween"] = nil,
+252: 	["rollPending"] = false,
+
+===== Players.RansbloxScripts.PlayerScripts.ClientHandler.UI.ItemViewport =====
+   ...
+16: 			if v9.Transparency >= 1 and v9.Name ~= "HumanoidRootPart" then
+17: 				v9:Destroy()
+18: 			else
+19: 				v9.Anchored = true
+20: 				v9.CastShadow = false
+21: 				if v9.Material ~= Enum.Material.Glass then
+22: 					continue
+23: 				end
+24: 				v9.Material = Enum.Material.SmoothPlastic
+25: 				v9.Reflectance = 0.15
+26: 			end
+27: 		else
+28: 			if not (v9:IsA("Light") or (v9:IsA("ParticleEmitter") or (v9:IsA("ProximityPrompt") or (v9:IsA("LayerCollector") or (v9:IsA("TouchTransmitter") or v9:IsA("Script")))))) then
+29: 				continue
+30: 			end
+31: 			v9:Destroy()
+32: 		end
+33: 	end
+34: end
+35: local function v_u_21(p11, p12) -- name: getTurn
+36: 	local v13 = CFrame.Angles
+37: 	local v14 = p11.X
+38: 	local v15 = v13(-math.rad(v14), 0, 0)
+39: 	local v16 = CFrame.Angles
+40: 	local v17 = p11.Y
+
+===== Players.RansbloxScripts.PlayerScripts.ClientHandler.UI.Packing =====
+   ...
+1020: 					v_u_19 = nil
+1021: 				end
+1022: 				v_u_8.Changed:Fire(false)
+1023: 			end
+1024: 		end
+1025: 	end), "Disconnect")
+1026: 	local v216 = v_u_6.listen
+1027: 	local v217 = {}
+1028: 	local function v_u_219(p218)
+1029: 		-- upvalues: (ref) v_u_166, (copy) p_u_183
+1030: 		v_u_166(p_u_183, p218)
+1031: 	end
+1032: 	function v217.began(...)
+1033: 		-- upvalues: (copy) p_u_183, (copy) v_u_219, (ref) v_u_19, (ref) v_u_8
+1034: 		if not p_u_183.ended then
+1035: 			local v220 = v_u_219
+1036: 			local v221, v222 = pcall(v220, ...)
+1037: 			if not v221 then
+1038: 				warn((("[Packing]: %*"):format(v222)))
+1039: 				local v223 = p_u_183
+1040: 				if v223.ended then
+1041: 					return
+1042: 				end
+1043: 				v223.ended = true
+1044: 				v223.station:finish(false)
+
+===== Players.RansbloxScripts.PlayerScripts.ClientHandler.UI.HUD =====
+   ...
+623: v_u_26 = v_u_12.Shop.Icon
+624: for _, v164 in v_u_12.Shop.Glow:GetChildren() do
+625: 	if not v164:IsA("ImageLabel") then
+626: 		continue
+627: 	end
+628: 	v_u_25[v164] = v164.ImageTransparency
+629: end
+630: for _, v165 in v_u_12.Shop.Sunbursts:GetChildren() do
+631: 	v165:AddTag("sunburst")
+632: end
+633: task.spawn(v65)
+634: v_u_3._janitor:Add(v_u_1.UI.Sparkles(v_u_12.Shop.Sparkles, 0.75), true)
+635: v_u_1.Services.UserInputService.InputBegan:Connect(function(p166, p167)
+636: 	-- upvalues: (copy) v_u_1, (copy) v_u_10, (copy) v_u_12, (copy) v_u_18, (copy) v_u_69, (copy) v_u_3
+637: 	if not v_u_1.Services.UserInputService:GetFocusedTextBox() then
+638: 		if p166.KeyCode == v_u_10 and (not p167 and (v_u_12.Visible and v_u_12.Orders.Visible)) then
+639: 			local v168 = v_u_12.Orders
+640: 			local v169 = v_u_18[v168.Name]
+641: 			if not v169 then
+642: 				warn((("[HUD]: No page for the %* button"):format(v168.Name)))
+643: 				return
+644: 			end
+645: 			v_u_69(v168, 10, 0.5)
+646: 			v_u_3.openPage(v169, true)
+647: 		end
+
+===== Players.RansbloxScripts.PlayerScripts.ClientHandler.UI.UIKit =====
+   ...
+209: 		if not p_u_60:GetAttribute("disabled") then
+210: 			v_u_3.tween(v_u_62, 0.1, {
+211: 				["Scale"] = 1.04
+212: 			})
+213: 		end
+214: 	end)
+215: 	p_u_60.MouseLeave:Connect(function()
+216: 		-- upvalues: (ref) v_u_3, (copy) v_u_62
+217: 		v_u_3.tween(v_u_62, 0.1, {
+218: 			["Scale"] = 1
+219: 		})
+220: 	end)
+221: 	p_u_60.MouseButton1Down:Connect(function()
+222: 		-- upvalues: (copy) p_u_60, (ref) v_u_3, (copy) v_u_62
+223: 		if not p_u_60:GetAttribute("disabled") then
+224: 			v_u_3.tween(v_u_62, 0.08, {
+225: 				["Scale"] = 0.93
+226: 			})
+227: 		end
+228: 	end)
+229: 	p_u_60.MouseButton1Up:Connect(function()
+230: 		-- upvalues: (ref) v_u_3, (copy) v_u_62
+231: 		v_u_3.tween(v_u_62, 0.12, {
+232: 			["Scale"] = 1
+233: 		}, Enum.EasingStyle.Back)
+234: 	end)
+235: 	local function v63() -- name: click
+236: 		-- upvalues: (copy) p_u_60, (ref) v_u_3, (copy) p_u_61
+237: 		if p_u_60:GetAttribute("disabled") then
+238: 			v_u_3.playSound("Error")
+239: 		else
+240: 			v_u_3.playSound("ButtonClick")
+241: 			if p_u_61 then
+242: 				task.spawn(p_u_61)
+243: 			end
+244: 		end
+245: 	end
+246: 	p_u_60.Activated:Connect(v63)
+247: 	v_u_8[p_u_60] = v63
+248: 	return p_u_60
+249: end
+250: function v_u_3.press(p64) -- name: press
+251: 	-- upvalues: (copy) v_u_8, (copy) v_u_3
+252: 	local v65 = v_u_8[p64]
+253: 	if not v65 then
+254: 		return false
+255: 	end
+256: 	local v66 = p64:FindFirstChild("Press")
+257: 	if v66 then
+258: 		v66.Scale = 0.93
+   ...
+418: 	["Text"] = "",
+419: 	["AutoButtonColor"] = false,
+420: 	["BackgroundColor3"] = nil,
+421: 	["BackgroundTransparency"] = 0.65,
+422: 	["Size"] = nil,
+423: 	["Visible"] = false,
+424: 	["ZIndex"] = 0,
+425: 	["Parent"] = nil,
+426: 	["BackgroundColor3"] = v_u_3.Colors.shadow,
+427: 	["Size"] = UDim2.fromScale(1, 1),
+428: 	["Parent"] = v_u_3.layers.pages
+429: })
+430: v_u_9.Activated:Connect(function()
+431: 	-- upvalues: (copy) v_u_3
+432: 	v_u_3.pages.close()
+433: end)
+434: v18()
+435: v_u_5:GetPropertyChangedSignal("ViewportSize"):Connect(v18)
+436: local v103 = v_u_1.LocalPlayer.PlayerGui
+437: for _, v104 in v103:QueryDescendants("ScrollingFrame") do
+438: 	if not v104:IsA("ScrollingFrame") then
+439: 		continue
+440: 	end
+441: 	v104.Active = true
+442: end
+
+===== Players.RansbloxScripts.PlayerScripts.ClientHandler.UI.CrateOpening =====
+   ...
+128: 		v62 = v60 - Vector3.new(0, 3, 0)
+129: 	end
+130: 	return v62, v55
+131: end
+132: local function v_u_72(p64, p65, p66) -- name: enterShow
+133: 	-- upvalues: (copy) v_u_2, (copy) v_u_1, (copy) v_u_4, (copy) v_u_10
+134: 	local v_u_67 = v_u_2("HUD")
+135: 	v_u_67.toggleHudVisible(false)
+136: 	p64:Add(function()
+137: 		-- upvalues: (copy) v_u_67
+138: 		v_u_67.toggleHudVisible(true)
+139: 	end, true)
+140: 	local v_u_68 = v_u_1.Services.ProximityPromptService
+141: 	v_u_68.Enabled = false
+142: 	p64:Add(function()
+143: 		-- upvalues: (copy) v_u_68
+144: 		v_u_68.Enabled = true
+145: 	end, true)
+146: 	local v69 = p65 - p66 * 6.5 + Vector3.new(0, 3.2, 0)
+147: 	local v70 = CFrame.lookAt(v69, p65 + Vector3.new(0, 2.4, 0))
+148: 	local v_u_71 = v_u_4.lock(v70, v_u_10.FieldOfView)
+149: 	p64:Add(function()
+150: 		-- upvalues: (copy) v_u_71
+151: 		v_u_71(true)
+152: 	end, true)
+
+===== Players.RansbloxScripts.PlayerScripts.ClientHandler.UI.OfflineEarnings =====
+   ...
+153: 	end
+154: end
+155: function v_u_4.isShowing() -- name: isShowing
+156: 	-- upvalues: (ref) v_u_17
+157: 	return v_u_17
+158: end
+159: v_u_11.Name = "PopScale"
+160: v_u_11.Parent = v_u_5
+161: v_u_12.Name = "PopScale"
+162: v_u_12.Parent = v_u_6
+163: v_u_5.Visible = false
+164: local v_u_48 = nil
+165: v_u_48 = v_u_1.Services.UserInputService.InputBegan:Connect(function(p49)
+166: 	-- upvalues: (copy) v_u_22, (ref) v_u_14, (ref) v_u_48, (copy) v_u_13
+167: 	if v_u_22(p49) then
+168: 		v_u_14 = true
+169: 		v_u_48:Disconnect()
+170: 		v_u_13:Fire()
+171: 	end
+172: end)
+173: v_u_1.Network.OnEvent("OfflineEarnings", function(p50)
+174: 	-- upvalues: (ref) v_u_15, (copy) v_u_47
+175: 	if typeof(p50) == "number" and (p50 > 0 and p50 < (1 / 0)) then
+176: 		v_u_15 = p50
+177: 		task.spawn(v_u_47)
+
+===== Players.RansbloxScripts.PlayerScripts.ClientHandler.UI.SettingsPage =====
+   ...
+178: v_u_11:GetAttributeChangedSignal("open"):Connect(function()
+179: 	-- upvalues: (copy) v_u_11, (copy) v_u_12, (copy) v_u_42
+180: 	if v_u_11:GetAttribute("open") then
+181: 		v_u_12.CanvasPosition = Vector2.zero
+182: 		v_u_42()
+183: 	end
+184: end)
+185: v_u_18 = v_u_1.Icon.new():setName("Settings"):setImage("rbxassetid://120083951283392"):setImageRatio(1):setImageScale(0.8):modifyTheme({ "IconImage", "ScaleType", Enum.ScaleType.Fit }):setLeft():setCaption("Settings"):oneClick()
+186: v_u_18.selected:Connect(function(p62)
+187: 	-- upvalues: (copy) v_u_3
+188: 	v_u_3.toggle(p62 ~= "User")
+189: end)
+190: v_u_1.Services.ContextActionService:BindActionAtPriority("toggleSettings", function(_, p63)
+191: 	-- upvalues: (copy) v_u_3
+192: 	if p63 ~= Enum.UserInputState.Begin then
+193: 		return Enum.ContextActionResult.Pass
+194: 	end
+195: 	v_u_3.toggle()
+196: 	return Enum.ContextActionResult.Sink
+197: end, false, 2400, Enum.KeyCode.ButtonL2)
+198: local v64 = v_u_2("ConsoleInput")
+199: v_u_18:setLabel(v64.isGamepad() and (v64.isPlayStation() and "[L2]" or "[LT]") or "")
+200: v_u_2("ConsoleInput").InputTypeChanged:Connect(v28)
+201: v_u_2("Settings").Changed:Connect(function(p65)
+202: 	-- upvalues: (copy) v_u_14, (copy) v_u_53
+
+===== Players.RansbloxScripts.PlayerScripts.ClientHandler.Design.DesignEditor =====
+   ...
+2443: 					end
+2444: 				end
+2445: 			end
+2446: 		end
+2447: 	else
+2448: 		return
+2449: 	end
+2450: end
+2451: local function v_u_747() -- name: activate
+2452: 	-- upvalues: (ref) v_u_54, (copy) v_u_1, (copy) v_u_61, (copy) v_u_25, (copy) v_u_59, (copy) v_u_727, (copy) v_u_683, (copy) v_u_697, (copy) v_u_739, (copy) v_u_705, (copy) v_u_395, (copy) v_u_2, (copy) v_u_595, (copy) v_u_27
+2453: 	if not v_u_54 then
+2454: 		v_u_54 = true
+2455: 		local v_u_740 = v_u_1.Services.ContextActionService
+2456: 		local v_u_741 = v_u_1.Services.GuiService
+2457: 		local v742 = v_u_1.Services.UserInputService
+2458: 		table.clear(v_u_61)
+2459: 		for _, v743 in v742:GetKeysPressed() do
+2460: 			v_u_61[v743.KeyCode] = true
+2461: 		end
+2462: 		local v744 = v_u_25
+2463: 		v_u_740:BindActionAtPriority("DesignEditorSink", function()
+2464: 			return Enum.ContextActionResult.Sink
+2465: 		end, false, Enum.ContextActionPriority.High.Value + 50, table.unpack(v744))
+2466: 		v_u_59:Add(function()
+2467: 			-- upvalues: (copy) v_u_740
+2468: 			v_u_740:UnbindAction("DesignEditorSink")
+2469: 		end, true)
+2470: 		local v_u_745 = v_u_741.TouchControlsEnabled
+2471: 		v_u_741.TouchControlsEnabled = false
+2472: 		v_u_59:Add(function()
+2473: 			-- upvalues: (copy) v_u_741, (copy) v_u_745
+2474: 			v_u_741.TouchControlsEnabled = v_u_745
+2475: 		end, true)
+2476: 		v_u_59:Add(v_u_1.Services.RunService.RenderStepped:Connect(v_u_727), "Disconnect")
+2477: 		v_u_59:Add(v742.InputChanged:Connect(v_u_683), "Disconnect")
+2478: 		v_u_59:Add(v742.InputEnded:Connect(v_u_697), "Disconnect")
+2479: 		v_u_59:Add(v742.InputBegan:Connect(v_u_739), "Disconnect")
+2480: 		v_u_59:Add(v742.InputBegan:Connect(v_u_705), "Disconnect")
+2481: 		v_u_59:Add(v742.WindowFocusReleased:Connect(v_u_395), "Disconnect")
+2482: 		v_u_59:Add(v_u_2("ConsoleInput").holdCursor(function()
+2483: 			-- upvalues: (ref) v_u_595
+2484: 			task.spawn(v_u_595)
+2485: 		end), true)
+2486: 		v_u_740:BindActionAtPriority("DesignEditorPaperBack", function(_, p746)
+2487: 			-- upvalues: (ref) v_u_27
+2488: 			if p746 ~= Enum.UserInputState.Begin or not v_u_27.paperPicker.Visible then
+2489: 				return Enum.ContextActionResult.Pass
+2490: 			end
+2491: 			v_u_27.paperPicker.Visible = false
+2492: 			return Enum.ContextActionResult.Sink
+2493: 		end, false, Enum.ContextActionPriority.High.Value, Enum.KeyCode.ButtonB)
+2494: 		v_u_59:Add(function()
+2495: 			-- upvalues: (copy) v_u_740
+2496: 			v_u_740:UnbindAction("DesignEditorPaperBack")
+2497: 		end, true)
+2498: 	end
+2499: end
+2500: local function v_u_759() -- name: onPageClosed
+2501: 	-- upvalues: (ref) v_u_54, (ref) v_u_33, (ref) v_u_32, (ref) v_u_31, (ref) v_u_28, (copy) v_u_2, (copy) v_u_141, (copy) v_u_27, (copy) v_u_223, (ref) v_u_34, (ref) v_u_35, (copy) v_u_193, (ref) v_u_50, (ref) v_u_51, (ref) v_u_53, (copy) v_u_52, (copy) v_u_59, (ref) v_u_55, (ref) v_u_26, (ref) v_u_29, (copy) v_u_62, (copy) v_u_747, (copy) v_u_595, (ref) v_u_58
+2502: 	if v_u_54 then
+2503: 		local v748 = v_u_33
+2504: 		if v748 then
+2505: 			v_u_33 = nil
+2506: 			local v749 = v_u_32
+2507: 			if v749 then
+2508: 				v_u_32 = nil
+   ...
+2747: 		local v813 = utf8.len(v812)
+2748: 		if v813 then
+2749: 			if v_u_811 < v813 then
+2750: 				local v814 = v_u_810
+2751: 				local v815 = utf8.offset(v812, v_u_811 + 1) - 1
+2752: 				v814.Text = string.sub(v812, 1, v815)
+2753: 			end
+2754: 		else
+2755: 			local v816 = v_u_811
+2756: 			v_u_810.Text = string.sub(v812, 1, v816)
+2757: 		end
+2758: 	end)
+2759: 	v809.Activated:Connect(function()
+2760: 		-- upvalues: (ref) v_u_28, (ref) v_u_27
+2761: 		if not (v_u_28 and v_u_28.goodie) then
+2762: 			v_u_27.nameBox:CaptureFocus()
+2763: 		end
+2764: 	end)
+2765: 	v_u_27.nameBox.FocusLost:Connect(function()
+2766: 		-- upvalues: (ref) v_u_28, (ref) v_u_27
+2767: 		if v_u_28 then
+2768: 			local v817 = v_u_28
+2769: 			local v818 = v_u_27.nameBox.Text
+2770: 			local v819 = string.match(v818, "^%s*(.-)%s*$")
+2771: 			if v819 ~= "" and v819 ~= v817.name then
+   ...
+3012: 		["BackgroundTranspa
+
+===== Players.RansbloxScripts.PlayerScripts.ClientHandler.Minigames.LabelPrint =====
+   ...
+2: if not v_u_1.IsLoaded then
+3: 	v_u_1.Loaded:Wait()
+4: end
+5: local v_u_2 = require(v_u_1.Services.ReplicatedStorage.GetModule)
+6: local v_u_3 = require(script.Parent.Parent.UI.UIKit)
+7: local v_u_4 = require(script.Parent.Parent.Core.ShopState)
+8: local v_u_5 = require(script.Parent.Parent.Core.StationSession)
+9: local v_u_6 = require(script.Parent.Parent.Core.WorldPointer)
+10: local v_u_7 = require(script.Parent.LabelPrintScene)
+11: local v_u_8 = require(script.Parent.Parent.Core.TutorialFinger)
+12: local v9 = {}
+13: local v_u_10 = v_u_1.Metadata
+14: local v_u_11 = v_u_1.Services.ContextActionService
+15: local v_u_12 = nil
+16: local function v_u_26(p13, p14) -- name: buildInfo
+17: 	-- upvalues: (copy) v_u_2, (copy) v_u_10, (copy) v_u_4
+18: 	local v15 = v_u_2("ClientData").getShopValue("brand") or {}
+19: 	local v16 = v_u_10.Brand.logos
+20: 	local v17 = v_u_4.getCustomer(not p13 and "" or p13.cust)
+21: 	local v18 = {}
+22: 	for _, v19 in not p13 and {} or p13.lines do
+23: 		local v20 = v_u_10.Themes.byId[v19.t]
+24: 		local v21 = v_u_10.Products.byId[v19.p]
+25: 		local v22 = ("%*\195\151%*%*"):format(v19.q, not v20 and "" or v20.emoji, not v21 and "" or v21.emoji)
+26: 		table.insert(v18, v22)
+   ...
+214: 		end
+215: 		v_u_6.setCursor(p_u_63.dragStart and "grab" or (v90 and "point" or nil))
+216: 	end), "Disconnect")
+217: 	v_u_11:BindActionAtPriority("LabelPrintTear", function(_, p91)
+218: 		-- upvalues: (ref) v_u_62, (copy) p_u_63
+219: 		if p91 == Enum.UserInputState.Begin then
+220: 			v_u_62(p_u_63)
+221: 		end
+222: 		return Enum.ContextActionResult.Sink
+223: 	end, false, Enum.ContextActionPriority.High.Value + 1, Enum.KeyCode.ButtonA, Enum.KeyCode.Space, Enum.KeyCode.Return)
+224: 	v87:Add(function()
+225: 		-- upvalues: (ref) v_u_11
+226: 		v_u_11:UnbindAction("LabelPrintTear")
+227: 	end, true)
+228: end
+229: local function v_u_96(p93) -- name: getFingerMove
+230: 	local v94 = p93.current
+231: 	if p93.ended or (p93.state ~= "ready" or (not v94 or (p93.torn > 0 or p93.dragStart))) then
+232: 		return nil, nil
+233: 	end
+234: 	local v95 = p93.scene:getScreenPoint(v94)
+235: 	return v95, v95 + p93.scene:getFeedDirection(v94) * 90
+236: end
+237: local function v_u_99(p97, p98) -- name: waitUntil
+238: 	while not (p97.ended or p98()) do
+
+===== Players.RansbloxScripts.PlayerScripts.ClientHandler.Packing.PackingScene =====
+   ...
+683: 	local v316 = v315:PointToObjectSpace(v313)
+684: 	local v317 = v315:PointToObjectSpace(v313 + p_u_306.up * v314)
+685: 	local v318 = v311(p_u_306, v312, v313 + v315.UpVector * (v317.Y / -v317.Z * -v316.Z - v316.Y))
+686: 	local v319 = v_u_1.Services.StarterGui.Billboards.GoodieCarouselTag:Clone()
+687: 	v319.Active = true
+688: 	v319.Enabled = false
+689: 	v319.Adornee = v318
+690: 	v319.Parent = v_u_1.LocalPlayer.PlayerGui
+691: 	p_u_306.janitor:Add(v319)
+692: 	local v320 = v319.Row
+693: 	v320.Prev.Visible = #p307 > 1
+694: 	v320.Next.Visible = #p307 > 1
+695: 	p_u_306.janitor:Add(v320.Prev.Activated:Connect(function()
+696: 		-- upvalues: (copy) p_u_306
+697: 		p_u_306:flipCarousel(-1)
+698: 	end), "Disconnect")
+699: 	p_u_306.janitor:Add(v320.Next.Activated:Connect(function()
+700: 		-- upvalues: (copy) p_u_306
+701: 		p_u_306:flipCarousel(1)
+702: 	end), "Disconnect")
+703: 	local v321 = {}
+704: 	for _, v322 in p307 do
+705: 		v321[v322] = true
+706: 	end
+707: 	p_u_306.carousel = {
+708: 		["ids"] = nil,
+709: 		["index"] = 1,
+710: 		["has"] = nil,
+711: 		["tag"] = nil,
+
+===== ReplicatedStorage.OJFramework.Packages.Input.Gamepad =====
+   ...
+61: 		if p_u_18 then
+62: 			v20 = v_u_4:IsVibrationSupported(p_u_18)
+63: 		else
+64: 			v20 = false
+65: 		end
+66: 		p_u_17.SupportsVibration = v20
+67: 		p_u_17._gamepad = p_u_18
+68: 		if p_u_18 then
+69: 			for _, v21 in ipairs(v_u_3:GetGamepadState(p_u_18)) do
+70: 				p_u_17.State[v21.KeyCode] = v21
+71: 			end
+72: 			p_u_17._gamepadTrove:Add(p_u_17, "StopMotors")
+73: 			p_u_17._gamepadTrove:Connect(v_u_3.InputBegan, function(p22, p23)
+74: 				-- upvalues: (copy) p_u_18, (copy) p_u_17
+75: 				if p22.UserInputType == p_u_18 then
+76: 					p_u_17.ButtonDown:Fire(p22.KeyCode, p23)
+77: 				end
+78: 			end)
+79: 			p_u_17._gamepadTrove:Connect(v_u_3.InputEnded, function(p24, p25)
+80: 				-- upvalues: (copy) p_u_18, (copy) p_u_17
+81: 				if p24.UserInputType == p_u_18 then
+82: 					p_u_17.ButtonUp:Fire(p24.KeyCode, p25)
+83: 				end
+84: 			end)
+85: 			if v19 == nil then
+
+===== ReplicatedStorage.OJFramework.Packages.Input.Keyboard =====
+   ...
+20: function v_u_4.AreKeysDown(p8, p9, p10) -- name: AreKeysDown
+21: 	local v11 = p8:IsKeyDown(p9)
+22: 	if v11 then
+23: 		v11 = p8:IsKeyDown(p10)
+24: 	end
+25: 	return v11
+26: end
+27: function v_u_4.AreEitherKeysDown(p12, p13, p14) -- name: AreEitherKeysDown
+28: 	return p12:IsKeyDown(p13) or p12:IsKeyDown(p14)
+29: end
+30: function v_u_4._setup(p_u_15) -- name: _setup
+31: 	-- upvalues: (copy) v_u_3
+32: 	p_u_15._trove:Connect(v_u_3.InputBegan, function(p16, p17)
+33: 		-- upvalues: (copy) p_u_15
+34: 		if not p17 then
+35: 			if p16.UserInputType == Enum.UserInputType.Keyboard then
+36: 				p_u_15.KeyDown:Fire(p16.KeyCode, p17)
+37: 			end
+38: 		end
+39: 	end)
+40: 	p_u_15._trove:Connect(v_u_3.InputEnded, function(p18, p19)
+41: 		-- upvalues: (copy) p_u_15
+42: 		if p18.UserInputType == Enum.UserInputType.Keyboard then
+43: 			p_u_15.KeyUp:Fire(p18.KeyCode, p19)
+44: 		end
+
+===== ReplicatedStorage.OJFramework.Packages.Input.Mouse =====
+   ...
+8: 	local v5 = v_u_4
+9: 	local v_u_6 = setmetatable({}, v5)
+10: 	v_u_6._trove = v_u_2.new()
+11: 	v_u_6.LeftDown = v_u_6._trove:Construct(v_u_1)
+12: 	v_u_6.LeftUp = v_u_6._trove:Construct(v_u_1)
+13: 	v_u_6.RightDown = v_u_6._trove:Construct(v_u_1)
+14: 	v_u_6.RightUp = v_u_6._trove:Construct(v_u_1)
+15: 	v_u_6.MiddleDown = v_u_6._trove:Construct(v_u_1)
+16: 	v_u_6.MiddleUp = v_u_6._trove:Construct(v_u_1)
+17: 	v_u_6.Scrolled = v_u_6._trove:Construct(v_u_1)
+18: 	v_u_6.Moved = v_u_6._trove:Construct(v_u_1)
+19: 	v_u_6.DoubleClick = v_u_6._trove:Construct(v_u_1)
+20: 	v_u_6._trove:Connect(v_u_3.InputBegan, function(p7, p8)
+21: 		-- upvalues: (copy) v_u_6
+22: 		if p8 then
+23: 			return
+24: 		elseif p7.UserInputType == Enum.UserInputType.MouseButton1 then
+25: 			v_u_6.LeftDown:Fire()
+26: 			return
+27: 		elseif p7.UserInputType == Enum.UserInputType.MouseButton2 then
+28: 			v_u_6.RightDown:Fire()
+29: 		elseif p7.UserInputType == Enum.UserInputType.MouseButton3 then
+30: 			v_u_6.MiddleDown:Fire()
+31: 		end
+32: 	end)
+
+===== ReplicatedStorage.OJFramework.Packages.Input.Touch =====
+   ...
+12: 	v_u_6.TouchTap = v_u_6._trove:Construct(v_u_2.Wrap, v_u_3.TouchTap)
+13: 	v_u_6.TouchTapInWorld = v_u_6._trove:Construct(v_u_2.Wrap, v_u_3.TouchTapInWorld)
+14: 	v_u_6.TouchMoved = v_u_6._trove:Construct(v_u_2.Wrap, v_u_3.TouchMoved)
+15: 	v_u_6.TouchLongPress = v_u_6._trove:Construct(v_u_2.Wrap, v_u_3.TouchLongPress)
+16: 	v_u_6.TouchPan = v_u_6._trove:Construct(v_u_2.Wrap, v_u_3.TouchPan)
+17: 	v_u_6.TouchPinch = v_u_6._trove:Construct(v_u_2.Wrap, v_u_3.TouchPinch)
+18: 	v_u_6.TouchRotate = v_u_6._trove:Construct(v_u_2.Wrap, v_u_3.TouchRotate)
+19: 	v_u_6.TouchSwipe = v_u_6._trove:Construct(v_u_2.Wrap, v_u_3.TouchSwipe)
+20: 	v_u_6.TouchStarted = v_u_6._trove:Construct(v_u_2.Wrap, v_u_3.TouchStarted)
+21: 	v_u_6.TouchEnded = v_u_6._trove:Construct(v_u_2.Wrap, v_u_3.TouchEnded)
+22: 	v_u_6.DoubleTap = v_u_6._trove:Construct(v_u_2)
+23: 	v_u_6.TouchStarted = v_u_6._trove:Construct(v_u_2)
+24: 	v_u_6._trove:Add(v_u_3.InputBegan:Connect(function(p7)
+25: 		-- upvalues: (copy) v_u_6
+26: 		if p7.UserInputType == Enum.UserInputType.Touch then
+27: 			v_u_6._touching = true
+28: 			v_u_6.TouchStarted:Fire()
+29: 		end
+30: 	end), "Disconnect")
+31: 	v_u_6._trove:Add(v_u_3.InputEnded:Connect(function(p8)
+32: 		-- upvalues: (copy) v_u_6
+33: 		if p8.UserInputType == Enum.UserInputType.Touch then
+34: 			v_u_6._touching = false
+35: 		end
+36: 	end), "Disconnect")
+
+===== ReplicatedStorage.OJFramework.Modules.1 - Services =====
+1: return {
+2: 	["AnalyticsService"] = game:GetService("AnalyticsService"),
+3: 	["AnimationClipProvider"] = game:GetService("AnimationClipProvider"),
+4: 	["AssetService"] = game:GetService("AssetService"),
+5: 	["BadgeService"] = game:GetService("BadgeService"),
+6: 	["Chat"] = game:GetService("Chat"),
+7: 	["CollectionService"] = game:GetService("CollectionService"),
+8: 	["ContentProvider"] = game:GetService("ContentProvider"),
+9: 	["ContextActionService"] = game:GetService("ContextActionService"),
+10: 	["DataStoreService"] = game:GetService("DataStoreService"),
+11: 	["FriendService"] = game:GetService("FriendService"),
+12: 	["GamePassService"] = game:GetService("GamePassService"),
+13: 	["GamepadService"] = game:GetService("GamepadService"),
+14: 	["GroupService"] = game:GetService("GroupService"),
+15: 	["GuiService"] = game:GetService("GuiService"),
+16: 	["HapticService"] = game:GetService("HapticService"),
+17: 	["HttpService"] = game:GetService("HttpService"),
+18: 	["InsertService"] = game:GetService("InsertService"),
+19: 	["Lighting"] = game:GetService("Lighting"),
+20: 	["LocalizationService"] = game:GetService("LocalizationService"),
+21: 	["LogService"] = game:GetService("LogService"),
+
+===== ReplicatedStorage.OJFramework.Modules.Client.1 - UI.4 - Slider =====
+   ...
+122: 		v_u_29:Move("Instant")
+123: 	end))
+124: 	local v42 = v_u_1.Sliders
+125: 	table.insert(v42, v_u_29)
+126: 	return v_u_29
+127: end
+128: function v_u_1.Track(p_u_43) -- name: Track
+129: 	-- upvalues: (copy) v_u_3
+130: 	for _, v44 in ipairs(p_u_43._data._clickConnections) do
+131: 		v44:Disconnect()
+132: 	end
+133: 	local v45 = p_u_43._data._clickConnections
+134: 	local v46 = p_u_43._data.Button.MouseButton1Down
+135: 	table.insert(v45, v46:Connect(function()
+136: 		-- upvalues: (copy) p_u_43
+137: 		p_u_43.IsHeld = true
+138: 	end))
+139: 	local v47 = p_u_43._data._clickConnections
+140: 	local v48 = p_u_43._data.Button.MouseButton1Up
+141: 	table.insert(v47, v48:Connect(function()
+142: 		-- upvalues: (copy) p_u_43
+143: 		if p_u_43.IsHeld then
+144: 			p_u_43.Released:Fire(p_u_43._data._value)
+145: 		end
+146: 		p_u_43.IsHeld = false
+147: 	end))
+148: 	if p_u_43._data._allowBackgroundClick then
+149: 		local v49 = p_u_43._data._clickConnections
+150: 		local v50 = p_u_43._data.HolderButton.Activated
+151: 		table.insert(v49, v50:Connect(function(p51)
+152: 			-- upvalues: (copy) p_u_43
+153: 			if p51.UserInputType == Enum.UserInputType.MouseButton1 or p51.UserInputType == Enum.UserInputType.Touch then
+154: 				p_u_43._data._inputPos = p51.Position
+155: 				p_u_43._data._clickOverride = true
+156: 				p_u_43:Update()
+157: 				p_u_43._data._clickOverride = false
+158: 			end
+159: 		end))
+160: 	end
+161: 	if p_u_43.Changed then
+162: 		p_u_43.Changed:Fire(p_u_43._data._value)
+
+===== ReplicatedStorage.OJFramework.Modules.Client.2 - Classes.2 - UIElement.ClickyButton =====
+1: local v_u_1 = require(game:GetService("ReplicatedStorage"):WaitForChild("OJFramework"))
+2: local v_u_2 = require(v_u_1.Services.ReplicatedStorage.GetModule)
+3: local v_u_3 = TweenInfo.new(0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+4: return {
+5: 	["MouseButton1Down"] = function(p4, p5) -- name: MouseButton1Down
+6: 		-- upvalues: (copy) v_u_1, (copy) v_u_3
+7: 		v_u_1.UsefulFunctions.Tween(p4, v_u_3, {
+8: 			["Size"] = UDim2.new(p5.X.Scale * 0.9, p5.X.Offset * 0.9, p5.Y.Scale * 0.9, p5.Y.Offset * 0.9)
+9: 		})
+10: 	end,
+11: 	["MouseButton1Up"] = function(p6, p7) -- name: MouseButton1Up
+12: 		-- upvalues: (copy) v_u_1, (copy) v_u_3
+13: 		local v8 = p6:GetAttribute("hoverScaleFactor") or 1.075
+14: 		v_u_1.UsefulFunctions.Tween(p6, v_u_3, {
+15: 			["Size"] = UDim2.new(p7.X.Scale * v8, p7.X.Offset * v8, p7.Y.Scale * v8, p7.Y.Offset * v8)
+16: 		})
+17: 	end,
+   ...
+20: 		local v11 = p9:GetAttribute("hoverScaleFactor") or 1.075
+21: 		v_u_1.UsefulFunctions.Tween(p9, v_u_3, {
+22: 			["Size"] = UDim2.new(p10.X.Scale * v11, p10.X.Offset * v11, p10.Y.Scale * v11, p10.Y.Offset * v11)
+23: 		})
+24: 		v_u_2("Effects").playSound("Hover")
+25: 	end,
+26: 	["MouseLeave"] = function(p12, p13) -- name: MouseLeave
+27: 		-- upvalues: (copy) v_u_1, (copy) v_u_3
+28: 		v_u_1.UsefulFunctions.Tween(p12, v_u_3, {
+29: 			["Size"] = p13
+30: 		})
+31: 	end,
+32: 	["Activated"] = function(p14) -- name: Activated
+33: 		-- upvalues: (copy) v_u_2
+34: 		if not p14:GetAttribute("noClickSound") then
+35: 			v_u_2("Effects").playSound("ButtonClick")
+36: 		end
+37: 		return true
+38: 	end
+39: }
+
+===== ReplicatedStorage.OJFramework.Modules.Client.2 - Classes.2 - UIElement.CloseButton =====
+1: local v_u_1 = require(game:GetService("ReplicatedStorage"):WaitForChild("OJFramework"))
+2: local v_u_2 = require(v_u_1.Services.ReplicatedStorage.GetModule)
+3: local v_u_3 = TweenInfo.new(0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+4: return {
+5: 	["MouseButton1Down"] = function(p4, p5) -- name: MouseButton1Down
+6: 		-- upvalues: (copy) v_u_1, (copy) v_u_3
+7: 		v_u_1.UsefulFunctions.Tween(p4, v_u_3, {
+8: 			["Size"] = UDim2.new(p5.X.Scale * 0.9, p5.X.Offset * 0.9, p5.Y.Scale * 0.9, p5.Y.Offset * 0.9)
+9: 		})
+10: 	end,
+11: 	["MouseButton1Up"] = function(p6, p7) -- name: MouseButton1Up
+12: 		-- upvalues: (copy) v_u_1, (copy) v_u_3
+13: 		v_u_1.UsefulFunctions.Tween(p6, v_u_3, {
+14: 			["Size"] = UDim2.new(p7.X.Scale * 1.075, p7.X.Offset * 1.075, p7.Y.Scale * 1.075, p7.Y.Offset * 1.075)
+15: 		})
+16: 	end,
+17: 	["MouseEnter"] = function(p8, p9) -- name: MouseEnter
+   ...
+22: 			["Rotation"] = v10
+23: 		})
+24: 		v_u_2("Effects").playSound("Hover")
+25: 	end,
+26: 	["MouseLeave"] = function(p11, p12) -- name: MouseLeave
+27: 		-- upvalues: (copy) v_u_1, (copy) v_u_3
+28: 		v_u_1.UsefulFunctions.Tween(p11, v_u_3, {
+29: 			["Size"] = nil,
+30: 			["Rotation"] = 0,
+31: 			["Size"] = p12
+32: 		})
+33: 	end,
+34: 	["Activated"] = function() -- name: Activated
+35: 		return true
+36: 	end
+37: }
+
+===== ReplicatedStorage.OJFramework.Modules.Client.2 - Classes.2 - UIElement.ElementTemplate =====
+1: require(game:GetService("ReplicatedStorage"):WaitForChild("OJFramework"))
+2: TweenInfo.new(0.15, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
+3: return {
+4: 	["MouseButton1Down"] = function(_, _) -- name: MouseButton1Down end,
+5: 	["MouseButton1Up"] = function(_, _) -- name: MouseButton1Up end,
+6: 	["MouseEnter"] = function(_, _) -- name: MouseEnter end,
+7: 	["MouseLeave"] = function(_, _) -- name: MouseLeave end,
+8: 	["Activated"] = function() -- name: Activated
+9: 		return true
+10: 	end
+11: }
+
+===== ReplicatedStorage.OJFramework.Modules.Client.2 - Classes.2 - UIElement.HudButton =====
+1: local v_u_1 = require(game:GetService("ReplicatedStorage"):WaitForChild("OJFramework"))
+2: local v_u_2 = require(v_u_1.Services.ReplicatedStorage.GetModule)
+3: local v_u_3 = TweenInfo.new(0.05, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+4: return {
+5: 	["MouseButton1Down"] = function(p4, p5) -- name: MouseButton1Down
+6: 		local _ = p5.X.Scale
+7: 		local _ = p5.Y.Scale
+8: 		local v6 = p4.Top:GetAttribute("originalPosition") or UDim2.fromScale(0.5, 0.5)
+9: 		p4.Top.Position = UDim2.fromScale(v6.X.Scale, v6.Y.Scale + 0.04)
+10: 	end,
+11: 	["MouseButton1Up"] = function(p7, p8) -- name: MouseButton1Up
+12: 		local _ = p8.X.Scale
+13: 		local _ = p8.Y.Scale
+14: 		p7.Top.Position = p7.Top:GetAttribute("originalPosition") or UDim2.fromScale(0.5, 0.5)
+15: 	end,
+16: 	["MouseEnter"] = function(p9, p10) -- name: MouseEnter
+17: 		-- upvalues: (copy) v_u_1, (copy) v_u_3, (copy) v_u_2
+   ...
+21: 			["Size"] = UDim2.fromScale(v11 * 1.05, v12 * 1.05)
+22: 		})
+23: 		v_u_2("Effects").playSound("Hover")
+24: 	end,
+25: 	["MouseLeave"] = function(p13, p14) -- name: MouseLeave
+26: 		-- upvalues: (copy) v_u_1, (copy) v_u_3
+27: 		v_u_1.spr.stop(p13)
+28: 		v_u_1.UsefulFunctions.Tween(p13, v_u_3, {
+29: 			["Size"] = p14
+30: 		})
+31: 		p13.Top.Position = p13.Top:GetAttribute("originalPosition") or UDim2.fromScale(0.5, 0.5)
+32: 	end,
+33: 	["Activated"] = function() -- name: Activated
+34: 		-- upvalues: (copy) v_u_2
+35: 		v_u_2("Effects").playSound("ButtonClick")
+36: 		return true
+37: 	end
+38: }
+
+===== ReplicatedStorage.OJFramework.Modules.Client.2 - Classes.2 - UIElement.PhoneAppButton =====
+1: local v_u_1 = require(game:GetService("ReplicatedStorage"):WaitForChild("OJFramework"))
+2: local v_u_2 = require(v_u_1.Services.ReplicatedStorage.GetModule)
+3: local v_u_3 = TweenInfo.new(0.05, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+4: return {
+5: 	["MouseButton1Down"] = function(p4, _) -- name: MouseButton1Down
+6: 		-- upvalues: (copy) v_u_1, (copy) v_u_3
+7: 		v_u_1.UsefulFunctions.Tween(p4.Container, v_u_3, {
+8: 			["Size"] = UDim2.fromScale(0.875, 0.875)
+9: 		})
+10: 	end,
+11: 	["MouseButton1Up"] = function(p5, _) -- name: MouseButton1Up
+12: 		-- upvalues: (copy) v_u_1, (copy) v_u_3
+13: 		v_u_1.UsefulFunctions.Tween(p5.Container, v_u_3, {
+14: 			["Size"] = UDim2.fromScale(1.05, 1.05)
+15: 		})
+16: 	end,
+17: 	["MouseEnter"] = function(p6, _) -- name: MouseEnter
+18: 		-- upvalues: (copy) v_u_1, (copy) v_u_3, (copy) v_u_2
+19: 		v_u_1.UsefulFunctions.Tween(p6.Container, v_u_3, {
+20: 			["Size"] = UDim2.fromScale(1.05, 1.05)
+21: 		})
+22: 		v_u_2("Effects").playSound("Hover")
+23: 	end,
+24: 	["MouseLeave"] = function(p7, _) -- name: MouseLeave
+25: 		-- upvalues: (copy) v_u_1, (copy) v_u_3
+26: 		v_u_1.UsefulFunctions.Tween(p7.Container, v_u_3, {
+27: 			["Size"] = UDim2.fromScale(1, 1)
+28: 		})
+29: 	end,
+30: 	["Activated"] = function() -- name: Activated
+31: 		-- upvalues: (copy) v_u_2
+32: 		v_u_2("Effects").playSound("ButtonClick")
+33: 		return true
+34: 	end
+35: }
+
+===== ReplicatedStorage.OJFramework.Modules.Client.2 - Classes.3 - DraggableGui =====
+   ...
+30: 		local v16 = (v_u_10.X.Scale * v14.X + v_u_10.X.Offset + v15.X) / v14.X
+31: 		local v17 = (v_u_10.Y.Scale * v14.Y + v_u_10.Y.Offset + v15.Y) / v14.Y
+32: 		local v18 = v13.X / 2 / v14.X
+33: 		local v19 = v13.Y / 2 / v14.Y
+34: 		local v20 = 1 - v18
+35: 		local v21 = math.clamp(v16, v18, v20)
+36: 		local v22 = 1 - v19
+37: 		local v23 = math.clamp(v17, v19, v22)
+38: 		local v24 = UDim2.new(v21, 0, v23, 0)
+39: 		v_u_7.Position = v24
+40: 		return v24
+41: 	end
+42: 	p_u_6.InputBegan = v_u_7.InputBegan:Connect(function(p_u_26)
+43: 		-- upvalues: (ref) v_u_11, (copy) p_u_6
+44: 		if p_u_26.UserInputType == Enum.UserInputType.MouseButton1 or p_u_26.UserInputType == Enum.UserInputType.Touch then
+45: 			v_u_11 = true
+46: 			local v_u_27 = nil
+47: 			v_u_27 = p_u_26.Changed:Connect(function()
+48: 				-- upvalues: (copy) p_u_26, (ref) p_u_6, (ref) v_u_11, (ref) v_u_27
+49: 				if p_u_26.UserInputState == Enum.UserInputState.End and (p_u_6.Dragging or v_u_11) then
+50: 					p_u_6.Dragging = false
+51: 					v_u_27:Disconnect()
+52: 					if p_u_6.DragEnded and not v_u_11 then
+53: 						p_u_6.DragEnded()
+54: 					end
+   ...
+78: 				v_u_10 = v_u_7.Position
+79: 			end
+80: 			if p29 == v_u_8 and p_u_6.Dragging then
+81: 				local v30 = v_u_25(p29)
+82: 				if p_u_6.Dragged then
+83: 					p_u_6.Dragged(v30)
+84: 				end
+85: 			end
+86: 		end
+87: 	end)
+88: end
+89: function v_u_2.Disable(p31) -- name: Disable
+90: 	if p31.InputBegan then
+91: 		p31.InputBegan:Disconnect()
+92: 	end
+93: 	if p31.InputChanged then
+94: 		p31.InputChanged:Disconnect()
+95: 	end
+96: 	if p31.InputChanged2 then
+97: 		p31.InputChanged2:Disconnect()
+98: 	end
+99: 	if p31.Dragging then
+100: 		p31.Dragging = false
+101: 		if p31.DragEnded then
+102: 			p31.DragEnded()
+103: 		end
+
+===== ReplicatedStorage.OJFramework.Modules.Client.4 - Icon =====
+   ...
+217: 				-- upvalues: (ref) v_u_43
+218: 				v_u_43 = false
+219: 			end)
+220: 			if v_u_38.locked then
+221: 				return
+222: 			elseif v_u_38.isSelected then
+223: 				v_u_38:deselect("User", v_u_38)
+224: 			else
+225: 				v_u_38:select("User", v_u_38)
+226: 			end
+227: 		end
+228: 	end)
+229: 	v40:add(v_u_1.InputBegan:Connect(function(p45, p46)
+230: 		-- upvalues: (copy) v_u_38
+231: 		if not v_u_38.locked then
+232: 			if v_u_38.bindedToggleKeys[p45.KeyCode] and not p46 then
+233: 				if v_u_38.locked then
+234: 					return
+235: 				end
+236: 				if v_u_38.isSelected then
+237: 					v_u_38:deselect("User", v_u_38)
+238: 					return
+239: 				end
+240: 				v_u_38:select("User", v_u_38)
+241: 			end
+   ...
+276: 	v42.MouseLeave:Connect(v47)
+277: 	v42.SelectionGained:Connect(function(p50) -- name: viewingStarted
+278: 		-- upvalues: (copy) v_u_38
+279: 		if not v_u_38.locked then
+280: 			v_u_38.isViewing = true
+281: 			v_u_38.viewingStarted:Fire(true)
+282: 			if not p50 then
+283: 				v_u_38:setState("Viewing", "User", v_u_38)
+284: 			end
+285: 		end
+286: 	end)
+287: 	v42.SelectionLost:Connect(v47)
+288: 	v42.MouseButton1Down:Connect(function()
+289: 		-- upvalues: (copy) v_u_38, (ref) v_u_1, (ref) v_u_49
+290: 		if not v_u_38.locked and v_u_1.TouchEnabled then
+291: 			v_u_49 = v_u_49 + 1
+292: 			local v_u_51 = v_u_49
+293: 			task.delay(0.2, function()
+294: 				-- upvalues: (copy) v_u_51, (ref) v_u_49, (ref) v_u_38
+295: 				if v_u_51 == v_u_49 then
+296: 					if v_u_38.locked then
+297: 						return
+298: 					end
+299: 					v_u_38.isViewing = true
+300: 					v_u_38.viewingStarted:Fire(true)
+
+===== ReplicatedStorage.OJFramework.Modules.Client.4 - Icon.Features.Gamepad =====
+   ...
+75: 			if not v_u_2.GamepadEnabled then
+76: 				v_u_9 = false
+77: 				v_u_10 = false
+78: 			end
+79: 			v_u_18()
+80: 		end
+81: 		v_u_2:GetPropertyChangedSignal("GamepadEnabled"):Connect(v19)
+82: 		if not v_u_2.GamepadEnabled then
+83: 			v_u_9 = false
+84: 			v_u_10 = false
+85: 		end
+86: 		v_u_18()
+87: 		v_u_2.InputBegan:Connect(function(p20, _)
+88: 			-- upvalues: (ref) v_u_3, (copy) v_u_7, (ref) v_u_5, (ref) v_u_4, (ref) v_u_1
+89: 			if p20.UserInputType == Enum.UserInputType.MouseButton1 then
+90: 				local v21 = v_u_3.SelectedObject
+91: 				if v21 then
+92: 					v21 = v21:GetAttribute("CorrespondingIconUID")
+93: 				end
+94: 				if v21 then
+95: 					v21 = v_u_7[v21]
+96: 				end
+97: 				if v21 then
+98: 					v_u_3.SelectedObject = nil
+99: 				end
+   ...
+121: 			if v26.parentIconUID or v25 and v26.widget.AbsolutePosition.X >= v25 then
+122: 				continue
+123: 			end
+124: 			v25 = v26.widget.AbsolutePosition.X
+125: 			v24 = v26
+126: 		end
+127: 	end
+128: 	return v24
+129: end
+130: function v_u_4.registerButton(p_u_27) -- name: registerButton
+131: 	-- upvalues: (copy) v_u_2, (copy) v_u_1, (copy) v_u_3
+132: 	local v_u_28 = false
+133: 	p_u_27.InputBegan:Connect(function(_)
+134: 		-- upvalues: (ref) v_u_28
+135: 		v_u_28 = true
+136: 		task.wait()
+137: 		task.wait()
+138: 		v_u_28 = false
+139: 	end)
+140: 	local v_u_32 = v_u_2.InputBegan:Connect(function(p29)
+141: 		-- upvalues: (ref) v_u_28, (ref) v_u_1, (ref) v_u_3, (copy) p_u_27
+142: 		task.wait()
+143: 		if p29.KeyCode == Enum.KeyCode.ButtonA and v_u_28 then
+144: 			task.wait(0.2)
+145: 			v_u_1:DisableGamepadCursor()
+146: 			v_u_3.SelectedObject = p_u_27
+147: 		else
+148: 			local v30 = v_u_3.SelectedObject == p_u_27
+149: 			local v31 = p29.KeyCode.Name
+150: 			if table.find({ "ButtonB", "ButtonSelect" }, v31) and (v30 and (v31 ~= "ButtonSelect" or v_u_1.GamepadCursorEnabled)) then
+151: 				v_u_3.SelectedObject = nil
+152: 			end
+
+===== ReplicatedStorage.CmdrClient.CmdrInterface.Window =====
+   ...
+264: 			else
+265: 				task.wait()
+266: 				p46:SetEntryText(p46:GetEntryText())
+267: 			end
+268: 		end
+269: 		p46:ClearHistoryState()
+270: 	end
+271: end
+272: v_u_9.TextBox.FocusLost:Connect(function(p65)
+273: 	-- upvalues: (copy) v_u_6
+274: 	return v_u_6:LoseFocus(p65)
+275: end)
+276: v_u_2.InputBegan:Connect(function(p66, p67)
+277: 	-- upvalues: (copy) v_u_6
+278: 	return v_u_6:BeginInput(p66, p67)
+279: end)
+280: v_u_9.TextBox:GetPropertyChangedSignal("Text"):Connect(function()
+281: 	-- upvalues: (copy) v_u_7, (copy) v_u_9, (copy) v_u_6
+282: 	v_u_7.CanvasPosition = Vector2.new(0, v_u_7.AbsoluteCanvasSize.Y)
+283: 	if v_u_9.TextBox.Text:match("\t") then
+284: 		v_u_9.TextBox.Text = v_u_9.TextBox.Text:gsub("\t", "")
+285: 		return
+286: 	elseif v_u_6.OnTextChanged then
+287: 		v_u_6.OnTextChanged(v_u_9.TextBox.Text)
+288: 	end
+
+===== ReplicatedStorage.CmdrClient.Commands.bind =====
+   ...
+62: 		end
+63: 		local v16 = p_u_12:GetStore("CMDR_Binds")
+64: 		if v16[p_u_13] then
+65: 			local v17 = v16[p_u_13]
+66: 			if typeof(v17) == "RBXScriptConnection" then
+67: 				v16[p_u_13]:Disconnect()
+68: 			end
+69: 			v16[p_u_13] = nil
+70: 		end
+71: 		local v_u_18 = p14 .. " " .. p15
+72: 		local v19 = p_u_12:GetArgument(1).Type.Name
+73: 		if v19 == "userInput" then
+74: 			v16[p_u_13] = v_u_3.InputBegan:Connect(function(p20, p21)
+75: 				-- upvalues: (copy) p_u_13, (copy) p_u_12, (ref) v_u_18
+76: 				if not p21 then
+77: 					if p20.UserInputType == p_u_13 or p20.KeyCode == p_u_13 then
+78: 						p_u_12:Reply(p_u_12.Dispatcher:EvaluateAndRun(p_u_12.Cmdr.Util.RunEmbeddedCommands(p_u_12.Dispatcher, v_u_18)))
+79: 					end
+80: 				end
+81: 			end)
+82: 		else
+83: 			if v19 == "bindableResource" then
+84: 				return "Unimplemented..."
+85: 			end
+86: 			if v19 == "player" then
+
+===== ReplicatedStorage.CmdrClient.Commands.edit =====
+   ...
+55: 		p4:Reply("Right-click on the text area to exit.", Color3.fromRGB(158, 158, 158))
+56: 		local v_u_8 = Instance.new("ScreenGui")
+57: 		v_u_8.Name = "CmdrEditBox"
+58: 		v_u_8.ResetOnSpawn = false
+59: 		local v_u_9 = Instance.new("TextBox")
+60: 		for v10, v11 in pairs(v_u_2) do
+61: 			v_u_9[v10] = v11
+62: 		end
+63: 		v_u_9.Text = p5:gsub(p_u_6, "\n")
+64: 		v_u_9.Parent = v_u_8
+65: 		v_u_8.Parent = v_u_1.LocalPlayer:WaitForChild("PlayerGui")
+66: 		local v_u_12 = coroutine.running()
+67: 		v_u_9.InputBegan:Connect(function(p13)
+68: 			-- upvalues: (copy) v_u_12, (copy) v_u_9, (copy) p_u_6, (copy) v_u_8, (copy) v_u_7
+69: 			if p13.UserInputType == Enum.UserInputType.MouseButton2 then
+70: 				coroutine.resume(v_u_12, v_u_9.Text:gsub("\n", p_u_6))
+71: 				v_u_8:Destroy()
+72: 				v_u_7()
+73: 			end
+74: 		end)
+75: 		return coroutine.yield()
+76: 	end
+77: }
+
+===== StarterPlayer.PlayerModule.CameraModule.BaseCamera =====
+   ...
+369: 		v_u_10.enableCameraToggleInput()
+370: 		v_u_9(p70.inFirstPerson)
+371: 		return
+372: 	else
+373: 		v_u_11.setCameraModeToastEnabled(false)
+374: 		v_u_10.disableCameraToggleInput()
+375: 		if p70.inFirstPerson or p70.inMouseLockedMode then
+376: 			v_u_7.setRotationTypeOverride(Enum.RotationType.CameraRelative)
+377: 			v_u_7.setMouseBehaviorOverride(Enum.MouseBehavior.LockCenter)
+378: 			return
+379: 		else
+380: 			v_u_7.restoreRotationType()
+381: 			if v_u_10.getPanActivated() then
+382: 				v_u_7.setMouseBehaviorOverride(Enum.MouseBehavior.LockCurrentPosition)
+383: 			else
+384: 				v_u_7.restoreMouseBehavior()
+385: 			end
+386: 		end
+387: 	end
+388: end
+389: function v_u_14.UpdateForDistancePropertyChange(p72) -- name: UpdateForDistancePropertyChange
+390: 	p72:SetCameraToSubjectDistance(p72.currentSubjectDistance)
+391: end
+392: function v_u_14.SetCameraToSubjectDistance(p73, p74) -- name: SetCameraToSubjectDistance
+393: 	-- upvalues: (copy) v_u_13, (copy) v_u_8
+
+===== StarterPlayer.PlayerModule.ControlModule =====
+1: local v_u_1 = {}
+2: v_u_1.__index = v_u_1
+3: local v_u_2 = game:GetService("Players")
+4: local v_u_3 = game:GetService("RunService")
+5: local v_u_4 = game:GetService("UserInputService")
+6: local v_u_5 = game:GetService("GuiService")
+7: local v_u_6 = game:GetService("Workspace")
+8: local v_u_7 = game:GetService("StarterPlayer")
+9: local v_u_8 = UserSettings():GetService("UserGameSettings")
+10: local v_u_9 = game:GetService("VRService")
+11: local v_u_10 = game:GetService("ContextActionService")
+12: local v11 = require(script.Parent:WaitForChild("CommonUtils"))
+13: local v12 = v11.get("FlagUtil")
+14: local v_u_13 = v12.getUserFlag("UserVRFixCameraCloseArticulation")
+15: local v_u_14 = v12.getUserFlag("UserPlayerScriptsCCLIntegrationD")
+16: local v_u_15 = v12.getUserFlag("UserPlayerScriptsBindActivateOnIAS")
+17: local v_u_16 = v12.getUserFlag("UserPlayerScriptsPlayerControlState2")
+18: local v_u_17 = v12.getUserFlag("UserPlayerScriptsTaskDeferSimulation")
+19: local v_u_18 = v12.getUserFlag("UserPlayerScriptsFixSAuthRenderStepMove")
+20: local v_u_19 = v12.getUserFlag("UserPlayerScriptsSupportMicroGamepad")
+21: local v_u_20 = v12.getUserFlag("UserAbilitiesUserInterfaceC")
+22: local v_u_21 = v12.getUserFlag("UserControlModuleEnabledAPI")
+23: local v_u_22 = v12.getUserFlag("UserPSUseBindToAnimation")
+
+===== StarterPlayer.PlayerModule.CameraModule.CameraInput =====
+1: game:GetService("ContextActionService")
+2: local v_u_1 = game:GetService("UserInputService")
+3: game:GetService("Players")
+4: local v_u_2 = UserSettings():GetService("UserGameSettings")
+5: game:GetService("VRService")
+6: local v3 = game:GetService("GuiService")
+7: local v4 = require(script.Parent.Parent:WaitForChild("CommonUtils")).get("FlagUtil")
+8: local v5 = v4.getUserFlag("UserPSTextboxResetCameraInput")
+9: local v_u_6 = v4.getUserFlag("UserPlayerScriptsSupportTVRemoteKeycodes")
+10: local v7 = script.Parent.Parent:WaitForChild("InputContexts"):WaitForChild("CameraContext")
+11: local v_u_8 = v7:WaitForChild("CameraRotationAction")
+12: local v_u_9 = v7:WaitForChild("CameraZoomAction")
+13: local v_u_10 = v_u_8:WaitForChild("GamepadBinding")
+   ...
+77: 	local v31 = v_u_30 + 1
+78: 	v_u_30 = math.max(0, v31)
+79: end
+80: local function v34() -- name: decPanInputCount
+81: 	-- upvalues: (ref) v_u_30
+82: 	local v33 = v_u_30 - 1
+83: 	v_u_30 = math.max(0, v33)
+84: end
+85: local function v35() -- name: resetPanInputCount
+86: 	-- upvalues: (ref) v_u_30
+87: 	v_u_30 = 0
+88: end
+89: function v29.getRotationActivated() -- name: getRotationActivated
+90: 	-- upvalues: (ref) v_u_30, (copy) v_u_8
+91: 	return v_u_30 > 0 and true or v_u_8:GetState().Magnitude > 0
+92: end
+93: function v29.getPanActivated() -- name: getPanActivated
+94: 	-- upvalues: (ref) v_u_30
+95: 	return v_u_30 > 0
+96: end
+97: function v29.getRotation(p36) -- name: getRotation
+98: 	-- upvalues: (copy) v_u_20, (copy) v_u_8, (copy) v_u_1, (copy) v_u_28
+99: 	v_u_20()
+100: 	local v37 = v_u_8:GetState() * p36
+101: 	if v_u_1.PreferredInput == Enum.PreferredInput.Touch then
+102: 		v37 = v_u_28(v37)
+103: 	end
+104: 	return v37
+105: end
+
+===== StarterPlayer.PlayerModule.CameraModule.VehicleCamera =====
+   ...
+59: end
+60: function v_u_15._StepRotation(p30, p31, p32) -- name: _StepRotation
+61: 	-- upvalues: (copy) v_u_5, (copy) v_u_12, (copy) v_u_8, (copy) v_u_11
+62: 	local v33 = p30.yawSpring
+63: 	local v34 = p30.pitchSpring
+64: 	local v35 = v_u_5.getRotation(p31)
+65: 	local v36 = -v35.X
+66: 	local v37 = -v35.Y
+67: 	v33.pos = v_u_12(v33.pos + v36)
+68: 	local v38 = v_u_12
+69: 	local v39 = v34.pos + v37
+70: 	v34.pos = v38((math.clamp(v39, -1.3962634015954636, 1.3962634015954636)))
+71: 	if v_u_5.getRotationActivated() then
+72: 		p30.lastPanTick = os.clock()
+73: 	end
+74: 	local v40 = v_u_8.pitchBaseAngle
+75: 	local v41 = -math.rad(v40)
+76: 	local v42 = v_u_8.pitchDeadzoneAngle
+77: 	local v43 = math.rad(v42)
+78: 	if os.clock() - p30.lastPanTick > v_u_8.autocorrectDelay then
+79: 		local v44 = v_u_11(p32, v_u_8.autocorrectMinCarSpeed, v_u_8.autocorrectMaxCarSpeed, 0, v_u_8.autocorrectResponse)
+80: 		v33.freq = v44
+81: 		v34.freq = v44
+82: 		if v33.freq < 0.001 then
+83: 			v33.vel = 0
+
+===== ReplicatedFirst.ClientBoot =====
+   ...
+6: local function v10(p6) -- name: setPlayerListEnabled
+7: 	-- upvalues: (copy) v_u_3
+8: 	local v7 = v_u_3.SetCoreGuiEnabled
+9: 	local v8 = v_u_3
+10: 	local v9 = Enum.CoreGuiType.PlayerList
+11: 	pcall(v7, v8, v9, p6)
+12: end
+13: local v11 = v_u_3.SetCoreGuiEnabled
+14: local v12 = Enum.CoreGuiType.PlayerList
+15: pcall(v11, v_u_3, v12, false)
+16: if v4.KeyboardEnabled then
+17: 	local v_u_13 = nil
+18: 	v_u_13 = v4.InputBegan:Connect(function(p14, p15)
+19: 		-- upvalues: (ref) v_u_13, (copy) v_u_3
+20: 		if p14.KeyCode == Enum.KeyCode.Tab and not p15 then
+21: 			v_u_13:Disconnect()
+22: 			local v16 = v_u_3.SetCoreGuiEnabled
+23: 			local v17 = v_u_3
+24: 			local v18 = Enum.CoreGuiType.PlayerList
+25: 			pcall(v16, v17, v18, true)
+26: 		end
+27: 	end)
+28: else
+29: 	task.defer(v10, true)
+30: end
+
+===== REMOTES =====
