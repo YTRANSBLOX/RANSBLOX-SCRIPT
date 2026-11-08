@@ -1655,6 +1655,84 @@ bind(CurrentPing.OnClientEvent, function()
 end)
 
 -- =====================================================================
+-- FEATURE: AUTO MINI GAMES (Main tab, bottom)
+-- A random mini-game can pop up during reel-in (Perfect Reel): a needle
+-- moves across a bar and you must tap at the exact right moment to win a
+-- bonus. This reads the same attributes/values the game's own mini-game
+-- UI uses (NetT0, ReelSweet, FishingShared.ReelTime, PerfectReel.Window)
+-- and fires the same PerfectTap remote at the computed ideal moment.
+-- Built-in interval, not exposed as a separate dropdown -- just one toggle.
+-- =====================================================================
+local PerfectTap = Remotes:FindFirstChild("PerfectTap") -- may not exist on older game builds
+
+local miniGamesRunning = false
+local miniGamesStatus = "Stopped"
+local setMiniGamesStatus = function() end
+local lastHandledT0 = nil -- NetT0 we already scheduled a tap for, so we don't double-fire
+
+local function perfectReelStep()
+    if not PerfectTap then
+        setMiniGamesStatus("Mini-game remote not found (may not exist in this game build)")
+        return
+    end
+
+    local def = FishingShared.PerfectReel
+    if not def or not FishingShared.PerfectReelEnabled then
+        setMiniGamesStatus("Waiting for mini-game...")
+        return
+    end
+
+    local base = getMyBase()
+    if not base then
+        setMiniGamesStatus("Couldn't find your base")
+        return
+    end
+
+    local state = base:GetAttribute("NetState")
+    local t0 = base:GetAttribute("NetT0")
+
+    if state ~= "Reeling" or not t0 then
+        setMiniGamesStatus("Waiting for mini-game...")
+        return
+    end
+
+    if lastHandledT0 == t0 then
+        return -- already scheduled/tapped for this reel
+    end
+    lastHandledT0 = t0
+
+    local sweet = tonumber(base:GetAttribute("ReelSweet")) or 0.5
+    sweet = math.clamp(sweet, 0.05, 0.95)
+
+    local reelTime = FishingShared.ReelTime
+    if type(reelTime) ~= "number" or reelTime <= 0 then
+        setMiniGamesStatus("Couldn't read reel timing")
+        return
+    end
+
+    local idealTime = t0 + sweet * reelTime
+
+    task.spawn(function()
+        local now = workspace:GetServerTimeNow()
+        local waitFor = idealTime - now
+        if waitFor > 0 then
+            task.wait(waitFor)
+        end
+        pcall(function()
+            PerfectTap:FireServer(workspace:GetServerTimeNow())
+        end)
+        setMiniGamesStatus("Tapped mini-game just now")
+    end)
+end
+
+task.spawn(function()
+    while alive do
+        task.wait(0.1)
+        if miniGamesRunning then pcall(perfectReelStep) end
+    end
+end)
+
+-- =====================================================================
 -- PUBLIC API (consumed by gui.lua)
 -- Every toggle exposes get/set<Name>Running + a status get/set-callback
 -- registration so gui.lua's Paragraph element can be kept live without
@@ -1841,6 +1919,15 @@ function L.getCurrentCallRunning() return currentCallRunning end
 function L.getCurrentCallStatus() return currentCallStatus end
 function L.onCurrentCallStatus(cb) setCurrentCallStatus = function(text) currentCallStatus = text; cb(text) end end
 
+-- ---- Auto Mini Games ----
+function L.setMiniGamesRunning(v)
+    miniGamesRunning = v
+    if not v then lastHandledT0 = nil end
+end
+function L.getMiniGamesRunning() return miniGamesRunning end
+function L.getMiniGamesStatus() return miniGamesStatus end
+function L.onMiniGamesStatus(cb) setMiniGamesStatus = function(text) miniGamesStatus = text; cb(text) end end
+
 -- ---- Lifecycle ----
 -- stops every loop and disconnects every signal; gui.lua calls this from
 -- its own unload button alongside Window:Destroy()
@@ -1864,6 +1951,7 @@ local function unloadLogic()
     contractClaimRunning = false
     challengeClaimRunning = false
     currentCallRunning = false
+    miniGamesRunning = false
     for _, c in ipairs(Connections) do pcall(function() c:Disconnect() end) end
 end
 L.unload = unloadLogic
