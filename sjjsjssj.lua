@@ -1210,6 +1210,187 @@ task.spawn(function()
 end)
 
 -- =====================================================================
+-- FEATURE: AUTO TURRET (Megalodon boss event, Event tab)
+-- Megalodon is a single-target boss (no rarity selection needed): while the
+-- event is live this auto-enters Turret Mode, aims at the shark's live
+-- position (same FishingShared.MegPos(elapsed) formula the game's own
+-- MegalodonClient uses to render it), and fires once per cooldown window as
+-- long as it's in range -- then auto-leaves once the event ends.
+--
+-- This fires the exact same MegEvent remote the real "Enter Turret Mode"
+-- and Fire buttons fire (server-validated identically either way); it does
+-- not touch LocalPlayer's TurretMode attribute or camera itself -- the
+-- server's own response to "enter" is what flips that, same as if a human
+-- clicked the button. If the live UI happens to also be open, running both
+-- at once isn't supported.
+-- Built-in interval, not exposed in the GUI.
+-- =====================================================================
+local MEG_ENTER_RETRY = 2 -- seconds between re-tries of FireServer("enter") while not yet confirmed in
+local MEG_FIRE_POLL = 0.25 -- seconds between fire-loop checks once confirmed in turret mode
+
+local turretRunning = false
+local turretStatus = "Stopped"
+local setTurretStatus = function() end
+local turretConfirmed = false -- true once the server has actually put us in turret mode
+local turretNextEnterAt = 0
+local turretReadyAt = 0 -- local cooldown gate, mirrors Megalodon.Cooldown
+
+local MegEvent = Remotes:FindFirstChild("MegEvent") -- may not exist if this game build doesn't have the event yet
+
+local function megDef()
+    return FishingShared.Megalodon
+end
+
+-- current shark position, same formula the live MegalodonClient renders
+-- the model with (elapsed seconds since MegStart -> world position)
+local function megSharkPos()
+    local ok2, pos = pcall(function()
+        local elapsed = workspace:GetServerTimeNow() - (workspace:GetAttribute("MegStart") or workspace:GetServerTimeNow())
+        return FishingShared.MegPos(math.max(0, elapsed))
+    end)
+    if ok2 then return pos end
+    return nil
+end
+
+-- our own spear gun's world position, same lookup the live client uses
+-- (GunPivot attribute as a CFrame, falling back to the model's pivot)
+local function mySpearGunPos()
+    local base = getMyBase()
+    local gun = base and base:FindFirstChild("SpearGun")
+    if not gun then return nil end
+    local pivot = gun:GetAttribute("GunPivot")
+    if typeof(pivot) == "CFrame" then
+        return pivot.Position
+    end
+    local ok2, pos = pcall(function() return gun:GetPivot().Position end)
+    if ok2 then return pos end
+    return nil
+end
+
+local function turretEligible(data)
+    local def = megDef()
+    if not def or not data then return false end
+    return (data.Rebirths or 0) >= (def.NeedRebirth or 0)
+end
+
+local function turretFireStep()
+    if not MegEvent then return end
+    local def = megDef()
+    if not def then return end
+
+    local sharkPos = megSharkPos()
+    local gunPos = mySpearGunPos()
+    if not sharkPos or not gunPos then
+        setTurretStatus("Waiting for shark/gun position...")
+        return
+    end
+
+    local dist = (sharkPos - gunPos).Magnitude
+    local range = (def.Range or 0) + (def.HitR or 0)
+    if dist > range then
+        setTurretStatus(("Out of range (%.0f / %.0f studs)"):format(dist, range))
+        return
+    end
+
+    if os.clock() < turretReadyAt then
+        setTurretStatus(("Reloading (%.1fs)"):format(turretReadyAt - os.clock()))
+        return
+    end
+
+    turretReadyAt = os.clock() + (def.Cooldown or 2)
+    pcall(function() MegEvent:FireServer("fire", sharkPos) end)
+    setTurretStatus("Firing at the Megalodon...")
+end
+
+-- main poll loop: handles eligibility checks, requesting entry, and
+-- resetting state once the event ends
+task.spawn(function()
+    while alive do
+        task.wait(1)
+        if turretRunning and MegEvent then
+            local ok2, err = pcall(function()
+                local active = workspace:GetAttribute("MegActive") == true
+                if not active then
+                    turretConfirmed = false
+                    setTurretStatus("Waiting for Megalodon event...")
+                    return
+                end
+
+                local data = getPlayerData()
+                if not turretEligible(data) then
+                    setTurretStatus("Needs Rebirth " .. tostring((megDef() or {}).NeedRebirth or "?") .. " to fight")
+                    return
+                end
+
+                if not turretConfirmed then
+                    if os.clock() - turretNextEnterAt >= MEG_ENTER_RETRY then
+                        turretNextEnterAt = os.clock()
+                        pcall(function() MegEvent:FireServer("enter") end)
+                        setTurretStatus("Entering turret mode...")
+                    end
+                    return
+                end
+
+                turretFireStep()
+            end)
+            if not ok2 then
+                setTurretStatus("Error: " .. tostring(err))
+            end
+        elseif turretRunning and not MegEvent then
+            setTurretStatus("MegEvent remote not found (event may not exist in this game build)")
+        end
+    end
+end)
+
+-- faster-than-poll fire loop: once confirmed inside turret mode, fire as
+-- soon as cooldown + range allow rather than waiting for the 1s poll above,
+-- so damage output isn't needlessly throttled
+task.spawn(function()
+    while alive do
+        task.wait(MEG_FIRE_POLL)
+        if turretRunning and turretConfirmed and workspace:GetAttribute("MegActive") == true then
+            pcall(turretFireStep)
+        end
+    end
+end)
+
+-- MegEvent.OnClientEvent: known string actions are handled explicitly;
+-- anything else (the live client treats this as the "you're in turret mode
+-- now" payload, distinct from every named action above) is our real
+-- "we're in" signal, same as the live UI entering turret mode.
+if MegEvent then
+    bind(MegEvent.OnClientEvent, function(action, payload)
+        if not turretRunning then return end
+        if action == "end" then
+            turretConfirmed = false
+            setTurretStatus("Event ended")
+        elseif action == "capped" then
+            setTurretStatus(payload == "max" and "Max damage reached, waiting for Last Stand" or "Waiting for other docks' turn")
+        elseif action == "start" then
+            setTurretStatus("Megalodon has arrived")
+        elseif action == "warn" or action == "shot" or action == "loot" or action == "board" or action == "stats" or action == "turret" then
+            -- not relevant to the auto-turret loop; ignored here
+        else
+            -- unrecognized action with a payload: treat as entry confirmation
+            turretConfirmed = true
+            setTurretStatus("In turret mode, firing...")
+        end
+    end)
+end
+
+-- ---- Auto Turret (Megalodon) ----
+function L.setTurretRunning(v)
+    turretRunning = v
+    if not v then
+        turretConfirmed = false
+        setTurretStatus("Stopped")
+    end
+end
+function L.getTurretRunning() return turretRunning end
+function L.getTurretStatus() return turretStatus end
+function L.onTurretStatus(cb) setTurretStatus = function(text) turretStatus = text; cb(text) end end
+
+-- =====================================================================
 -- FEATURE: AUTO CLAIM CONTRACT (Quest tab)
 -- Uses Contracts:InvokeServer("state") to read the current contract list
 -- (each entry has p/goal/k) and Contracts:InvokeServer("claim", index) to
@@ -1654,6 +1835,7 @@ local function unloadLogic()
     potionBuyRunning = false
     potionDrinkRunning = false
     blackMarketBuyRunning = false
+    turretRunning = false
     contractClaimRunning = false
     challengeClaimRunning = false
     currentCallRunning = false
