@@ -27,6 +27,13 @@ L.Connections = Connections
 -- =====================================================================
 local alive = true
 
+-- Shared guard: true whenever we're actually confirmed inside Megalodon
+-- Turret Mode (character anchored, camera scriptable). Declared up here,
+-- ahead of every feature, so character-moving features (Collect, Place)
+-- defined earlier in the file can check it without forward-reference
+-- issues. Set by the Auto Turret feature further down.
+local turretActive = false
+
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
 local LP = Players.LocalPlayer
@@ -449,6 +456,10 @@ local setPlaceStatus = function() end
 
 local function placeStep()
     if placeBusy then return end
+    if turretActive then
+        setPlaceStatus("Paused (Turret Mode active)")
+        return
+    end
     placeBusy = true
 
     local openSlots = getOpenPedestalSlots()
@@ -529,6 +540,10 @@ end
 
 local function collectStep()
     if collectBusy then return end
+    if turretActive then
+        setCollectStatus("Paused (Turret Mode active)")
+        return
+    end
     collectBusy = true
 
     local char = LP.Character
@@ -1235,6 +1250,15 @@ local turretConfirmed = false -- true once the server has actually put us in tur
 local turretNextEnterAt = 0
 local turretReadyAt = 0 -- local cooldown gate, mirrors Megalodon.Cooldown
 
+-- single place that flips both turretConfirmed and the shared turretActive
+-- guard together, so Collect/Place (defined earlier in this file) always
+-- see an accurate, immediately up-to-date picture -- never set
+-- turretConfirmed directly anywhere else below.
+local function setTurretConfirmed(v)
+    turretConfirmed = v
+    turretActive = v
+end
+
 local MegEvent = Remotes:FindFirstChild("MegEvent") -- may not exist if this game build doesn't have the event yet
 
 local function megDef()
@@ -1311,7 +1335,7 @@ task.spawn(function()
             local ok2, err = pcall(function()
                 local active = workspace:GetAttribute("MegActive") == true
                 if not active then
-                    turretConfirmed = false
+                    setTurretConfirmed(false)
                     setTurretStatus("Waiting for Megalodon event...")
                     return
                 end
@@ -1362,7 +1386,7 @@ if MegEvent then
     bind(MegEvent.OnClientEvent, function(action, payload)
         if not turretRunning then return end
         if action == "end" then
-            turretConfirmed = false
+            setTurretConfirmed(false)
             setTurretStatus("Event ended")
         elseif action == "capped" then
             setTurretStatus(payload == "max" and "Max damage reached, waiting for Last Stand" or "Waiting for other docks' turn")
@@ -1372,7 +1396,7 @@ if MegEvent then
             -- not relevant to the auto-turret loop; ignored here
         else
             -- unrecognized action with a payload: treat as entry confirmation
-            turretConfirmed = true
+            setTurretConfirmed(true)
             setTurretStatus("In turret mode, firing...")
         end
     end)
@@ -1382,7 +1406,7 @@ end
 function L.setTurretRunning(v)
     turretRunning = v
     if not v then
-        turretConfirmed = false
+        setTurretConfirmed(false)
         setTurretStatus("Stopped")
     end
 end
@@ -1836,6 +1860,7 @@ local function unloadLogic()
     potionDrinkRunning = false
     blackMarketBuyRunning = false
     turretRunning = false
+    turretActive = false
     contractClaimRunning = false
     challengeClaimRunning = false
     currentCallRunning = false
