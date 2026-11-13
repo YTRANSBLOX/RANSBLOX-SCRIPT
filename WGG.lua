@@ -18,7 +18,6 @@ local okL, Logic = pcall(function()
     return loadstring(game:HttpGet(LOGIC_URL))()
 end)
 if not okL or not Logic then
-    warn("WGG: gagal load logic -", Logic)
     return
 end
 
