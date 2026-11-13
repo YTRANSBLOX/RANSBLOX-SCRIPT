@@ -1,6 +1,3 @@
--- WGG_GUI.lua
--- Load logic dari raw URL, lalu build WindUI
-
 local HUB_NAME   = "Weird Gun Game"
 local VERSION    = "v1.0"
 local YT_LINK    = "https://www.youtube.com/@RansbloxScript"
@@ -171,7 +168,7 @@ CombatBox:Toggle({
 local ESPBox = section(Tabs.Main, "ESP", "eye")
 ESPBox:Toggle({
     Title = "ESP",
-    Desc = "Enemy ESP — orange = visible, putih = through wall.",
+    Desc = "Shows enemy name, HP, and distance.",
     Value = false,
     Callback = function(v) ESPConfig.Enabled = v end,
 })
