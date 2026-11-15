@@ -277,7 +277,7 @@ AutoBox:Toggle({
 local UPDATE_TYPE_LABEL = "Auto (bot decides)"
 local function updateTypeNames()
     local names = { UPDATE_TYPE_LABEL }
-    for _, u in ipairs(Core.RobluxData.UPDATES) do names[#names + 1] = u.name end
+    for _, u in ipairs(Core.RobluxData.UPDATES or {}) do names[#names + 1] = u.name end
     return names
 end
 AutoBox:Dropdown({
@@ -294,7 +294,7 @@ AutoBox:Dropdown({
             if label == UPDATE_TYPE_LABEL then
                 sel.auto = true
             else
-                for _, u in ipairs(Core.RobluxData.UPDATES) do
+                for _, u in ipairs(Core.RobluxData.UPDATES or {}) do
                     if u.name == label then sel[u.id] = true; break end
                 end
             end
