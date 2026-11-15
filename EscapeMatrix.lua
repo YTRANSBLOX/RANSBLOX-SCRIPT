@@ -10,7 +10,7 @@ if _G.ESCAPEMATRIX_Unload then pcall(_G.ESCAPEMATRIX_Unload) end
 pcall(function() setclipboard(YT_LINK) end)
 
 local ok, WindUI = pcall(function()
-    return loadstring(game:HttpGet("https://raw.githubusercontent.com/YTRANSBLOX/RANSBLOX-SCRIPT/refs/heads/main/maingui.lua"))()
+    return loadstring(game:HttpGet("https://raw.githubusercontent.com/YTRANSBLOX/RANSBLOX-SCRIPT/refs/heads/main/maingui.lua?v=" .. tostring(math.random(1, 1e9))))()
 end)
 if not ok or not WindUI then return end
 
@@ -26,7 +26,7 @@ end
 -- LOGIC (hosted separately -- see LOGIC_URL above)
 -- =====================================================================
 local okCore, Core = pcall(function()
-    return loadstring(game:HttpGet(LOGIC_URL))(VERSION)
+    return loadstring(game:HttpGet(LOGIC_URL .. "?v=" .. tostring(math.random(1, 1e9))))(VERSION)
 end)
 
 if not okCore or not Core then
@@ -196,17 +196,18 @@ AutoBox:Toggle({
 -- (never hardcoded) so it always matches what the game actually offers.
 local function nameList(tbl)
     local names = {}
-    for _, e in ipairs(tbl) do names[#names + 1] = e.name end
+    for _, e in ipairs(tbl or {}) do names[#names + 1] = e.name end
     return names
 end
 local function nameOf(tbl, key, matchField)
+    tbl = tbl or {}
     for _, e in ipairs(tbl) do
         if e[matchField] == Core.CONFIG[key] then return e.name end
     end
     return tbl[1] and tbl[1].name
 end
 local function idByName(tbl, name, field)
-    for i, e in ipairs(tbl) do
+    for i, e in ipairs(tbl or {}) do
         if e.name == name then return field == "index" and i or e.id end
     end
 end
